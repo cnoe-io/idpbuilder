@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/globals"
+	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/google/go-cmp/cmp"
 )
 

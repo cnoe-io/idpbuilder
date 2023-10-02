@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/build"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/build"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/spf13/cobra"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"

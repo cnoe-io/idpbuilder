@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/pkg/docker"
 	"github.com/docker/docker/api/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 )

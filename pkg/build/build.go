@@ -3,9 +3,9 @@ package build
 import (
 	"context"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/api/v1alpha1"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/controllers"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers"
+	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"

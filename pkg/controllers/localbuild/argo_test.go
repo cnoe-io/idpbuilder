@@ -3,7 +3,7 @@ package localbuild
 import (
 	"testing"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 )
 
 func TestGetRawInstallResources(t *testing.T) {

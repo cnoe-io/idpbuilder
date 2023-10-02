@@ -1,4 +1,4 @@
-module git.autodesk.com/forge-cd-services/idpbuilder
+module github.com/cnoe-io/idpbuilder
 
 go 1.20
 

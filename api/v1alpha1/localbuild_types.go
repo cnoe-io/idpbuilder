@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"fmt"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/globals"
+	"github.com/cnoe-io/idpbuilder/globals"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

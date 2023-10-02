@@ -2,3 +2,4 @@ idpbuilder
 bin/*
 .DS_Store
 cover.out
+pkg/controllers/resources/*
