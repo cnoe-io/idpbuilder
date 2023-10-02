@@ -23,7 +23,7 @@ import (
 const (
 	gitServerResourceName            string = "gitserver"
 	gitServerDeploymentContainerName string = "httpd"
-	gitServerIngressHostnameBase     string = ".idpbuilder.adskeng.localtest.me"
+  gitServerIngressHostnameBase     string = ".idpbuilder.cnoe.io.local"
 	repoUrlFmt                       string = "http://%s.%s.svc/idpbuilder-resources.git"
 )
 
