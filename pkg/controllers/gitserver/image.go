@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/api/v1alpha1"
-	"git.autodesk.com/forge-cd-services/idpbuilder/globals"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/apps"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/docker"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
+	"github.com/cnoe-io/idpbuilder/pkg/apps"
+	"github.com/cnoe-io/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )

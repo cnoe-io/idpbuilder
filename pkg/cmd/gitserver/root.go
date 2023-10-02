@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/cmd/gitserver/create"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/gitserver/create"
 	"github.com/spf13/cobra"
 )
 

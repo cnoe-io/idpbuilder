@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/api/v1alpha1"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/apps"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/apps"
+	"github.com/cnoe-io/idpbuilder/pkg/docker"
 	"github.com/docker/docker/api/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"

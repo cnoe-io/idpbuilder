@@ -1,8 +1,8 @@
 package k8s
 
 import (
-	"git.autodesk.com/forge-cd-services/idpbuilder/api/v1alpha1"
 	argov1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"

@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/globals"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/globals"
+	"github.com/cnoe-io/idpbuilder/pkg/docker"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"

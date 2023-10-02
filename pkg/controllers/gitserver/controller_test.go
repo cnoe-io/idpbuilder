@@ -9,8 +9,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/api/v1alpha1"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"

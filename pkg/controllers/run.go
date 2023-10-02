@@ -3,9 +3,9 @@ package controllers
 import (
 	"context"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/apps"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/controllers/gitserver"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/controllers/localbuild"
+	"github.com/cnoe-io/idpbuilder/pkg/apps"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitserver"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )

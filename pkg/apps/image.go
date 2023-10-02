@@ -10,9 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.autodesk.com/forge-cd-services/idpbuilder/globals"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/docker"
-	"git.autodesk.com/forge-cd-services/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/globals"
+	"github.com/cnoe-io/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 
 	"github.com/docker/docker/api/types"
 	registryTypes "github.com/docker/docker/api/types/registry"
