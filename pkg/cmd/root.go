@@ -10,8 +10,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ucp-dev",
-	Short: "Development tooling for the Unified Control Plane",
+	Use:   "idpbuilder",
+	Short: "Manage reference IDPs",
 	Long:  "",
 }
 
