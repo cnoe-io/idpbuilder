@@ -2,11 +2,16 @@
 
 Internal development platform binary launcher.
 
+> **WORK IN PROGRESS**: This tool is in a pre-release stage and is under active development.
+
 ## About
 
 Spin up a complete internal developer platform using industry standard technologies like Kubernetes, Argo, and backstage with only Docker required as a dependency.
 
-This is also a completely self-contained binary, meaning you can get up and running simply by downloading a binary release and executing it!
+This can be useful in several ways:
+* Create a single binary which can demonstrate an IDP reference implementation.
+* Use within CI to perform integration testing.
+* Use as a local development environment for IDP engineers.
 
 ## Quickstart:
 
