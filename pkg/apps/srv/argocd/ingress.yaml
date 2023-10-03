@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: "nginx"
   rules:
-  - host: argocd.idpbuilder.adskeng.localtest.me
+  - host: argocd.idpbuilder.cnoe.io.local
     http:
       paths:
       - path: /

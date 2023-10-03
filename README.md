@@ -20,6 +20,6 @@ This is also a completely self-contained binary, meaning you can get up and runn
 
 Kubernetes: `kubectl get pods`
 
-Argo: Visit https://argocd.idpbuilder.adskeng.localtest.me:8443/
+Argo: Visit https://argocd.idpbuilder.cnoe.io.local:8443/
 
 Backstage: TBD
