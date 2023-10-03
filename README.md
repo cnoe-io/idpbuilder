@@ -64,5 +64,11 @@ They include:
 
 As you can imagine each of these apps are are deployed by ArgoCD to the Kind cluster created by CLI. The Argo apps can be inspected with kubectl in the `argocd` namespace and the resources they create can be seen in their corresponding namespaces (`backstage` and `crossplane`)
 
+### Diagram
+
+[Excalidraw diagram here:](https://excalidraw.com/#json=MNOQf_OeLtKYe_Y80Bt2l,AP-ftLAwZoDWjp2yudnMKA)
+
+
+
 ## Extending the IDP builder
 In the future we hope to allow for a pluggable interface to allow for extending the IDP builder with additional argo apps. For now you simply need to add additional apps in the [Embedded Apps](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/resources.go#L20-L32) and also add the resources they will deploy in the `srv` folder: [pkg/apps/srv](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/)
