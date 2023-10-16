@@ -151,7 +151,13 @@ data:
         entityFilename: catalog-info.yaml
         pullRequestBranchName: backstage-integration
       rules:
-        - allow: [Component, System, API, Resource, Location, Template]
+        - allow:
+          - Component
+          - API
+          - Resource
+          - System
+          - Domain
+          - Location
       locations: []
     kubernetes:
       serviceLocatorMethod:
