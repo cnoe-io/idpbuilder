@@ -4,76 +4,64 @@ metadata:
   name: backstage
 ---
 apiVersion: v1
-kind: Secret
+kind: ServiceAccount
 metadata:
-  name: postgres-secrets
+  name: backstage
   namespace: backstage
-type: Opaque
-data:
-  POSTGRES_USER: YmFja3N0YWdl
-  POSTGRES_PASSWORD: aHVudGVyMg==
 ---
-apiVersion: v1
-kind: PersistentVolume
+# For invoking Argo Workflows
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
 metadata:
-  name: postgres-storage
-  namespace: backstage
-  labels:
-    type: local
-spec:
-  storageClassName: manual
-  capacity:
-    storage: 2G
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: '/mnt/data'
+  name: backstage-argo-worfklows
+rules:
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflows
+    verbs:
+      - create
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
+# For displaying resources in Backstage
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
 metadata:
-  name: postgres-storage-claim
-  namespace: backstage
-spec:
-  storageClassName: manual
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 2G
+  name: read-all
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - get
+      - list
+      - watch
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
 metadata:
-  name: postgres
-  namespace: backstage
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgres
-  template:
-    metadata:
-      labels:
-        app: postgres
-    spec:
-      containers:
-        - name: postgres
-          image: postgres:13.2-alpine
-          imagePullPolicy: 'IfNotPresent'
-          ports:
-            - containerPort: 5432
-          envFrom:
-            - secretRef:
-                name: postgres-secrets
-          volumeMounts:
-            - mountPath: /var/lib/postgresql/data
-              name: postgresdb
-      volumes:
-        - name: postgresdb
-          persistentVolumeClaim:
-            claimName: postgres-storage-claim
+  name: backstage-argo-worfklows
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: backstage-argo-worfklows
+subjects:
+  - kind: ServiceAccount
+    name: backstage
+    namespace: backstage
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: backstage-read-all
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: read-all
+subjects:
+  - kind: ServiceAccount
+    name: backstage
+    namespace: backstage
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -90,15 +78,93 @@ spec:
       labels:
         app: backstage
     spec:
+      serviceAccountName: backstage
+      volumes:
+        - name: backstage-config
+          projected:
+            sources:
+              - configMap:
+                  items:
+                    - key: app-config.yaml
+                      path: app-config.yaml
+                  name: backstage-config
       containers:
         - name: backstage
+          command:
+            - node
+            - packages/backend
+            - --config
+            - config/app-config.yaml
           image: public.ecr.aws/cnoe-io/backstage:v0.0.3
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 7007
-          envFrom:
-            - secretRef:
-                name: postgres-secrets
-            - secretRef:
-                name: backstage-secrets
+          volumeMounts:
+            - mountPath: /app/config
+              name: backstage-config
+              readOnly: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: backstage
+  name: backstage-config
+  namespace: backstage
+data:
+  app-config.yaml: |
+    app:
+      title: CNOE
+      baseUrl: http://localhost:3000
+    organization:
+      name: CNOE
+    backend:
+      baseUrl: http://localhost:7007
+      listen:
+        port: 7007
+      csp:
+        connect-src: ["'self'", 'http:', 'https:']
+      cors:
+        origin: http://localhost:3000
+        methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+        credentials: true
+      database:
+        client: better-sqlite3
+        connection: ':memory:'
+      cache:
+        store: memory
+    integrations: {}
+    proxy:
+    techdocs:
+      builder: 'local'
+      generator:
+        runIn: 'docker'
+      publisher:
+        type: 'local'
+    auth:
+      environment: local
+      providers: {}
+    scaffolder: {}
+    catalog:
+      import:
+        entityFilename: catalog-info.yaml
+        pullRequestBranchName: backstage-integration
+      rules:
+        - allow: [Component, System, API, Resource, Location, Template]
+      locations: []
+    kubernetes:
+      serviceLocatorMethod:
+        type: 'multiTenant'
+      clusterLocatorMethods:
+        - type: 'config'
+          clusters:
+            - url: https://kubernetes.default.svc.cluster.local
+              name: local
+              authProvider: 'serviceAccount'
+              skipTLSVerify: true
+              skipMetricsLookup: true
+              serviceAccountToken:
+                $file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              caData:
+                $file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
