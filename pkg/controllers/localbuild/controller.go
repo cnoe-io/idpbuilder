@@ -175,6 +175,7 @@ func (r *LocalbuildReconciler) ReconcileArgoApps(ctx context.Context, req ctrl.R
 	// Bail if embedded argo applications not enabled
 	if !resource.Spec.PackageConfigs.EmbeddedArgoApplications.Enabled {
 		log.Info("embedded argo applications disabled, not installing embedded git server")
+		r.shouldShutdown = true
 		return ctrl.Result{}, nil
 	}
 
