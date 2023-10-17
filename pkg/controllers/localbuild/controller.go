@@ -172,6 +172,12 @@ func (r *LocalbuildReconciler) ReconcileEmbeddedGitServer(ctx context.Context, r
 func (r *LocalbuildReconciler) ReconcileArgoApps(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
+	// Bail if embedded argo applications not enabled
+	if !resource.Spec.PackageConfigs.EmbeddedArgoApplications.Enabled {
+		log.Info("embedded argo applications disabled, not installing embedded git server")
+		return ctrl.Result{}, nil
+	}
+
 	// Create argo project
 	// DeepEqual is broken on argo resources for some reason so we have to DIY create/update
 	project := &argov1alpha1.AppProject{
