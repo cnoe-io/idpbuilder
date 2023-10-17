@@ -152,17 +152,17 @@ data:
   app-config.yaml: |
     app:
       title: CNOE
-      baseUrl: http://localhost:3000
+      baseUrl: "https://backstage.idpbuilder.cnoe.io.local:8443"
     organization:
       name: CNOE
     backend:
-      baseUrl: http://localhost:7007
+      baseUrl: "https://backstage.idpbuilder.cnoe.io.local:8443"
       listen:
         port: 7007
       csp:
         connect-src: ["'self'", 'http:', 'https:']
       cors:
-        origin: http://localhost:3000
+        origin: "https://backstage.idpbuilder.cnoe.io.local:8443"
         methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
         credentials: true
       database:
