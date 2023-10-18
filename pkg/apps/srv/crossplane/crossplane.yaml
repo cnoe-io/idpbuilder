@@ -13,7 +13,7 @@ spec:
     targetRevision: 1.11.1
     helm:
       releaseName: crossplane
-  project: idpbuilder-embedded-gitserver
+  project: idpbuilder-local-gitserver
   syncPolicy:
     automated:
       prune: true
