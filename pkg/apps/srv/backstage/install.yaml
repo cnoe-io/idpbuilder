@@ -130,7 +130,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: backstage.idpbuilder.cnoe.io.local
+    - host: backstage.idpbuilder.cnoe.io.localtest.me
       http:
         paths:
           - backend:
@@ -152,17 +152,17 @@ data:
   app-config.yaml: |
     app:
       title: CNOE
-      baseUrl: "https://backstage.idpbuilder.cnoe.io.local:8443"
+      baseUrl: "https://backstage.idpbuilder.cnoe.io.localtest.me:8443"
     organization:
       name: CNOE
     backend:
-      baseUrl: "https://backstage.idpbuilder.cnoe.io.local:8443"
+      baseUrl: "https://backstage.idpbuilder.cnoe.io.localtest.me:8443"
       listen:
         port: 7007
       csp:
         connect-src: ["'self'", 'http:', 'https:']
       cors:
-        origin: "https://backstage.idpbuilder.cnoe.io.local:8443"
+        origin: "https://backstage.idpbuilder.cnoe.io.localtest.me:8443"
         methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
         credentials: true
       database:
