@@ -21,7 +21,7 @@ This can be useful in several ways:
 
 ### Run
 
-`./idpbuilder -buildName localdev`
+`./idpbuilder create --buildName localdev`
 
 ### Use
 
