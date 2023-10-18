@@ -27,9 +27,9 @@ This can be useful in several ways:
 
 Kubernetes: `kubectl get pods`
 
-Argo: Visit https://argocd.idpbuilder.cnoe.io.local:8443/
+Argo: Visit https://argocd.idpbuilder.cnoe.io.localtest.me:8443/
 
-Backstage: http://backstage.idpbuilder.cnoe.io.local/
+Backstage: http://backstage.idpbuilder.cnoe.io.localtest.me/
 
 ## Architecture
 
