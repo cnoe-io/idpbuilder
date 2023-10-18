@@ -18,39 +18,39 @@ func TestGetConfig(t *testing.T) {
 	}
 
 	expectConfig := `# two node (one workers) cluster config
-	# Kind kubernetes release images https://github.com/kubernetes-sigs/kind/releases
-	kind: Cluster
-	apiVersion: kind.x-k8s.io/v1alpha4
-	containerdConfigPatches:
-	- |-
-	  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5000"]
-		endpoint = ["http://idpbuilder-registry:5000"]
-	nodes:
-	- role: control-plane
-	  image: "kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1"
-	  kubeadmConfigPatches:
-	  - |
-		kind: InitConfiguration
-		nodeRegistration:
-		  kubeletExtraArgs:
-			system-reserved: memory=4Gi
-			node-labels: "ingress-ready=true"
-	  extraPortMappings:
-	  - containerPort: 80
-		hostPort: 8880
-		protocol: TCP
-	  - containerPort: 443
-		hostPort: 8443
-		protocol: TCP
-	  -
-	- role: worker
-	  image: "kindest/node:v1.25.3@sha256:f52781bc0d7a19fb6c405c2af83abfeb311f130707a0e219175677e366cc45d1"
-	  kubeadmConfigPatches:
-	  - |
-		kind: JoinConfiguration
-		nodeRegistration:
-		  kubeletExtraArgs:
-			system-reserved: memory=4Gi`
+# Kind kubernetes release images https://github.com/kubernetes-sigs/kind/releases
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+	endpoint = ["http://idpbuilder-testcase-registry:5000"]
+nodes:
+- role: control-plane
+  image: "kindest/node:v1.26.3"
+  kubeadmConfigPatches:
+  - |
+	kind: InitConfiguration
+	nodeRegistration:
+	  kubeletExtraArgs:
+		system-reserved: memory=4Gi
+		node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+	hostPort: 8880
+	protocol: TCP
+  - containerPort: 443
+	hostPort: 8443
+	protocol: TCP
+  -
+- role: worker
+  image: "kindest/node:v1.26.3"
+  kubeadmConfigPatches:
+  - |
+	kind: JoinConfiguration
+	nodeRegistration:
+	  kubeletExtraArgs:
+		system-reserved: memory=4Gi`
 
 	t.Errorf("Got config: %s", string(cfg))
 	if diff := cmp.Diff(expectConfig, string(cfg)); diff != "" {
