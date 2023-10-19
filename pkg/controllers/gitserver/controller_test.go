@@ -115,7 +115,8 @@ func TestGitServerController(t *testing.T) {
 			continue
 		}
 
-		if gotResource.Status.DeploymentAvailable {
+		// As no pod is created using kube-apiserver, then we cannot check if a resource has been deployed
+		if gotResource.Status.ImageID == "" {
 			break
 		}
 
