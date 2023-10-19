@@ -1,3 +1,21 @@
+Table of Contents
+=================
+
+* [IDP Builder](#idp-builder)
+  * [About](#about)
+  * [Quickstart](#quickstart)
+    * [Build](#build)
+    * [Run](#run)
+    * [Use](#use)
+  * [Architecture](#architecture)
+    * [Kind cluster](#kind-cluster)
+    * [Localbuild](#localbuild)
+    * [Gitserver](#gitserver)
+    * [Embedded Argo Apps](#embedded-argo-apps)
+    * [Diagram](#diagram)
+ * [Extending the IDP builder](#extending-the-idpbuilder)
+ * [Testing](#testing)
+
 # IDP Builder
 
 Internal development platform binary launcher.
@@ -73,7 +91,11 @@ As you can imagine each of these apps are are deployed by ArgoCD to the Kind clu
 
 [Excalidraw diagram here:](https://excalidraw.com/#json=MNOQf_OeLtKYe_Y80Bt2l,AP-ftLAwZoDWjp2yudnMKA)
 
-
-
 ## Extending the IDP builder
 In the future we hope to allow for a pluggable interface to allow for extending the IDP builder with additional argo apps. For now you simply need to add additional apps in the [Embedded Apps](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/resources.go#L20-L32) and also add the resources they will deploy in the `srv` folder: [pkg/apps/srv](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/)
+
+## Testing
+
+This project includes different test cases (unit, integration) which can be executed using the command `make test` or directly within your favorite IDE.
+
+**Remark**: As some tests require to access docker, then this is a prerequisite to launch it first !
