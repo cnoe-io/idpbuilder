@@ -1,4 +1,4 @@
-# Pluggable packaging
+# Pluggable and configurable packaging proposal
 
 ## Background
 
@@ -25,31 +25,146 @@ The proposal in this document should:
 1. Make the packages installed by `idpbuilder` configurable.
 1. Minimize the number of runtime dependencies necessary.
 1. Make it easy for end users to configure their packages.
-1. Support custom setup scripts and workflows that need to be executed in a defined order before a package becomes ready.
+1. Allow for fast local development feedback loop.
 
 ## Proposal
 
 This document proposes the following:
 - Make ArgoCD a hard requirement.
 - Define packages as Argo CD Applications (Helm, Kustomize, and raw manifests)
+- Use a more configurable Git server, Gitea. 
 - Imperative pipelines for configuring packages are handled with ArgoCD resource hooks.
 
+
+### ArgoCD
 Currently, ArgoCD is a base requirement for both the AWS reference implementation and idpbuilder but not yet officially made a hard requirement. ArgoCD is the CD of choice for CNOE members and it should be the focus over other GitOps solutions. Packages then become the formats that ArgoCD supports natively: Helm charts, Kustomize, and raw manifests.
 
+### Support for imperative pipelines
 Regardless of how applications are delivered declaratively, custom scripts are often needed before, during, and after application syncing to ensure applications reach the desired state. idpbuilder needs to provide a way to run custom scripts in a defined order. 
 
 We could define a spec to support such cases, but considering the main use cases of idpbuilder center around everything being local, it doesn't require overly complex tasks. For example, in the reference implementation for AWS, the majority of scripting are done to manage authentication mechanisms. Another task that the scripts do is domain name configuration for each package such as setting the `baseUrl` field in the Backstage configuration file. In local environments, tasks like these are likely unnecessary because authentication is not necessary and domain names are predictable.
 
 ArgoCD supports resource hooks which allow users to define tasks to be run during application syncing. While there are some limitations to what it can do, for the majority of simple tasks resource hooks should suffice.
 
+
+### The in-cluster git server
+
+As documented in [this issue](https://github.com/cnoe-io/idpbuilder/issues/32), using `gitea` offers more configurable and user friendly experience. In short, using it enables:
+- Git UI and ssh access for end users.
+- More configurable git server.
+- Include the source control system as a core component for a developer platform.
+- Move the outdated git dependency to a more modern and actively supported dependency.
+
+`gittea` offers installation into Kubernetes cluster using a helm chart. It should be leveraged to install it to the local cluster. The ideal way to install this would be to use ArgoCD. However, ArgoCD requires a Git server to read Helm values from. It is possible to host the values file on a public repository, but the idpbuilder core components should avoid depending on external systems. In secured environments, it may be impossible for ArgoCD to reach the public repository.
+
+It should follow the same pattern of installing ArgoCD by embedding them in the application binary. The manifests should be rendered at build time by using the `helm template` command with values checked into the repository.
+
+In case the embedded configuration does not work for some reason, we should provide a flag, `--git-manifest-file`. When used, it specifies a single file that contains manifests necessary to configure a git server. 
+
+It is important to note that the file contains raw manifests that will be applied as-is, not helm values. Supporting manifest rendering mechanisms come with a cost of needing to include and maintain libraries and light logic to render these manifests. One of the goals of this proposal is to minimize dependencies.
+It's also difficult to ensure rendered manifests are what users intended to use. Users may have different versions of helm from our version. This may cause slight differences in manifests due to a bug or a feature differences.
+
+
 ### Runtime Git server content generation
 
 As mentioned earlier, Git server contents are generated at compile time and cannot be changed at run time.
-To solve this, Git content should be created at run time by introducing a new flag to idpbuilder. This flag takes a directory and builds an image with the content from the directory. If this flag is not specified, use the embedded FS to provide the "default experience". 
+To solve this, Git content should be created at run time by introducing a new flag, `--package-dir`, to idpbuilder. This flag takes a directory and builds an image with the content from the directory. If this flag is not specified, use the embedded FS to provide the "default experience" where it uses the manifests provided at compile time to bootstrap and add predetermined packages to the cluster.
+
+#### Repositories
 
 Because Helm and Kustomize can reference remote repositories, this approach introduces a use case where secrets must be passed to the cluster from local machine. Kubernetes resource YAML files are often stored on a private Git server and require credentials to access. For ArgoCD to access the Git server, the credentials must be passed to ArgoCD as Kubernetes Secrets.
 
-It's also possible to pull the required contents from referenced remote repositories outside the cluster, then serve them in the Git server. This approach requires more work because we now need to render manifests instead of offloading it to ArgoCD.
+Another approach is to mirror contents from repositories using credentials from local machine, then push them to the in-cluster git server. This does not require credentials to be replicated to the cluster. A few consideration for this approach: 
+
+1. Kustomize references to private remotes.
+    kustomize can reference remote repositories:
+    
+    ```yaml
+      # kustomization.yaml
+      resources:
+      - https://github.com/kubernetes-sigs/kustomize//examples/multibases?timeout=120&ref=v3.3.1
+      namePrefix: remote-
+    ```
+    
+    In this example, to ensure the local git server has everything ArgoCD needs, idpbuilder must:
+      * Pull manifests from `github.com/kubernetes-sigs/kustomize`
+      * Create a new repository in in-cluster git server.
+      * Push contents to the in-cluster repository.
+      * Replace `github.com` with `git-server.git.svc.cluster.local`
+
+2. Helm subcharts from private repositories.
+    Helm subcharts may look like
+    ```
+    # Chart.yaml
+    dependencies:
+    - name: nginx
+      version: "1.2.3"
+      repository: "https://example.com/charts"
+    ```
+    In this example, idpbuilder must:
+      * Pull `chart.tgz` for the nginx chart.
+      * Push it to a in-cluster http server.
+      * Replace `example.com` with `http-endpoint.git.svc.cluster.local`
+
+
+#### ArgoCD Application handling
+
+Consider a case where idpbuilder is given the flag `--package-dir ./packages`, and the `packages` directory contains a yaml file for a ArgoCD application.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+spec:
+  sources:
+    - chart: argo-workflows
+      repoURL: https://argoproj.github.io/argo-helm
+      targetRevision: 0.31.0
+      helm:
+        releaseName: argo-workflows
+        valueFiles:
+          - $values/packages/argo-workflows/dev/values.yaml
+    - repoURL: https://github.com/cnoe-io/argo-helm
+      targetRevision: HEAD
+      ref: values
+```
+
+In the above file, it instructs ArgoCD to use the charts from `argoproj.github.io/argo-helm` and use values stored at `https://github.com/cnoe-io/argo-helm/packages/argo-workflows/dev/values.yaml`
+
+
+In this case, idpbuilder must: 
+
+  * Replace `argoproj.github.io` with `http-endpoint.git.svc.cluster.local`.
+  * Replace `github.com` with `git-server.git.svc.cluster.local`.
+
+
+##### Local file handling
+
+To allow for faster feedback loop when developing Kubernetes applications and manifests, idpbuilder should support pushing local files to the in-cluster git repository if sources are specified using `files://`. 
+Given the following application:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+spec:
+  sources:
+    - path: argo-workflows
+      repoURL: "files://test-package"
+      targetRevision: HEAD
+```
+
+idpbuilder must:
+  * Take and validate (?) all manifests under the `test-package` directory. 
+  * Create a new repository in the in-cluster git server.
+  * Push the files to the repository.
+  * Replace `files://` with `https://git-server.git.svc.cluster.local`
+
+
+#### Air gapped environment
+
+In case of an air gapped environment. Manifests must be delivered to the git server through: 
+
+1. Embedded at compile time.
+2. Another mechanism before idpbuilder runs and make them available at a local storage.
 
 
 ## Future improvements
@@ -101,6 +216,10 @@ spec:
           secretRef:
             name: job1
             path: ./secret1
+          type: helm
+          chart:
+            values: ./values.yaml
+            url: "https://somewhere.cnoe.io/charts"
           spec:
             apiVersion: batch/v1
             kind: Job
@@ -122,3 +241,7 @@ This introduces a few problems.
 
     With the explosion of Kubernetes based projects, a large number of configuration formats were created. Developers and operators are already needing to write and manage configuration files that look similar but slightly different.
   
+3. No clear needs for task orchestration capabilities.
+
+    We have so far not had a request for this capability with concrete needs and investing time and effort to implement and maintain this feature doesn't work.
+
