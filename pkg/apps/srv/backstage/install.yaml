@@ -98,12 +98,48 @@ spec:
           image: public.ecr.aws/cnoe-io/backstage:v0.0.3
           imagePullPolicy: IfNotPresent
           ports:
-            - name: http
+            - name: backend
               containerPort: 7007
           volumeMounts:
             - mountPath: /app/config
               name: backstage-config
               readOnly: true
+---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  ports:
+    - name: http-backend
+      port: 7007
+      protocol: TCP
+      targetPort: backend
+  selector:
+    app: backstage
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: backstage
+  namespace: backstage
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: backstage.idpbuilder.cnoe.io.localtest.me
+      http:
+        paths:
+          - backend:
+              service:
+                name: backstage
+                port:
+                  number: 7007
+            path: /
+            pathType: Prefix
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -116,17 +152,17 @@ data:
   app-config.yaml: |
     app:
       title: CNOE
-      baseUrl: http://localhost:3000
+      baseUrl: "https://backstage.idpbuilder.cnoe.io.localtest.me:8443"
     organization:
       name: CNOE
     backend:
-      baseUrl: http://localhost:7007
+      baseUrl: "https://backstage.idpbuilder.cnoe.io.localtest.me:8443"
       listen:
         port: 7007
       csp:
         connect-src: ["'self'", 'http:', 'https:']
       cors:
-        origin: http://localhost:3000
+        origin: "https://backstage.idpbuilder.cnoe.io.localtest.me:8443"
         methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
         credentials: true
       database:
