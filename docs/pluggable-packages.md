@@ -35,6 +35,7 @@ This document proposes the following:
 - Use a more configurable Git server, Gitea. 
 - Imperative pipelines for configuring packages are handled with ArgoCD resource hooks.
 
+![git](images/git.png)
 
 ### ArgoCD
 
@@ -47,7 +48,6 @@ Regardless of how applications are delivered declaratively, custom scripts are o
 We could define a spec to support such cases, but considering the main use cases of idpbuilder center around everything being local, it doesn't require overly complex tasks. For example, in the reference implementation for AWS, the majority of scripting are done to manage authentication mechanisms. Another task that the scripts do is domain name configuration for each package such as setting the `baseUrl` field in the Backstage configuration file. In local environments, tasks like these are likely unnecessary because authentication is not necessary and domain names are predictable.
 
 ArgoCD supports resource hooks which allow users to define tasks to be run during application syncing. While there are some limitations to what it can do, for the majority of simple tasks resource hooks should suffice.
-
 
 ### The in-cluster git server
 
@@ -71,7 +71,8 @@ Users are expected to run the `helm template` command to generate manifests.
 ### Runtime Git server content generation
 
 As mentioned earlier, Git server contents are generated at compile time and cannot be changed at run time.
-To solve this, Git content should be created at run time by introducing a new flag, `--package-dir`, to idpbuilder. This flag takes a directory and builds an image with the content from the directory. If this flag is not specified, use the embedded FS to provide the "default experience" where it uses the manifests provided at compile time to bootstrap and add predetermined packages to the cluster.
+To solve this, Git content should be created at run time by introducing a new flag, `--package-dir`, to idpbuilder. This flag takes a directory that contains ArgoCD Applications. 
+If this flag is not specified, use the embedded FS to provide the "default experience" where it uses the manifests provided at compile time to bootstrap and add predetermined packages to the cluster.
 
 #### Repositories
 
