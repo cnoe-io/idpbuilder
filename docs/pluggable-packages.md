@@ -24,7 +24,7 @@ The proposal in this document should:
 
 1. Make the packages installed by `idpbuilder` configurable.
 1. Minimize the number of runtime dependencies necessary.
-1. Make it easy for end users to configure their packages.
+1. Define an easy way to declare the packages to be installed.
 1. Allow for fast local development feedback loop.
 
 ## Proposal
