@@ -37,9 +37,11 @@ This document proposes the following:
 
 
 ### ArgoCD
+
 Currently, ArgoCD is a base requirement for both the AWS reference implementation and idpbuilder but not yet officially made a hard requirement. ArgoCD is the CD of choice for CNOE members and it should be the focus over other GitOps solutions. Packages then become the formats that ArgoCD supports natively: Helm charts, Kustomize, and raw manifests.
 
 ### Support for imperative pipelines
+
 Regardless of how applications are delivered declaratively, custom scripts are often needed before, during, and after application syncing to ensure applications reach the desired state. idpbuilder needs to provide a way to run custom scripts in a defined order. 
 
 We could define a spec to support such cases, but considering the main use cases of idpbuilder center around everything being local, it doesn't require overly complex tasks. For example, in the reference implementation for AWS, the majority of scripting are done to manage authentication mechanisms. Another task that the scripts do is domain name configuration for each package such as setting the `baseUrl` field in the Backstage configuration file. In local environments, tasks like these are likely unnecessary because authentication is not necessary and domain names are predictable.
@@ -63,6 +65,7 @@ In case the embedded configuration does not work for some reason, we should prov
 
 It is important to note that the file contains raw manifests that will be applied as-is, not helm values. Supporting manifest rendering mechanisms come with a cost of needing to include and maintain libraries and light logic to render these manifests. One of the goals of this proposal is to minimize dependencies.
 It's also difficult to ensure rendered manifests are what users intended to use. Users may have different versions of helm from our version. This may cause slight differences in manifests due to a bug or a feature differences.
+Users are expected to run the `helm template` command to generate manifests.
 
 
 ### Runtime Git server content generation
@@ -136,8 +139,7 @@ In this case, idpbuilder must:
   * Replace `argoproj.github.io` with `http-endpoint.git.svc.cluster.local`.
   * Replace `github.com` with `git-server.git.svc.cluster.local`.
 
-
-##### Local file handling
+#### Local file handling
 
 To allow for faster feedback loop when developing Kubernetes applications and manifests, idpbuilder should support pushing local files to the in-cluster git repository if sources are specified using `files://`. 
 Given the following application:
@@ -159,20 +161,17 @@ idpbuilder must:
   * Replace `files://` with `https://git-server.git.svc.cluster.local`
 
 
-#### Air gapped environment
-
-In case of an air gapped environment. Manifests must be delivered to the git server through: 
-
-1. Embedded at compile time.
-2. Another mechanism before idpbuilder runs and make them available at a local storage.
-
-
 ## Future improvements
 
 - Extend support for using different tools for CD and imperative workflows. For example, we may consider supporting Tekton or Flagger for running imperative workflows.
 - Extend support for other GitOps solutions such as Flux CD.
-- Referencing remote private repositories.
 - Add support for authentication. As use cases grow, it will be necessary to support authentication mechanisms. Example use cases: GitHub credentials for ArgoCD, AWS credentials to pull images from a ECR registry.
+- Add support for capturing Kubernetes job outputs that were launched by ArgoCD Resource Hooks. Stdout and stderr are not saved for completed jobs by default. This will help debug problems when running imperative commands in Kubernetes Jobs.
+- Support for ArgoCD App of Apps. An App of Apps is an ArgoCD application that contains other ArgoCD applications. Support for this would require: 
+    - Rendering Helm charts and Kustomize.
+    - Sync repository contents, then parse and replace URLs as described above. 
+    
+  This means idpbuilder needs libraries to render manifests, which should be avoided for this implementation as discussed above.
 
 ## Alternatives Considered
 
