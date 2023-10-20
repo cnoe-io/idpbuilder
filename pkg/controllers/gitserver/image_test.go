@@ -2,6 +2,7 @@ package gitserver
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -52,7 +53,8 @@ func TestReconcileGitServerImage(t *testing.T) {
 		t.Errorf("Getting docker client: %v", err)
 	}
 
-	_, err = dockerClient.ImageRemove(ctx, resource.Status.ImageID, types.ImageRemoveOptions{})
+	imageNameID := fmt.Sprintf("%s@%s", GetImageTag(&resource), resource.Status.ImageID)
+	_, err = dockerClient.ImageRemove(ctx, imageNameID, types.ImageRemoveOptions{})
 	if err != nil {
 		t.Errorf("Removing docker image: %v", err)
 	}
