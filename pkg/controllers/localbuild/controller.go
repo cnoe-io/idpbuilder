@@ -24,7 +24,7 @@ const (
 	EmbeddedGitServerName            string = "embedded"
 	gitServerResourceName            string = "gitserver"
 	gitServerDeploymentContainerName string = "httpd"
-	gitServerIngressHostnameBase     string = ".idpbuilder.cnoe.io.localtest.me"
+	gitServerIngressHostnameBase     string = ".cnoe.localtest.me"
 	repoUrlFmt                       string = "http://%s.%s.svc/idpbuilder-resources.git"
 )
 
