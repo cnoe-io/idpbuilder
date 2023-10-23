@@ -21,24 +21,28 @@ var (
 )
 
 type Build struct {
-	name           string
-	kubeConfigPath string
-	scheme         *runtime.Scheme
-	CancelFunc     context.CancelFunc
+	name              string
+	kubeConfigPath    string
+	kubeVersion       string
+	extraPortsMapping string
+	scheme            *runtime.Scheme
+	CancelFunc        context.CancelFunc
 }
 
-func NewBuild(name, kubeConfigPath string, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
+func NewBuild(name, kubeVersion, kubeConfigPath, extraPortsMapping string, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
 	return &Build{
-		name:           name,
-		kubeConfigPath: kubeConfigPath,
-		scheme:         scheme,
-		CancelFunc:     ctxCancel,
+		name:              name,
+		kubeConfigPath:    kubeConfigPath,
+		kubeVersion:       kubeVersion,
+		extraPortsMapping: extraPortsMapping,
+		scheme:            scheme,
+		CancelFunc:        ctxCancel,
 	}
 }
 
 func (b *Build) ReconcileKindCluster(ctx context.Context, recreateCluster bool) error {
 	// Initialize Kind Cluster
-	cluster, err := kind.NewCluster(b.name, b.kubeConfigPath)
+	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.extraPortsMapping)
 	if err != nil {
 		setupLog.Error(err, "Error Creating kind cluster")
 		return err

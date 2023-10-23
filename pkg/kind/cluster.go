@@ -6,24 +6,52 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"strings"
 	"text/template"
 
 	"sigs.k8s.io/kind/pkg/cluster"
 )
 
 type Cluster struct {
-	provider       *cluster.Provider
-	name           string
-	kubeConfigPath string
+	provider          *cluster.Provider
+	name              string
+	kubeVersion       string
+	kubeConfigPath    string
+	extraPortsMapping string
+}
+
+type PortMapping struct {
+	HostPort      string
+	ContainerPort string
 }
 
 //go:embed resources/kind.yaml
 var configFS embed.FS
 
+func SplitFunc(input, sep string) []string {
+	return strings.Split(input, sep)
+}
 func (c *Cluster) getConfig() ([]byte, error) {
 	rawConfigTempl, err := fs.ReadFile(configFS, "resources/kind.yaml")
 	if err != nil {
 		return []byte{}, err
+	}
+
+	var portMappingPairs []PortMapping
+	if len(c.extraPortsMapping) > 0 {
+		// Split pairs of ports "11=1111","22=2222",etc
+		pairs := strings.Split(c.extraPortsMapping, ",")
+		// Create a slice to store PortMapping pairs.
+		portMappingPairs = make([]PortMapping, len(pairs))
+		// Parse each pair into PortPair objects.
+		for i, pair := range pairs {
+			parts := strings.Split(pair, ":")
+			if len(parts) == 2 {
+				portMappingPairs[i] = PortMapping{parts[0], parts[1]}
+			}
+		}
+	} else {
+		portMappingPairs = nil
 	}
 
 	template, err := template.New("kind.yaml").Parse(string(rawConfigTempl))
@@ -36,23 +64,29 @@ func (c *Cluster) getConfig() ([]byte, error) {
 		RegistryHostname     string
 		ExposedRegistryPort  uint16
 		InternalRegistryPort uint16
+		KubernetesVersion    string
+		ExtraPortsMapping    []PortMapping
 	}{
 		RegistryHostname:     c.getRegistryContainerName(),
 		ExposedRegistryPort:  ExposedRegistryPort,
 		InternalRegistryPort: InternalRegistryPort,
+		KubernetesVersion:    c.kubeVersion,
+		ExtraPortsMapping:    portMappingPairs,
 	}); err != nil {
 		return []byte{}, err
 	}
 	return retBuff.Bytes(), nil
 }
 
-func NewCluster(name string, kubeConfigPath string) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, extraPortsMapping string) (*Cluster, error) {
 	provider := cluster.NewProvider(cluster.ProviderWithDocker())
 
 	return &Cluster{
-		provider:       provider,
-		name:           name,
-		kubeConfigPath: kubeConfigPath,
+		provider:          provider,
+		name:              name,
+		kubeVersion:       kubeVersion,
+		kubeConfigPath:    kubeConfigPath,
+		extraPortsMapping: extraPortsMapping,
 	}, nil
 }
 

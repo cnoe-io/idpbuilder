@@ -23,6 +23,12 @@ This can be useful in several ways:
 
 `./idpbuilder create --buildName localdev`
 
+You can also define the kubernetes version to image and which corresponds to the kind pre-built [image](https://github.com/kubernetes-sigs/kind/releases).
+`./idpbuilder create --kubeVersion v1.27.3`
+
+If it is needed to expose some extra Ports between the docker container and the kubernetes host, they can be declared as such
+`./idpbuilder create --extraPorts 22:32222`
+
 ### Use
 
 Kubernetes: `kubectl get pods`
