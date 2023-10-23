@@ -1,0 +1,33 @@
+project_name: localidp
+
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    binary: localidp
+    ignore:
+      - goos: linux
+        goarch: '386'
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+

@@ -1,6 +1,10 @@
+
+# The name of the binary. Defaults to localidp
+OUT_FILE ?= localidp
+
 .PHONY: build
 build: manifests generate fmt vet
-	go build -o idpbuilder main.go
+	go build -o $(OUT_FILE) main.go
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.27.1
