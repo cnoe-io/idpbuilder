@@ -22,6 +22,7 @@ var (
 	buildName         string
 	kubeVersion       string
 	extraPortsMapping string
+	kindConfigPath    string
 )
 
 var CreateCmd = &cobra.Command{
@@ -36,6 +37,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&buildName, "buildName", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kubeVersion", "v1.26.333", "Version of the kind kubernetes cluster to create.")
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extraPorts", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
+	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kindConfig", "", "Path of the kind config file to be used instead of the default.")
 
 	zapfs := flag.NewFlagSet("zap", flag.ExitOnError)
 	opts := zap.Options{
@@ -58,7 +60,7 @@ func create(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, extraPortsMapping, k8s.GetScheme(), ctxCancel)
+	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping, k8s.GetScheme(), ctxCancel)
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err

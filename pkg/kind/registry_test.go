@@ -20,7 +20,7 @@ func TestReconcileRegistry(t *testing.T) {
 	defer dockerCli.Close()
 
 	// Create cluster
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "")
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "")
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}

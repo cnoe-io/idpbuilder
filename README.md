@@ -29,6 +29,9 @@ You can also define the kubernetes version to image and which corresponds to the
 If it is needed to expose some extra Ports between the docker container and the kubernetes host, they can be declared as such
 `./idpbuilder create --extraPorts 22:32222`
 
+It is also possible to use your own kind config file
+`./idpbuilder create --buildName local --kindConfig ./my-kind.cfg`
+
 ### Use
 
 Kubernetes: `kubectl get pods`

@@ -6,6 +6,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"os"
 	"strings"
 	"text/template"
 
@@ -17,6 +18,7 @@ type Cluster struct {
 	name              string
 	kubeVersion       string
 	kubeConfigPath    string
+	kindConfigPath    string
 	extraPortsMapping string
 }
 
@@ -32,6 +34,16 @@ func SplitFunc(input, sep string) []string {
 	return strings.Split(input, sep)
 }
 func (c *Cluster) getConfig() ([]byte, error) {
+
+	if c.kindConfigPath != "" {
+		f, err := os.ReadFile(c.kindConfigPath)
+		if err != nil {
+			return []byte{}, err
+		} else {
+			return f, nil
+		}
+	}
+
 	rawConfigTempl, err := fs.ReadFile(configFS, "resources/kind.yaml")
 	if err != nil {
 		return []byte{}, err
@@ -78,12 +90,13 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff.Bytes(), nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, extraPortsMapping string) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string) (*Cluster, error) {
 	provider := cluster.NewProvider(cluster.ProviderWithDocker())
 
 	return &Cluster{
 		provider:          provider,
 		name:              name,
+		kindConfigPath:    kindConfigPath,
 		kubeVersion:       kubeVersion,
 		kubeConfigPath:    kubeConfigPath,
 		extraPortsMapping: extraPortsMapping,
