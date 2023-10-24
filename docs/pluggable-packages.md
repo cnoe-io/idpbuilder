@@ -74,71 +74,39 @@ As mentioned earlier, Git server contents are generated at compile time and cann
 To solve this, Git content should be created at run time by introducing a new flag, `--package-dir`, to idpbuilder. This flag takes a directory that contains ArgoCD Applications. 
 If this flag is not specified, use the embedded FS to provide the "default experience" where it uses the manifests provided at compile time to bootstrap and add predetermined packages to the cluster.
 
-#### Repositories
+Because Helm and Kustomize can reference remote repositories, this approach introduces a use case where secrets must be passed to the cluster from local machine. Kubernetes resource YAML files are often stored on a private Git server and require credentials to access. For ArgoCD to access the Git server, the credentials must be passed to ArgoCD as Kubernetes Secrets. 
 
-Because Helm and Kustomize can reference remote repositories, this approach introduces a use case where secrets must be passed to the cluster from local machine. Kubernetes resource YAML files are often stored on a private Git server and require credentials to access. For ArgoCD to access the Git server, the credentials must be passed to ArgoCD as Kubernetes Secrets.
-
-Another approach is to mirror contents from repositories using credentials from local machine, then push them to the in-cluster git server. This does not require credentials to be replicated to the cluster. A few consideration for this approach: 
-
-1. Kustomize references to private remotes.
-    kustomize can reference remote repositories:
-    
-    ```yaml
-      # kustomization.yaml
-      resources:
-      - https://github.com/kubernetes-sigs/kustomize//examples/multibases?timeout=120&ref=v3.3.1
-      namePrefix: remote-
-    ```
-    
-    In this example, to ensure the local git server has everything ArgoCD needs, idpbuilder must:
-      * Pull manifests from `github.com/kubernetes-sigs/kustomize`
-      * Create a new repository in in-cluster git server.
-      * Push contents to the in-cluster repository.
-      * Replace `github.com` with `git-server.git.svc.cluster.local`
-
-2. Helm subcharts from private repositories.
-    Helm subcharts may look like
-    ```
-    # Chart.yaml
-    dependencies:
-    - name: nginx
-      version: "1.2.3"
-      repository: "https://example.com/charts"
-    ```
-    In this example, idpbuilder must:
-      * Pull `chart.tgz` for the nginx chart.
-      * Push it to a in-cluster http server.
-      * Replace `example.com` with `http-endpoint.git.svc.cluster.local`
-
-
-#### ArgoCD Application handling
-
-Consider a case where idpbuilder is given the flag `--package-dir ./packages`, and the `packages` directory contains a yaml file for a ArgoCD application.
+To accomplish this, idpbuilder will provide a flag to pass secrets and other ArgoCD configuration options. `--argocd-config` flag should point to a directory with manifests for configuring ArgoCD, ConfigMaps and Secrets. These manifests will be applied after ArgoCD is deployed and ready. An example directory contents are shown below.
 
 ```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-spec:
-  sources:
-    - chart: argo-workflows
-      repoURL: https://argoproj.github.io/argo-helm
-      targetRevision: 0.31.0
-      helm:
-        releaseName: argo-workflows
-        valueFiles:
-          - $values/packages/argo-workflows/dev/values.yaml
-    - repoURL: https://github.com/cnoe-io/argo-helm
-      targetRevision: HEAD
-      ref: values
+# --argocd-config ./configs
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argo-helm
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: argo
+  url: https://argoproj.github.io/argo-helm
+  type: helm
+  username: my-username
+  password: my-password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  url: https://argo-cd-demo.argoproj.io
+
 ```
 
-In the above file, it instructs ArgoCD to use the charts from `argoproj.github.io/argo-helm` and use values stored at `https://github.com/cnoe-io/argo-helm/packages/argo-workflows/dev/values.yaml`
-
-
-In this case, idpbuilder must: 
-
-  * Replace `argoproj.github.io` with `http-endpoint.git.svc.cluster.local`.
-  * Replace `github.com` with `git-server.git.svc.cluster.local`.
 
 #### Local file handling
 
@@ -156,7 +124,7 @@ spec:
 ```
 
 idpbuilder must:
-  * Take and validate (?) all manifests under the `test-package` directory. 
+  * Take and validate all manifests under the `test-package` directory. 
   * Create a new repository in the in-cluster git server.
   * Push the files to the repository.
   * Replace `files://` with `https://git-server.git.svc.cluster.local`
@@ -172,7 +140,6 @@ idpbuilder must:
     - Rendering Helm charts and Kustomize.
     - Sync repository contents, then parse and replace URLs as described above. 
     
-  This means idpbuilder needs libraries to render manifests, which should be avoided for this implementation as discussed above.
 
 ## Alternatives Considered
 
@@ -245,3 +212,67 @@ This introduces a few problems.
 
     We have so far not had a request for this capability with concrete needs and investing time and effort to implement and maintain this feature doesn't work.
 
+#### Git Repository Mirroring
+
+Another approach is to mirror contents from repositories using credentials from local machine, then push them to the in-cluster git server. This does not require credentials to be replicated to the cluster. A few consideration for this approach: 
+
+1. Kustomize references to private remotes.
+    kustomize can reference remote repositories:
+    
+    ```yaml
+      # kustomization.yaml
+      resources:
+      - https://github.com/kubernetes-sigs/kustomize//examples/multibases?timeout=120&ref=v3.3.1
+      namePrefix: remote-
+    ```
+    
+    In this example, to ensure the local git server has everything ArgoCD needs, idpbuilder must:
+      * Pull manifests from `github.com/kubernetes-sigs/kustomize`
+      * Create a new repository in in-cluster git server.
+      * Push contents to the in-cluster repository.
+      * Replace `github.com` with `git-server.git.svc.cluster.local`
+
+2. Helm subcharts from private repositories.
+    Helm subcharts may look like
+    ```
+    # Chart.yaml
+    dependencies:
+    - name: nginx
+      version: "1.2.3"
+      repository: "https://example.com/charts"
+    ```
+    In this example, idpbuilder must:
+      * Pull `chart.tgz` for the nginx chart.
+      * Push it to a in-cluster http server.
+      * Replace `example.com` with `http-endpoint.git.svc.cluster.local`
+
+Given the complexity involved with this approach, the first iteration should focus on passing secrets to ArgoCD. When concrete use cases arise, approaches similar to this should be considered.
+
+###### ArgoCD Application handling
+
+Consider a case where idpbuilder is given the flag `--package-dir ./packages`, and the `packages` directory contains a yaml file for a ArgoCD application.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+spec:
+  sources:
+    - chart: argo-workflows
+      repoURL: https://argoproj.github.io/argo-helm
+      targetRevision: 0.31.0
+      helm:
+        releaseName: argo-workflows
+        valueFiles:
+          - $values/packages/argo-workflows/dev/values.yaml
+    - repoURL: https://github.com/cnoe-io/argo-helm
+      targetRevision: HEAD
+      ref: values
+```
+
+In the above file, it instructs ArgoCD to use the charts from `argoproj.github.io/argo-helm` and use values stored at `https://github.com/cnoe-io/argo-helm/packages/argo-workflows/dev/values.yaml`
+
+
+In this case, idpbuilder must: 
+
+  * Replace `argoproj.github.io` with `http-endpoint.git.svc.cluster.local`.
+  * Replace `github.com` with `git-server.git.svc.cluster.local`.
