@@ -30,10 +30,12 @@ The proposal in this document should:
 ## Proposal
 
 This document proposes the following:
-- Make ArgoCD a hard requirement.
+- Make ArgoCD a hard requirement for now.
 - Define packages as Argo CD Applications (Helm, Kustomize, and raw manifests)
 - Use a more configurable Git server, Gitea. 
 - Imperative pipelines for configuring packages are handled with ArgoCD resource hooks.
+
+In this implementation, we will make ArgoCD the technology of choice. However, we will strive to maintain separation between packages and specific CD technologies (Argo) to allow for future CD plug-ability.
 
 ![git](images/git.png)
 
