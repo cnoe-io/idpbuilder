@@ -32,6 +32,14 @@ If it is needed to expose some extra Ports between the docker container and the 
 It is also possible to use your own kind config file
 `./idpbuilder create --buildName local --kindConfig ./my-kind.cfg`
 
+**NOTE**: Be sure to include in your kind config the section `containerdConfigPatches` where the registry hostname includes the name specified with the parameter: `--buildname`
+```yaml
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
+    endpoint = ["http://idpbuilder-<localBuildName>-registry:5000"]
+```
+
 ### Use
 
 Kubernetes: `kubectl get pods`
