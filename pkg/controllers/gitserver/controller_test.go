@@ -9,11 +9,16 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/cnoe-io/idpbuilder/globals"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
@@ -94,31 +99,50 @@ func TestGitServerController(t *testing.T) {
 			Namespace: ResourceNamespace,
 			UID:       "test-uid",
 		},
+		Spec: v1alpha1.GitServerSpec{Source: v1alpha1.GitServerSource{Image: "fake", Embedded: false}},
 	}
 	if err := k8sClient.Create(ctx, resource); err != nil {
 		t.Fatalf("Creating resource: %v", err)
 	}
 
-	// Wait for GitServer to become available
+	labelReq, err := labels.NewRequirement("app", selection.Equals, []string{fmt.Sprintf("%s-%s", globals.ProjectName, resource.Name)})
+	if err != nil {
+		t.Fatalf("Failed constructing label selector requrirement: %v", err)
+	}
+	selector := labels.NewSelector()
+	selector.Add(*labelReq)
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		t.Fatalf("Failed creating deployment client: %v", err)
+	}
+
+	// Wait for GitServer deployment object to be created.
 	endTime := time.Now().Add(timeout)
 	for {
 		if time.Now().After(endTime) {
 			t.Fatal("Timed out waiting for resource available")
 		}
 
-		var gotResource v1alpha1.GitServer
-		if err = k8sClient.Get(ctx, client.ObjectKey{
-			Name:      ResourceName,
-			Namespace: ResourceNamespace,
-		}, &gotResource); err != nil {
-			t.Logf("Failed getting resource (might be ok though): %v", err)
+		deployment, err := clientSet.AppsV1().Deployments(resource.Namespace).Get(ctx, managedResourceName(resource), v1.GetOptions{})
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				t.Fatalf("Failed getting deployment: %v", err)
+			}
+			t.Log("Waiting for deployment object...")
+			time.Sleep(interval)
 			continue
 		}
 
-		if gotResource.Status.DeploymentAvailable {
-			break
+		for k, v := range GetGitServerLabels(resource) {
+			val, ok := deployment.Spec.Selector.MatchLabels[k]
+			if !ok {
+				t.Fatalf("Expected deployment labels selector key, %s, not found", k)
+			}
+			if val != v {
+				t.Fatalf("Expected deployment labels selector val not found: %s", v)
+			}
 		}
 
-		time.Sleep(interval)
+		break
 	}
 }
