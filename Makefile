@@ -1,6 +1,6 @@
 
-# The name of the binary. Defaults to localidp
-OUT_FILE ?= localidp
+# The name of the binary. Defaults to idpbuilder
+OUT_FILE ?= idpbuilder
 
 .PHONY: build
 build: manifests generate fmt vet

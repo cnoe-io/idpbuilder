@@ -21,7 +21,7 @@ jobs:
       # Ensure generation tools run
       - name: build
         run: |
-          OUT_FILE=/tmp/localidp make build
+          OUT_FILE=/tmp/idpbuilder make build
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         id: run-goreleaser
