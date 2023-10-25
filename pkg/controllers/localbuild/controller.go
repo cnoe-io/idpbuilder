@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	defaultArgoCDProjectName         string = "default"
 	EmbeddedGitServerName            string = "embedded"
 	gitServerResourceName            string = "gitserver"
 	gitServerDeploymentContainerName string = "httpd"
@@ -236,7 +237,7 @@ func (r *LocalbuildReconciler) ReconcileArgoApps(ctx context.Context, req ctrl.R
 				app,
 				repoUrl,
 				embedApp.Path,
-				resource.GetArgoProjectName(),
+				defaultArgoCDProjectName,
 				nil,
 			)
 
