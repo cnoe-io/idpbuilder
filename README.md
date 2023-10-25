@@ -30,7 +30,7 @@ If it is needed to expose some extra Ports between the docker container and the 
 `./idpbuilder create --extraPorts 22:32222`
 
 It is also possible to use your own kind config file
-`./idpbuilder create --buildName local --kindConfig ./my-kind.cfg`
+`./idpbuilder create --buildName local --kindConfig ./my-kind.yaml`
 
 **NOTE**: Be sure to include in your kind config the section `containerdConfigPatches` where the registry hostname includes the name specified with the parameter: `--buildname`
 ```yaml
