@@ -3,6 +3,7 @@ package kind
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/cnoe-io/idpbuilder/pkg/docker"
 	"github.com/docker/docker/api/types"
@@ -32,10 +33,21 @@ func TestReconcileRegistry(t *testing.T) {
 	}
 
 	// Create registry
-	err = cluster.ReconcileRegistry(ctx)
 	defer dockerCli.ContainerRemove(ctx, cluster.getRegistryContainerName(), types.ContainerRemoveOptions{Force: true})
-	if err != nil {
-		t.Fatalf("Error reconciling registry: %v", err)
+	waitTimeout := time.Second * 90
+	waitInterval := time.Second * 3
+	endTime := time.Now().Add(waitTimeout)
+
+	for {
+		if time.Now().After(endTime) {
+			t.Fatalf("Timed out waiting for registry. recent error: %v", err)
+		}
+		err = cluster.ReconcileRegistry(ctx)
+		if err == nil {
+			break
+		}
+		t.Logf("Failed to reconcile: %v", err)
+		time.Sleep(waitInterval)
 	}
 
 	// Get resulting container
@@ -55,3 +67,4 @@ func TestReconcileRegistry(t *testing.T) {
 		t.Fatalf("Error reconciling registry: %v", err)
 	}
 }
+
