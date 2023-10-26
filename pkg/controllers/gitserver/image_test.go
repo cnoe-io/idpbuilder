@@ -7,9 +7,12 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"io"
+	"net"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/apps"
@@ -57,6 +60,22 @@ func TestReconcileGitServerImage(t *testing.T) {
 		t.Fatalf("failed pulilng registry image: %v", err)
 	}
 
+	waitTimeout := time.Second * 90
+	waitInterval := time.Second * 3
+	// very crude. no guarantee that the port will be available by the time request is sent to docker
+	endTime := time.Now().Add(waitTimeout)
+	for {
+		if time.Now().After(endTime) {
+			t.Fatalf("Timed out waiting for port %d to be available", kind.ExposedRegistryPort)
+		}
+		conn, cErr := net.DialTimeout("tcp", net.JoinHostPort("0.0.0.0", strconv.Itoa(int(kind.ExposedRegistryPort))), time.Second*3)
+		if cErr != nil {
+			break
+		}
+		conn.Close()
+		time.Sleep(waitInterval)
+	}
+
 	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
 		Image: "docker.io/library/registry:2",
 		Tty:   false,
@@ -98,3 +117,4 @@ func TestReconcileGitServerImage(t *testing.T) {
 		t.Errorf("Removing docker image: %v", err)
 	}
 }
+
