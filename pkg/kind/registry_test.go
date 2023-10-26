@@ -33,6 +33,7 @@ func TestReconcileRegistry(t *testing.T) {
 
 	// Create registry
 	err = cluster.ReconcileRegistry(ctx)
+	defer dockerCli.ContainerRemove(ctx, cluster.getRegistryContainerName(), types.ContainerRemoveOptions{Force: true})
 	if err != nil {
 		t.Fatalf("Error reconciling registry: %v", err)
 	}
@@ -52,10 +53,5 @@ func TestReconcileRegistry(t *testing.T) {
 	err = cluster.ReconcileRegistry(ctx)
 	if err != nil {
 		t.Fatalf("Error reconciling registry: %v", err)
-	}
-
-	// Cleanup
-	if err = dockerCli.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{Force: true}); err != nil {
-		t.Fatalf("Error removing registry docker container after reconcile: %v", err)
 	}
 }
