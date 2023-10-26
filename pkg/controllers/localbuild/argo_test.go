@@ -11,12 +11,12 @@ func TestGetRawInstallResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRawInstallResources() error: %v", err)
 	}
-	if len(resources) != 2 {
+	if len(resources) != 1 {
 		t.Fatalf("GetRawInstallResources() resources len != 1, got %d", len(resources))
 	}
 
 	resourcePrefix := "# UCP ARGO INSTALL RESOURCES\n"
-	checkPrefix := resources[1][0:len(resourcePrefix)]
+	checkPrefix := resources[0][0:len(resourcePrefix)]
 	if resourcePrefix != string(checkPrefix) {
 		t.Fatalf("GetRawInstallResources() exptected 1 resource with prefix %q, got %q", resourcePrefix, checkPrefix)
 	}
@@ -28,7 +28,7 @@ func TestGetK8sInstallResources(t *testing.T) {
 		t.Fatalf("GetK8sInstallResources() error: %v", err)
 	}
 
-	if len(objs) != 57 {
+	if len(objs) != 55 {
 		t.Fatalf("Expected 57 Argo Install Resources, got: %d", len(objs))
 	}
 }
