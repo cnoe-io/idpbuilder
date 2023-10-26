@@ -47,6 +47,7 @@ func TestReconcileRegistry(t *testing.T) {
 			break
 		}
 		t.Logf("Failed to reconcile: %v", err)
+		dockerCli.ContainerRemove(ctx, cluster.getRegistryContainerName(), types.ContainerRemoveOptions{Force: true})
 		time.Sleep(waitInterval)
 	}
 
