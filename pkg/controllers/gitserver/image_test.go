@@ -3,6 +3,11 @@ package gitserver
 import (
 	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -39,20 +44,54 @@ func TestReconcileGitServerImage(t *testing.T) {
 		},
 	}
 
-	_, err = r.reconcileGitServerImage(ctx, controllerruntime.Request{}, &resource)
-	if err != nil {
-		t.Errorf("reconcile error: %v", err)
-	}
-
-	if !strings.HasPrefix(resource.Status.ImageID, "sha256") {
-		t.Errorf("Invalid or no Image ID in status: %q", resource.Status.ImageID)
-	}
-
 	dockerClient, err := docker.GetDockerClient()
 	if err != nil {
 		t.Errorf("Getting docker client: %v", err)
 	}
+	defer dockerClient.Close()
+	reader, err := dockerClient.ImagePull(ctx, "docker.io/library/registry:2", types.ImagePullOptions{})
+	defer reader.Close()
+	// blocks until pull is completed
+	io.Copy(os.Stdout, reader)
+	if err != nil {
+		t.Fatalf("failed pulilng registry image: %v", err)
+	}
 
+	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
+		Image: "docker.io/library/registry:2",
+		Tty:   false,
+		ExposedPorts: nat.PortSet{
+			nat.Port(fmt.Sprintf("%d/tcp", kind.InternalRegistryPort)): struct{}{},
+		},
+	}, &container.HostConfig{
+		PortBindings: nat.PortMap{
+			nat.Port(fmt.Sprintf("%d/tcp", kind.InternalRegistryPort)): []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: fmt.Sprintf("%d", kind.ExposedRegistryPort),
+				},
+			},
+		},
+	}, nil, nil, "testcase-registry")
+	if err != nil {
+		t.Fatalf("failed creating registry container %v", err)
+	}
+
+	defer dockerClient.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true})
+
+	err = dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
+	if err != nil {
+		t.Fatalf("failed starting container %v", err)
+	}
+
+	_, err = r.reconcileGitServerImage(ctx, controllerruntime.Request{}, &resource)
+	if err != nil {
+		t.Fatalf("reconcile error: %v", err)
+	}
+
+	if !strings.HasPrefix(resource.Status.ImageID, "sha256") {
+		t.Fatalf("Invalid or no Image ID in status: %q", resource.Status.ImageID)
+	}
 	imageNameID := fmt.Sprintf("%s@%s", GetImageTag(&resource), resource.Status.ImageID)
 	_, err = dockerClient.ImageRemove(ctx, imageNameID, types.ImageRemoveOptions{})
 	if err != nil {

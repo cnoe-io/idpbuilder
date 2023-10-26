@@ -19,6 +19,12 @@ func TestReconcileRegistry(t *testing.T) {
 	}
 	defer dockerCli.Close()
 
+	kindNetwork, err := dockerCli.NetworkCreate(ctx, "kind", types.NetworkCreate{})
+	if err != nil {
+		t.Fatalf("Failed creaking kind network: %v", err)
+	}
+	defer dockerCli.NetworkRemove(ctx, kindNetwork.ID)
+
 	// Create cluster
 	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "")
 	if err != nil {
@@ -36,6 +42,8 @@ func TestReconcileRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error getting registry container after reconcile: %v", err)
 	}
+	defer dockerCli.ImageRemove(ctx, container.ImageID, types.ImageRemoveOptions{})
+
 	if container == nil {
 		t.Fatal("Expected registry container after reconcile but got nil")
 	}
