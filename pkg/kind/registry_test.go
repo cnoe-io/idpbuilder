@@ -68,4 +68,3 @@ func TestReconcileRegistry(t *testing.T) {
 		t.Fatalf("Error reconciling registry: %v", err)
 	}
 }
-
