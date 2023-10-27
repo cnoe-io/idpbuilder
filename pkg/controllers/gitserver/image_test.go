@@ -3,13 +3,8 @@ package gitserver
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/kind"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"io"
-	"net"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,7 +12,11 @@ import (
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/apps"
 	"github.com/cnoe-io/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/go-connections/nat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -60,22 +59,6 @@ func TestReconcileGitServerImage(t *testing.T) {
 		t.Fatalf("failed pulilng registry image: %v", err)
 	}
 
-	waitTimeout := time.Second * 90
-	waitInterval := time.Second * 3
-	// very crude. no guarantee that the port will be available by the time request is sent to docker
-	endTime := time.Now().Add(waitTimeout)
-	for {
-		if time.Now().After(endTime) {
-			t.Fatalf("Timed out waiting for port %d to be available", kind.ExposedRegistryPort)
-		}
-		conn, cErr := net.DialTimeout("tcp", net.JoinHostPort("0.0.0.0", strconv.Itoa(int(kind.ExposedRegistryPort))), time.Second*3)
-		if cErr != nil {
-			break
-		}
-		conn.Close()
-		time.Sleep(waitInterval)
-	}
-
 	resp, err := dockerClient.ContainerCreate(ctx, &container.Config{
 		Image: "docker.io/library/registry:2",
 		Tty:   false,
@@ -98,6 +81,25 @@ func TestReconcileGitServerImage(t *testing.T) {
 
 	defer dockerClient.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true})
 
+	waitTimeout := time.Second * 90
+	waitInterval := time.Second * 3
+	endTime := time.Now().Add(waitTimeout)
+	// avoid failures with the container that uses port 5001 in TestReconcileRegistry
+	for {
+		if time.Now().After(endTime) {
+			t.Fatalf("Timed out waiting for idpbuilder-testcase-registry container to terminate")
+		}
+		containers, _ := dockerClient.ContainerList(ctx, types.ContainerListOptions{
+			Filters: filters.NewArgs(filters.KeyValuePair{
+				Key:   "name",
+				Value: "idpbuilder-testcase-registry",
+			}),
+		})
+		if len(containers) == 0 {
+			break
+		}
+		time.Sleep(waitInterval)
+	}
 	err = dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})
 	if err != nil {
 		t.Fatalf("failed starting container %v", err)
@@ -117,4 +119,3 @@ func TestReconcileGitServerImage(t *testing.T) {
 		t.Errorf("Removing docker image: %v", err)
 	}
 }
-
