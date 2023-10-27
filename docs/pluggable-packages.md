@@ -39,11 +39,24 @@ In this implementation, we will make ArgoCD the technology of choice. However, w
 
 ![git](images/git.png)
 
+### Essential Packages
+
+For `idpbuilder` to make the cluster ready to be used for non-essential packages, it must install:
+
+1. In-cluster git server
+2. ArgoCD
+3. Ingress for git server and ArgoCD
+
+Once they are installed and ready, the manifests used should be pushed to an in-cluster git repository.
+The packages then can be managed by ArgoCD from that point. 
+This allows for end users to make changes to them through GitOps by either using the Git UI or locally through Git pull / push.  
+
 ### ArgoCD
 
-Currently, ArgoCD is a base requirement for both the AWS reference implementation and idpbuilder but not yet officially made a hard requirement. ArgoCD is the CD of choice for CNOE members and it should be the focus over other GitOps solutions. Packages then become the formats that ArgoCD supports natively: Helm charts, Kustomize, and raw manifests.
+Currently, ArgoCD is a base requirement for both the AWS reference implementation and idpbuilder but not yet officially made a hard requirement. ArgoCD is the CD of choice for CNOE members and it should be the focus over other GitOps solutions. 
+Packages then become the formats that ArgoCD supports natively: Helm charts, Kustomize, and raw manifests.
 
-### Support for imperative pipelines
+#### Support for imperative pipelines
 
 Regardless of how applications are delivered declaratively, custom scripts are often needed before, during, and after application syncing to ensure applications reach the desired state. idpbuilder needs to provide a way to run custom scripts in a defined order. 
 
@@ -52,6 +65,8 @@ We could define a spec to support such cases, but considering the main use cases
 ArgoCD supports resource hooks which allow users to define tasks to be run during application syncing. While there are some limitations to what it can do, for the majority of simple tasks resource hooks should suffice.
 
 ### The in-cluster git server
+
+The primary purpose of the in-cluster git server is to sync local files to it, then make them available for ArgoCD to use.
 
 As documented in [this issue](https://github.com/cnoe-io/idpbuilder/issues/32), using `gitea` offers more configurable and user friendly experience. In short, using it enables:
 - Git UI and ssh access for end users.
