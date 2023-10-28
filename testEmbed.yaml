@@ -1,0 +1,10 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: argocd
+  namespace: default
+spec:
+  giteaURL: "http://localhost:3000"
+  source:
+    embeddedAppName: "argocd"
+    type: embedded

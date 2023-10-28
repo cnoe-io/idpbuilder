@@ -21,4 +21,5 @@ var (
 func init() {
 	SchemeBuilder.Register(&Localbuild{}, &LocalbuildList{})
 	SchemeBuilder.Register(&GitServer{}, &GitServerList{})
+	SchemeBuilder.Register(&GitRepository{}, &GitRepositoryList{})
 }

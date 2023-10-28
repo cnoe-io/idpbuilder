@@ -70,10 +70,19 @@ spec:
                 type: boolean
               gitServerAvailable:
                 type: boolean
-              giteaAvailable:
-                type: boolean
-              giteaSecret:
-                type: string
+              giteaStatus:
+                properties:
+                  adminUserSecretNameecret:
+                    type: string
+                  adminUserSecretNamespace:
+                    type: string
+                  available:
+                    type: boolean
+                  externalURL:
+                    type: string
+                  internalURL:
+                    type: string
+                type: object
               nginxAvailable:
                 type: boolean
               observedGeneration:

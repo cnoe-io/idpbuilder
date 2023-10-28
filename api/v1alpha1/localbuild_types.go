@@ -41,12 +41,19 @@ type LocalbuildStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
-	GitServerAvailable bool   `json:"gitServerAvailable,omitempty"`
-	ArgoAvailable      bool   `json:"argoAvailable,omitempty"`
-	NginxAvailable     bool   `json:"nginxAvailable,omitempty"`
-	GiteaAvailable     bool   `json:"giteaAvailable,omitempty"`
-	ArgoAppsCreated    bool   `json:"argoAppsCreated,omitempty"`
-	GiteaSecretName    string `json:"giteaSecret,omitempty"`
+	GitServerAvailable bool        `json:"gitServerAvailable,omitempty"`
+	ArgoAvailable      bool        `json:"argoAvailable,omitempty"`
+	NginxAvailable     bool        `json:"nginxAvailable,omitempty"`
+	ArgoAppsCreated    bool        `json:"argoAppsCreated,omitempty"`
+	Gitea              GiteaStatus `json:"giteaStatus,omitempty"`
+}
+
+type GiteaStatus struct {
+	Available                bool   `json:"available,omitempty"`
+	ExternalURL              string `json:"externalURL,omitempty"`
+	InternalURL              string `json:"internalURL,omitempty"`
+	AdminUserSecretName      string `json:"adminUserSecretNameecret,omitempty"`
+	AdminUserSecretNamespace string `json:"adminUserSecretNamespace,omitempty"`
 }
 
 // +kubebuilder:object:root=true

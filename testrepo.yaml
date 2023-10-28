@@ -1,0 +1,9 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitRepository
+metadata:
+  name: test
+  namespace: default
+spec:
+  giteaURL: "http://localhost:3000"
+  source:
+    path: "/tmp/b/"

@@ -5,6 +5,7 @@ import (
 	"embed"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -15,6 +16,10 @@ var installArgoFS embed.FS
 const (
 	argocdNamespace string = "argocd"
 )
+
+func RawArgocdInstallResources() ([][]byte, error) {
+	return util.ConvertFSToBytes(installArgoFS, "resources/argo")
+}
 
 func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	argocd := EmbeddedInstallation{
