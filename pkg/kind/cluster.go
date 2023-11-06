@@ -137,6 +137,10 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 		return err
 	}
 
+	fmt.Print("########################### Our kind config ############################\n")
+	fmt.Printf("%s", rawConfig)
+	fmt.Print("\n#########################   config end    ############################\n")
+
 	fmt.Printf("Creating kind cluster %s\n", c.name)
 	if err = c.provider.Create(
 		c.name,
