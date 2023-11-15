@@ -26,9 +26,6 @@ var (
 	}, {
 		Name: "crossplane",
 		Path: "crossplane",
-	}, {
-		Name: "nginx-ingress",
-		Path: "nginx-ingress",
 	}}
 )
 
