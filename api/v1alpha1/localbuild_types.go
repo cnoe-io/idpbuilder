@@ -36,6 +36,7 @@ type LocalbuildStatus struct {
 
 	GitServerAvailable bool `json:"gitServerAvailable,omitempty"`
 	ArgoAvailable      bool `json:"argoAvailable,omitempty"`
+	NginxAvailable     bool `json:"nginxAvailable,omitempty"`
 	ArgoAppsCreated    bool `json:"argoAppsCreated,omitempty"`
 }
 

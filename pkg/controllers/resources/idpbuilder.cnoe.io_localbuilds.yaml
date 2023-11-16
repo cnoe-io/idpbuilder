@@ -62,6 +62,8 @@ spec:
                 type: boolean
               gitServerAvailable:
                 type: boolean
+              nginxAvailable:
+                type: boolean
               observedGeneration:
                 description: ObservedGeneration is the 'Generation' of the Service
                   that was last processed by the controller.

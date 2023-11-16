@@ -70,6 +70,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	subReconcilers := []subReconciler{
 		r.ReconcileProjectNamespace,
 		r.ReconcileArgo,
+		r.ReconcileNginx,
 		r.ReconcileEmbeddedGitServer,
 		r.ReconcileArgoApps,
 	}
