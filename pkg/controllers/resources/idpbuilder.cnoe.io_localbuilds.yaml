@@ -52,6 +52,14 @@ spec:
                           argo applications and the associated GitServer
                         type: boolean
                     type: object
+                  gitConfig:
+                    description: GitConfigSpec controls what git server to use for
+                      the idpbuilder It can take on the values of either gitea or
+                      gitserver
+                    properties:
+                      type:
+                        type: string
+                    type: object
                 type: object
             type: object
           status:
@@ -61,6 +69,8 @@ spec:
               argoAvailable:
                 type: boolean
               gitServerAvailable:
+                type: boolean
+              giteaAvailable:
                 type: boolean
               nginxAvailable:
                 type: boolean

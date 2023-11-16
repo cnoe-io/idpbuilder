@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,6 +154,10 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 				},
 				EmbeddedArgoApplications: v1alpha1.EmbeddedArgoApplicationsPackageConfigSpec{
 					Enabled: true,
+				},
+				GitConfig: v1alpha1.GitConfigSpec{
+					// hint: for the old behavior, replace Type value below with globals.GitServerResourcename()
+					Type: globals.GiteaResourceName(),
 				},
 			},
 		}

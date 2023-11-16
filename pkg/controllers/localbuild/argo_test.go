@@ -7,7 +7,11 @@ import (
 )
 
 func TestGetRawInstallResources(t *testing.T) {
-	resources, err := GetRawInstallResources()
+	e := EmbeddedInstallation{
+		resourceFS:   installArgoFS,
+		resourcePath: "resources/argo",
+	}
+	resources, err := e.rawInstallResources()
 	if err != nil {
 		t.Fatalf("GetRawInstallResources() error: %v", err)
 	}
@@ -23,7 +27,11 @@ func TestGetRawInstallResources(t *testing.T) {
 }
 
 func TestGetK8sInstallResources(t *testing.T) {
-	objs, err := GetK8sInstallResources(k8s.GetScheme())
+	e := EmbeddedInstallation{
+		resourceFS:   installArgoFS,
+		resourcePath: "resources/argo",
+	}
+	objs, err := e.installResources(k8s.GetScheme())
 	if err != nil {
 		t.Fatalf("GetK8sInstallResources() error: %v", err)
 	}

@@ -1,0 +1,43 @@
+redis-cluster:
+  enabled: false
+postgresql:
+  enabled: false
+postgresql-ha:
+  enabled: false
+
+persistence:
+  enabled: false
+
+test:
+  enabled: false
+
+gitea:
+  admin:
+      existingSecret: gitea-admin-secret
+  config:
+    database:
+      DB_TYPE: sqlite3
+    session:
+      PROVIDER: memory
+    cache:
+      ADAPTER: memory
+    queue:
+      TYPE: level
+    server:
+      DOMAIN: localtest.me
+      ROOT_URL: 'http://localtest.me:3000'
+
+service:
+  ssh:
+    type: NodePort
+    nodePort: 32222
+    externalTrafficPolicy: Local
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: gitea.cnoe.localtest.me
+      paths:
+        - path: /
+          pathType: Prefix
