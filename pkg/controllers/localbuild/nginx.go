@@ -27,7 +27,7 @@ const (
 
 //go:embed resources/nginx/k8s/*
 var installNginxFS embed.FS
-var timeout = time.After(5 * time.Minute)
+var timeout = time.After(3 * time.Minute)
 
 func RawNginxInstallResources() ([][]byte, error) {
 	return util.ConvertFSToBytes(installNginxFS, "resources/nginx/k8s")
@@ -68,7 +68,7 @@ func (r LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Reque
 		}
 	}
 
-	log.Info("Installing Nginx resources")
+	log.Info("Installing/Reconciling Nginx resources")
 	for _, obj := range installObjs {
 		if obj.GetObjectKind().GroupVersionKind().Kind == "Deployment" {
 			switch obj.GetName() {
@@ -110,8 +110,8 @@ func (r LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Reque
 					}
 				}
 			}
-
-			time.Sleep(1 * time.Second)
+			log.Info("Waiting for Nginx to become ready")
+			time.Sleep(30 * time.Second)
 		}
 	}(installObjs)
 
@@ -126,6 +126,7 @@ func (r LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Reque
 			resource.Status.NginxAvailable = true
 		} else {
 			log.Error(err, "failed to reconcile the Nginx resources")
+			resource.Status.NginxAvailable = false
 			return ctrl.Result{}, err
 		}
 	}
