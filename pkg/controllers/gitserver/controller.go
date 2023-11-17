@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	gitServerResourceName            string = "gitserver"
 	gitServerDeploymentContainerName string = "httpd"
 	gitServerIngressHostnameBase     string = ".cnoe.localtest.me"
 	repoUrlFmt                       string = "http://%s.%s.svc/idpbuilder-resources.git"
@@ -38,7 +37,7 @@ func ingressHostname(resource *v1alpha1.GitServer) string {
 }
 
 func managedResourceName(resource *v1alpha1.GitServer) string {
-	return fmt.Sprintf("%s-%s", gitServerResourceName, resource.Name)
+	return fmt.Sprintf("%s-%s", globals.GitServerResourcename(), resource.Name)
 }
 
 type subReconciler func(ctx context.Context, req ctrl.Request, resource *v1alpha1.GitServer) (ctrl.Result, error)

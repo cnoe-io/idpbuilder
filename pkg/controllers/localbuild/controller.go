@@ -23,7 +23,6 @@ import (
 const (
 	defaultArgoCDProjectName         string = "default"
 	EmbeddedGitServerName            string = "embedded"
-	gitServerResourceName            string = "gitserver"
 	gitServerDeploymentContainerName string = "httpd"
 	gitServerIngressHostnameBase     string = ".cnoe.localtest.me"
 	repoUrlFmt                       string = "http://%s.%s.svc/idpbuilder-resources.git"
@@ -40,7 +39,7 @@ func ingressHostname(resource *v1alpha1.GitServer) string {
 }
 
 func managedResourceName(resource *v1alpha1.GitServer) string {
-	return fmt.Sprintf("%s-%s", gitServerResourceName, resource.Name)
+	return fmt.Sprintf("%s-%s", globals.GitServerResourcename(), resource.Name)
 }
 
 type LocalbuildReconciler struct {
@@ -67,12 +66,26 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Make sure we post process
 	defer r.postProcessReconcile(ctx, req, &localBuild)
 
+	// respecting order of installation matters as there are hard dependencies
 	subReconcilers := []subReconciler{
 		r.ReconcileProjectNamespace,
-		r.ReconcileArgo,
 		r.ReconcileNginx,
-		r.ReconcileEmbeddedGitServer,
-		r.ReconcileArgoApps,
+		r.ReconcileArgo,
+	}
+
+	switch localBuild.Spec.PackageConfigs.GitConfig.Type {
+	case globals.GitServerResourcename():
+		subReconcilers = append(
+			subReconcilers,
+			[]subReconciler{r.ReconcileEmbeddedGitServer, r.ReconcileArgoAppsWithGitServer}...,
+		)
+	case globals.GiteaResourceName():
+		subReconcilers = append(
+			subReconcilers,
+			[]subReconciler{r.ReconcileGitea, r.ReconcileArgoAppsWithGitea}...,
+		)
+	default:
+		return ctrl.Result{}, fmt.Errorf("GitConfig %s is invalid for LocalBuild %s", localBuild.Spec.PackageConfigs.GitConfig.Type, localBuild.GetName())
 	}
 
 	for _, sub := range subReconcilers {
@@ -171,7 +184,7 @@ func (r *LocalbuildReconciler) ReconcileEmbeddedGitServer(ctx context.Context, r
 	return ctrl.Result{}, err
 }
 
-func (r *LocalbuildReconciler) ReconcileArgoApps(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitServer(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	// Bail if embedded argo applications not enabled
@@ -262,4 +275,12 @@ func (r *LocalbuildReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Localbuild{}).
 		Complete(r)
+}
+
+func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+
+	log.Info("TODO(nimak): enable installing Argo Apps")
+	r.shouldShutdown = true
+	return ctrl.Result{}, nil
 }
