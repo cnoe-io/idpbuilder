@@ -16,13 +16,13 @@ const (
 //go:embed resources/nginx/k8s/*
 var installNginxFS embed.FS
 
-func (r LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	nginx := EmbeddedInstallation{
 		name:         "Nginx",
 		resourcePath: "resources/nginx/k8s",
 		resourceFS:   installNginxFS,
 		namespace:    nginxNamespace,
-		expectedResources: map[string]schema.GroupVersionKind{
+		monitoredResources: map[string]schema.GroupVersionKind{
 			"ingress-nginx-controller": {
 				Group:   "apps",
 				Version: "v1",

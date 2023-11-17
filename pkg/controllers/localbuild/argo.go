@@ -16,13 +16,13 @@ const (
 	argocdNamespace string = "argocd"
 )
 
-func (r LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	argocd := EmbeddedInstallation{
 		name:         "Argo CD",
 		resourcePath: "resources/argo",
 		resourceFS:   installArgoFS,
 		namespace:    argocdNamespace,
-		expectedResources: map[string]schema.GroupVersionKind{
+		monitoredResources: map[string]schema.GroupVersionKind{
 			"argocd-server": {
 				Group:   "apps",
 				Version: "v1",

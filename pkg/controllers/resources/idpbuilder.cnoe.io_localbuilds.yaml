@@ -72,6 +72,8 @@ spec:
                 type: boolean
               giteaAvailable:
                 type: boolean
+              giteaSecret:
+                type: string
               nginxAvailable:
                 type: boolean
               observedGeneration:

@@ -11,18 +11,20 @@ import (
 
 const (
 	giteaNamespace = "gitea"
+	// hardcoded secret name from what we have in the yaml installation file
+	giteaAdminSecret = "gitea-admin-secret"
 )
 
 //go:embed resources/gitea/k8s/*
 var installGiteaFS embed.FS
 
-func (r LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	gitea := EmbeddedInstallation{
 		name:         "Gitea",
 		resourcePath: "resources/gitea/k8s",
 		resourceFS:   installGiteaFS,
 		namespace:    giteaNamespace,
-		expectedResources: map[string]schema.GroupVersionKind{
+		monitoredResources: map[string]schema.GroupVersionKind{
 			"my-gitea": {
 				Group:   "apps",
 				Version: "v1",
@@ -35,6 +37,7 @@ func (r LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
+	resource.Status.GiteaSecretName = giteaAdminSecret
 	resource.Status.GiteaAvailable = true
 	return ctrl.Result{}, nil
 }

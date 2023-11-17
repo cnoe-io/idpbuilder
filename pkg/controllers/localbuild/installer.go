@@ -34,16 +34,16 @@ type EmbeddedInstallation struct {
 	skipReadinessCheck bool
 
 	// name and gvk pair for resources that need to be monitored
-	expectedResources map[string]schema.GroupVersionKind
+	monitoredResources map[string]schema.GroupVersionKind
 
 	resourceFS embed.FS
 }
 
-func (e EmbeddedInstallation) rawInstallResources() ([][]byte, error) {
+func (e *EmbeddedInstallation) rawInstallResources() ([][]byte, error) {
 	return util.ConvertFSToBytes(e.resourceFS, e.resourcePath)
 }
 
-func (e EmbeddedInstallation) installResources(scheme *runtime.Scheme) ([]client.Object, error) {
+func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme) ([]client.Object, error) {
 	rawResources, err := e.rawInstallResources()
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (e EmbeddedInstallation) installResources(scheme *runtime.Scheme) ([]client
 	return k8s.ConvertRawResourcesToObjects(scheme, rawResources)
 }
 
-func (e EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace {
+func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
@@ -60,8 +60,7 @@ func (e EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace {
 	}
 }
 
-func (e EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme) (ctrl.Result, error) {
-
+func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	nsClient := client.NewNamespacedClient(cli, e.namespace)
@@ -81,7 +80,7 @@ func (e EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, res
 
 	log.Info(fmt.Sprintf("Installing/Reconciling %s resources", e.name))
 	for _, obj := range installObjs {
-		if gvk, ok := e.expectedResources[obj.GetName()]; ok {
+		if gvk, ok := e.monitoredResources[obj.GetName()]; ok {
 			if obj.GetObjectKind().GroupVersionKind() == gvk {
 				sch := runtime.NewScheme()
 				_ = appsv1.AddToScheme(sch)
@@ -114,13 +113,15 @@ func (e EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, res
 	var wg sync.WaitGroup
 
 	for _, obj := range installObjs {
-		if gvk, ok := e.expectedResources[obj.GetName()]; ok {
+		if gvk, ok := e.monitoredResources[obj.GetName()]; ok {
 			if obj.GetObjectKind().GroupVersionKind() != gvk {
 				continue
 			}
 
 			wg.Add(1)
 			go func(obj client.Object, gvk schema.GroupVersionKind) {
+				defer wg.Done()
+
 				sch := runtime.NewScheme()
 				_ = appsv1.AddToScheme(sch)
 				gvkObj, err := sch.New(gvk)
@@ -129,7 +130,6 @@ func (e EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, res
 					return
 				}
 
-				defer wg.Done()
 				for {
 					if gotObj, ok := gvkObj.(client.Object); ok {
 						if err := cli.Get(ctx, types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, gotObj); err != nil {
@@ -171,7 +171,6 @@ func (e EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, res
 	case err, errOccurred := <-errCh:
 		if !errOccurred {
 			log.Info(fmt.Sprintf("%s is ready!", e.name))
-
 		} else {
 			log.Error(err, fmt.Sprintf("failed to reconcile the %s resources", e.name))
 			return ctrl.Result{}, err
