@@ -10,13 +10,13 @@ metadata:
 spec:
   ingressClassName: "nginx"
   rules:
-  - host: argocd.cnoe.localtest.me
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: argocd-server
-            port:
-              name: https
+    - host: argocd.cnoe.localtest.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  name: https
