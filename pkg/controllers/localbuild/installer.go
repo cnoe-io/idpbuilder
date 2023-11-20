@@ -86,7 +86,7 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 				_ = appsv1.AddToScheme(sch)
 				if gvkObj, err := sch.New(gvk); err == nil {
 					if gotObj, ok := gvkObj.(client.Object); ok {
-						if err := cli.Get(ctx, types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, gotObj); err != nil {
+						if err := cli.Get(ctx, types.NamespacedName{Namespace: e.namespace, Name: obj.GetName()}, gotObj); err != nil {
 							if err = controllerutil.SetControllerReference(resource, obj, sc); err != nil {
 								log.Error(err, "Setting controller reference for deployment", obj.GetName(), obj)
 								return ctrl.Result{}, err
@@ -132,7 +132,7 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 
 				for {
 					if gotObj, ok := gvkObj.(client.Object); ok {
-						if err := cli.Get(ctx, types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, gotObj); err != nil {
+						if err := cli.Get(ctx, types.NamespacedName{Namespace: e.namespace, Name: obj.GetName()}, gotObj); err != nil {
 							errCh <- err
 							return
 						}
