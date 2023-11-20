@@ -24,12 +24,12 @@ stringData:
   security: INSTALL_LOCK=true
   server: |-
     APP_DATA_PATH=/data
-    DOMAIN=localtest.me
+    DOMAIN=gitea.cnoe.localtest.me
     ENABLE_PPROF=false
     HTTP_PORT=3000
     PROTOCOL=http
-    ROOT_URL=http://localtest.me:3000
-    SSH_DOMAIN=localtest.me
+    ROOT_URL=http://gitea.cnoe.localtest.me:8880
+    SSH_DOMAIN=gitea.cnoe.localtest.me
     SSH_LISTEN_PORT=2222
     SSH_PORT=22
     START_SSH_SERVER=true
@@ -369,7 +369,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: b72b51d66dcd6dd355217fae8f65b19eae7fe343092e672ab2b117f2fd35638c
+        checksum/config: 21e599f11581db3008ffb136e6a77f9d49e5c5ee478c234e91576476f56ddc45
       labels:
         helm.sh/chart: gitea-9.5.1
         app: gitea
@@ -573,11 +573,11 @@ spec:
       http:
         paths:
           - path: /
-            pathType: Prefix 
+            pathType: Prefix
             backend:
               service:
                 name: my-gitea-http
-                port: 
+                port:
                   number: 3000
 ---
 apiVersion: v1
@@ -588,3 +588,4 @@ type: Opaque
 stringData:
   username: giteaAdmin
   password: giteaPassword
+

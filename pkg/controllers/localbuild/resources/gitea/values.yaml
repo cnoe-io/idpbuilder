@@ -13,7 +13,7 @@ test:
 
 gitea:
   admin:
-      existingSecret: gitea-admin-secret
+    existingSecret: gitea-admin-secret
   config:
     database:
       DB_TYPE: sqlite3
@@ -24,8 +24,8 @@ gitea:
     queue:
       TYPE: level
     server:
-      DOMAIN: localtest.me
-      ROOT_URL: 'http://localtest.me:3000'
+      DOMAIN: gitea.cnoe.localtest.me
+      ROOT_URL: 'http://gitea.cnoe.localtest.me:8880'
 
 service:
   ssh:
@@ -35,6 +35,7 @@ service:
 
 ingress:
   enabled: true
+  apiVersion: 'networking.k8s.io/v1'
   className: nginx
   hosts:
     - host: gitea.cnoe.localtest.me
