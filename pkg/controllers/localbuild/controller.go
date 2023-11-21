@@ -299,9 +299,13 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 		}
 	}
 
-	// TODO: this needs to be removed for local file syncs.
-	r.shouldShutdown = true
-	return ctrl.Result{}, nil
+	shutdown, err := r.shouldShutDown(ctx, resource)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+	r.shouldShutdown = shutdown
+
+	return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 }
 
 func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName string, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
@@ -364,6 +368,21 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1alpha1.Localbuild) (bool, error) {
+	repos := &v1alpha1.GitRepositoryList{}
+	err := r.Client.List(ctx, repos, client.InNamespace(resource.Namespace))
+	if err != nil {
+		return false, fmt.Errorf("getting repo list %w", err)
+	}
+	for i := range repos.Items {
+		repo := repos.Items[i]
+		if !repo.Status.Synced {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 func GetEmbeddedRawInstallResources(name string) ([][]byte, error) {
