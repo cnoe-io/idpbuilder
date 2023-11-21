@@ -18,9 +18,6 @@ var (
 	EmbeddedAppsFS embed.FS
 
 	EmbedApps = []EmbedApp{{
-		Name: "argocd",
-		Path: "argocd",
-	}, {
 		Name: "backstage",
 		Path: "backstage",
 	}, {
