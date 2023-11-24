@@ -39,14 +39,27 @@ type LocalbuildSpec struct {
 type LocalbuildStatus struct {
 	// ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.
 	// +optional
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	ObservedGeneration int64        `json:"observedGeneration,omitempty"`
+	ArgoCD             ArgoCDStatus `json:"ArgoCD,omitempty"`
+	Nginx              NginxStatus  `json:"nginx,omitempty"`
+	Gitea              GiteaStatus  `json:"gitea,omitempty"`
+}
 
-	GitServerAvailable bool   `json:"gitServerAvailable,omitempty"`
-	ArgoAvailable      bool   `json:"argoAvailable,omitempty"`
-	NginxAvailable     bool   `json:"nginxAvailable,omitempty"`
-	GiteaAvailable     bool   `json:"giteaAvailable,omitempty"`
-	ArgoAppsCreated    bool   `json:"argoAppsCreated,omitempty"`
-	GiteaSecretName    string `json:"giteaSecret,omitempty"`
+type GiteaStatus struct {
+	Available                bool   `json:"available,omitempty"`
+	ExternalURL              string `json:"externalURL,omitempty"`
+	InternalURL              string `json:"internalURL,omitempty"`
+	AdminUserSecretName      string `json:"adminUserSecretNameecret,omitempty"`
+	AdminUserSecretNamespace string `json:"adminUserSecretNamespace,omitempty"`
+}
+
+type ArgoCDStatus struct {
+	Available   bool `json:"available,omitempty"`
+	AppsCreated bool `json:"appsCreated,omitempty"`
+}
+
+type NginxStatus struct {
+	Available bool `json:"available,omitempty"`
 }
 
 // +kubebuilder:object:root=true

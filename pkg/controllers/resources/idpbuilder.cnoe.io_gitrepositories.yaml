@@ -1,0 +1,109 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.12.0
+  name: gitrepositories.idpbuilder.cnoe.io
+spec:
+  group: idpbuilder.cnoe.io
+  names:
+    kind: GitRepository
+    listKind: GitRepositoryList
+    plural: gitrepositories
+    singular: gitrepository
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              gitURL:
+                description: GitURL is the base URL of Git server used for API calls.
+                pattern: ^https?:\/\/.+$
+                type: string
+              secretRef:
+                description: SecretRef is the reference to secret that contain Git
+                  server credentials
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              source:
+                properties:
+                  embeddedAppName:
+                    enum:
+                    - argocd
+                    - backstage
+                    - crossplane
+                    - gitea
+                    - nginx
+                    type: string
+                  path:
+                    description: Path is the absolute path to directory that contains
+                      Kustomize structure or raw manifests. This is required when
+                      Type is set to local.
+                    type: string
+                  type:
+                    default: embedded
+                    description: Type is the source type.
+                    enum:
+                    - local
+                    - embedded
+                    type: string
+                required:
+                - type
+                type: object
+            required:
+            - gitURL
+            type: object
+          status:
+            properties:
+              commit:
+                description: LatestCommit is the most recent commit known to the controller
+                properties:
+                  hash:
+                    description: Hash is the digest of the most recent commit
+                    type: string
+                type: object
+              externalGitRepositoryUrl:
+                description: ExternalGitRepositoryUrl is the url for the in-cluster
+                  repository accessible from local machine.
+                type: string
+              internalGitRepositoryUrl:
+                description: InternalGitRepositoryUrl is the url for the in-cluster
+                  repository accessible within the cluster.
+                type: string
+              path:
+                description: Path is the path within the repository that contains
+                  the files.
+                type: string
+              synced:
+                type: boolean
+            required:
+            - synced
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

@@ -28,7 +28,7 @@ func SetProjectSpec(project *argov1alpha1.AppProject) {
 	}
 }
 
-func SetApplicationSpec(app *argov1alpha1.Application, repoUrl, path, project string, targetRevision *string) {
+func SetApplicationSpec(app *argov1alpha1.Application, repoUrl, path, project, dstNS string, targetRevision *string) {
 	headRev := "HEAD"
 	if targetRevision == nil {
 		targetRevision = &headRev
@@ -36,7 +36,7 @@ func SetApplicationSpec(app *argov1alpha1.Application, repoUrl, path, project st
 
 	app.Spec.Destination = argov1alpha1.ApplicationDestination{
 		Server:    "https://kubernetes.default.svc",
-		Namespace: "argocd",
+		Namespace: dstNS,
 	}
 
 	app.Spec.Project = project

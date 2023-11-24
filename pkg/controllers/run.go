@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cnoe-io/idpbuilder/pkg/apps"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitrepository"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitserver"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -36,6 +37,16 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 	}).SetupWithManager(mgr); err != nil {
 		log.Error(err, "unable to create gitserver controller")
 		return err
+	}
+
+	err = (&gitrepository.RepositoryReconciler{
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Recorder:        mgr.GetEventRecorderFor("gitrepository-controller"),
+		GiteaClientFunc: gitrepository.NewGiteaClient,
+	}).SetupWithManager(mgr, nil)
+	if err != nil {
+		log.Error(err, "unable to create repo controller")
 	}
 
 	// Start our manager in another goroutine

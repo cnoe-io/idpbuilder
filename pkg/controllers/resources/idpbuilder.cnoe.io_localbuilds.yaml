@@ -64,18 +64,31 @@ spec:
             type: object
           status:
             properties:
-              argoAppsCreated:
-                type: boolean
-              argoAvailable:
-                type: boolean
-              gitServerAvailable:
-                type: boolean
-              giteaAvailable:
-                type: boolean
-              giteaSecret:
-                type: string
-              nginxAvailable:
-                type: boolean
+              ArgoCD:
+                properties:
+                  appsCreated:
+                    type: boolean
+                  available:
+                    type: boolean
+                type: object
+              gitea:
+                properties:
+                  adminUserSecretNameecret:
+                    type: string
+                  adminUserSecretNamespace:
+                    type: string
+                  available:
+                    type: boolean
+                  externalURL:
+                    type: string
+                  internalURL:
+                    type: string
+                type: object
+              nginx:
+                properties:
+                  available:
+                    type: boolean
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the 'Generation' of the Service
                   that was last processed by the controller.
