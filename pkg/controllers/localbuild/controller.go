@@ -141,7 +141,7 @@ func (r *LocalbuildReconciler) ReconcileEmbeddedGitServer(ctx context.Context, r
 	log := log.FromContext(ctx)
 
 	// Bail if argo is not yet available
-	if !resource.Status.ArgoAvailable {
+	if !resource.Status.ArgoCD.Available {
 		log.Info("argo not yet available, not installing embedded git server")
 		return ctrl.Result{}, nil
 	}
@@ -265,7 +265,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitServer(ctx context.Contex
 		}
 	}
 
-	resource.Status.ArgoAppsCreated = true
+	resource.Status.ArgoCD.AppsCreated = true
 	r.shouldShutdown = true
 
 	return ctrl.Result{}, nil

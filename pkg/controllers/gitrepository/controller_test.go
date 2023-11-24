@@ -96,7 +96,7 @@ func setUpLocalRepo() (string, string, error) {
 	fileObject.SetType(plumbing.BlobObject)
 	w, _ := fileObject.Writer()
 
-	file, err := os.ReadFile("resources/file1")
+	file, err := os.ReadFile("test/resources/file1")
 	if err != nil {
 		return "", "", fmt.Errorf("reading file from resources dir: %w", err)
 	}
@@ -146,7 +146,7 @@ func setupDir() (string, error) {
 		return "", fmt.Errorf("creating temporary directory: %w", err)
 	}
 
-	file, err := os.ReadFile("resources/file1")
+	file, err := os.ReadFile("test/resources/file1")
 	if err != nil {
 		return "", fmt.Errorf("reading file from resources dir: %w", err)
 	}
@@ -283,7 +283,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed setting up local git repo: %v", err)
 	}
-	resourcePath, err := filepath.Abs("./resources")
+	resourcePath, err := filepath.Abs("./test/resources")
 	if err != nil {
 		t.Fatalf("failed to get absolute path: %v", err)
 	}

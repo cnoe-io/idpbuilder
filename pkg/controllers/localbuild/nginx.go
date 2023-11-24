@@ -40,6 +40,6 @@ func (r *LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	resource.Status.NginxAvailable = true
+	resource.Status.Nginx.Available = true
 	return ctrl.Result{}, nil
 }

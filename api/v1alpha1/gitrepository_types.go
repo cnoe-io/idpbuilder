@@ -47,9 +47,9 @@ type GitRepositoryStatus struct {
 	// ExternalGitRepositoryUrl is the url for the in-cluster repository accessible from local machine.
 	// +kubebuilder:validation:Optional
 	ExternalGitRepositoryUrl string `json:"externalGitRepositoryUrl"`
-	// GitRepositoryUrl is the url for the in-cluster repository accessible within the cluster.
+	// InternalGitRepositoryUrl is the url for the in-cluster repository accessible within the cluster.
 	// +kubebuilder:validation:Optional
-	GitRepositoryUrl string `json:"gitRepositoryUrl"`
+	InternalGitRepositoryUrl string `json:"internalGitRepositoryUrl"`
 	// Path is the path within the repository that contains the files.
 	// +kubebuilder:validation:Optional
 	Path string `json:"path"`

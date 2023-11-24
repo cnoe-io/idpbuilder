@@ -89,9 +89,9 @@ spec:
                 description: ExternalGitRepositoryUrl is the url for the in-cluster
                   repository accessible from local machine.
                 type: string
-              gitRepositoryUrl:
-                description: GitRepositoryUrl is the url for the in-cluster repository
-                  accessible within the cluster.
+              internalGitRepositoryUrl:
+                description: InternalGitRepositoryUrl is the url for the in-cluster
+                  repository accessible within the cluster.
                 type: string
               path:
                 description: Path is the path within the repository that contains

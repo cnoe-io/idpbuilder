@@ -51,6 +51,6 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 
-	resource.Status.ArgoAvailable = true
+	resource.Status.ArgoCD.Available = true
 	return ctrl.Result{}, nil
 }

@@ -30,7 +30,7 @@ const (
 	giteaAdminPasswordKey = "password"
 	requeueTime           = time.Second * 30
 	gitCommitAuthorName   = "git-reconciler"
-	gitCommitAuthorEmail  = "invalid@cnoe.io"
+	gitCommitAuthorEmail  = "idpbuilder-agent@cnoe.io"
 )
 
 type GiteaClientFunc func(url string, options ...gitea.ClientOption) (GiteaClient, error)
@@ -235,7 +235,6 @@ func reconcileRepo(giteaClient GiteaClient, repo *v1alpha1.GitRepository) (*gite
 			if CErr != nil {
 				return &gitea.Repository{}, fmt.Errorf("failed to create git repository: %w", CErr)
 			}
-			repo.Status.ExternalGitRepositoryUrl = createResp.CloneURL
 			return createResp, nil
 		}
 	}
