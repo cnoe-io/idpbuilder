@@ -2,7 +2,7 @@ package build
 
 import (
 	"context"
-
+	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
@@ -27,17 +27,19 @@ type Build struct {
 	kubeConfigPath    string
 	kubeVersion       string
 	extraPortsMapping string
+	customPackageDirs []string
 	scheme            *runtime.Scheme
 	CancelFunc        context.CancelFunc
 }
 
-func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
+func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, customPackageDirs []string, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
 	return &Build{
 		name:              name,
 		kindConfigPath:    kindConfigPath,
 		kubeConfigPath:    kubeConfigPath,
 		kubeVersion:       kubeVersion,
 		extraPortsMapping: extraPortsMapping,
+		customPackageDirs: customPackageDirs,
 		scheme:            scheme,
 		CancelFunc:        ctxCancel,
 	}
@@ -144,6 +146,8 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		},
 	}
 
+	pkgs, err := getPackages(b.customPackageDirs)
+
 	setupLog.Info("Creating localbuild resource")
 	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
 		localBuild.Spec = v1alpha1.LocalbuildSpec{
@@ -158,10 +162,14 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					// hint: for the old behavior, replace Type value below with globals.GitServerResourcename()
 					Type: globals.GiteaResourceName(),
 				},
+				CustomPackages: pkgs,
 			},
 		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("creating localbuild resource: %w", err)
+	}
 
 	if err != nil {
 		setupLog.Error(err, "Error creating localbuild resource")
@@ -171,4 +179,13 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	err = <-managerExit
 	close(managerExit)
 	return err
+}
+
+func getPackages(srcDirs []string) ([]v1alpha1.CustomPackageSpec, error) {
+	out := make([]v1alpha1.CustomPackageSpec, len(srcDirs), len(srcDirs))
+	for i := range srcDirs {
+		out[i] = v1alpha1.CustomPackageSpec{Directory: srcDirs[i]}
+	}
+
+	return out, nil
 }
