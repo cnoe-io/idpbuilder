@@ -140,13 +140,12 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	// Create localbuild resource
 	localBuild := v1alpha1.Localbuild{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      b.name,
-			Namespace: "default",
+			Name: b.name,
 		},
 	}
 
 	setupLog.Info("Creating localbuild resource")
-	controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
 		localBuild.Spec = v1alpha1.LocalbuildSpec{
 			PackageConfigs: v1alpha1.PackageConfigsSpec{
 				Argo: v1alpha1.ArgoPackageConfigSpec{
@@ -163,6 +162,11 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		}
 		return nil
 	})
+
+	if err != nil {
+		setupLog.Error(err, "Error creating localbuild resource")
+		return err
+	}
 
 	err = <-managerExit
 	close(managerExit)
