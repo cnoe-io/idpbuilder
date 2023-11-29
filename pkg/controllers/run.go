@@ -3,9 +3,7 @@ package controllers
 import (
 	"context"
 
-	"github.com/cnoe-io/idpbuilder/pkg/apps"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitrepository"
-	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitserver"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -24,22 +22,7 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		return err
 	}
 
-	// Run GitServer controller
-	appsFS, err := apps.GetAppsFS()
-	if err != nil {
-		log.Error(err, "unable to find srv dir in apps fs")
-		return err
-	}
-	if err := (&gitserver.GitServerReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Content: appsFS,
-	}).SetupWithManager(mgr); err != nil {
-		log.Error(err, "unable to create gitserver controller")
-		return err
-	}
-
-	err = (&gitrepository.RepositoryReconciler{
+	err := (&gitrepository.RepositoryReconciler{
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("gitrepository-controller"),
