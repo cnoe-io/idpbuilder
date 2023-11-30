@@ -117,7 +117,7 @@ The resources served by the GitServer are contained within this binary here: [pk
 
 They include:
 * [ArgoCD Ingress:](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/argocd/ingress.yaml) which makes the ArgoCD interface available.
-* [Backstage:](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/backstage/install.yaml) which intalls the Backstage Resources.
+* [Backstage:](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/backstage/install.yaml) which installs the Backstage Resources.
 * [Crossplane:](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/crossplane/crossplane.yaml) which uses the Crossplane Helm chart to install Crossplane.
 * [Nginx Ingress Controller:](https://github.com/cnoe-io/idpbuilder/blob/4b0f8ecdd7266083373da51d5add1bca73e05a33/pkg/apps/srv/nginx-ingress/ingress-nginx.yaml) which makes nginx ingresses available on the cluster.
 
