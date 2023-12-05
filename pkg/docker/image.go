@@ -14,7 +14,9 @@ import (
 )
 
 func GetDockerClient() (*dockerClient.Client, error) {
-	return dockerClient.NewClientWithOpts()
+	return dockerClient.NewClientWithOpts(
+		dockerClient.WithAPIVersionNegotiation(),
+	)
 }
 
 type AuxBody struct {
