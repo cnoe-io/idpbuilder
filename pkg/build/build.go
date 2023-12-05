@@ -29,6 +29,7 @@ type Build struct {
 	extraPortsMapping string
 	scheme            *runtime.Scheme
 	CancelFunc        context.CancelFunc
+	kindCluster       *kind.Cluster
 }
 
 func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
@@ -46,6 +47,7 @@ func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMappi
 func (b *Build) ReconcileKindCluster(ctx context.Context, recreateCluster bool) error {
 	// Initialize Kind Cluster
 	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping)
+	b.kindCluster = cluster
 	if err != nil {
 		setupLog.Error(err, "Error Creating kind cluster")
 		return err
@@ -171,4 +173,8 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	err = <-managerExit
 	close(managerExit)
 	return err
+}
+
+func (b *Build) Delete() error {
+	return b.kindCluster.Delete()
 }

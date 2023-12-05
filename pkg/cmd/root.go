@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/create"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/delete"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/gitserver"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +18,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(create.CreateCmd)
+	rootCmd.AddCommand(delete.DeleteCmd)
 	rootCmd.AddCommand(gitserver.GitServerCmd)
 }
 
