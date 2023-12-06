@@ -51,12 +51,6 @@ spec:
               source:
                 properties:
                   embeddedAppName:
-                    enum:
-                    - argocd
-                    - backstage
-                    - crossplane
-                    - gitea
-                    - nginx
                     type: string
                   path:
                     description: Path is the absolute path to directory that contains
@@ -71,6 +65,7 @@ spec:
                     - embedded
                     type: string
                 required:
+                - embeddedAppName
                 - type
                 type: object
             required:
