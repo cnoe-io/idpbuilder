@@ -146,8 +146,6 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		},
 	}
 
-	pkgs, err := getPackages(b.customPackageDirs)
-
 	setupLog.Info("Creating localbuild resource")
 	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
 		localBuild.Spec = v1alpha1.LocalbuildSpec{
@@ -162,7 +160,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					// hint: for the old behavior, replace Type value below with globals.GitServerResourcename()
 					Type: globals.GiteaResourceName(),
 				},
-				CustomPackages: pkgs,
+				CustomPackageDirs: b.customPackageDirs,
 			},
 		}
 		return nil
@@ -179,13 +177,4 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	err = <-managerExit
 	close(managerExit)
 	return err
-}
-
-func getPackages(srcDirs []string) ([]v1alpha1.CustomPackageSpec, error) {
-	out := make([]v1alpha1.CustomPackageSpec, len(srcDirs), len(srcDirs))
-	for i := range srcDirs {
-		out[i] = v1alpha1.CustomPackageSpec{Directory: srcDirs[i]}
-	}
-
-	return out, nil
 }

@@ -36,6 +36,10 @@ spec:
                 description: GitURL is the base URL of Git server used for API calls.
                 pattern: ^https?:\/\/.+$
                 type: string
+              internalGitURL:
+                description: InternalGitURL is the base URL of Git server accessible
+                  within the cluster only.
+                type: string
               secretRef:
                 description: SecretRef is the reference to secret that contain Git
                   server credentials
@@ -75,6 +79,7 @@ spec:
                 type: object
             required:
             - gitURL
+            - internalGitURL
             type: object
           status:
             properties:

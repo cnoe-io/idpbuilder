@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage"
 
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitrepository"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
@@ -30,6 +31,15 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 	}).SetupWithManager(mgr, nil)
 	if err != nil {
 		log.Error(err, "unable to create repo controller")
+	}
+
+	err = (&custompackage.Reconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("custompackage-controller"),
+	}).SetupWithManager(mgr)
+	if err != nil {
+		log.Error(err, "unable to create custom package controller")
 	}
 
 	// Start our manager in another goroutine

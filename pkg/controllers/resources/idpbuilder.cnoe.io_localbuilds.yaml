@@ -43,16 +43,9 @@ spec:
                         description: Enabled controls whether to install ArgoCD.
                         type: boolean
                     type: object
-                  customPackages:
+                  customPackageDirs:
                     items:
-                      description: CustomPackageSpec controls the installation of
-                        the custom argocd applications.
-                      properties:
-                        directory:
-                          description: Directory specifies the absolute path to the
-                            directory which contains raw manifests to be installed
-                          type: string
-                      type: object
+                      type: string
                     type: array
                   embeddedArgoApplicationsPackageConfigs:
                     description: EmbeddedArgoApplicationsPackageConfigSpec Controls
@@ -71,6 +64,8 @@ spec:
                       type:
                         type: string
                     type: object
+                required:
+                - customPackageDirs
                 type: object
             type: object
           status:

@@ -10,6 +10,8 @@ type GitRepositorySpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
 	GitURL string `json:"gitURL"`
+	// InternalGitURL is the base URL of Git server accessible within the cluster only.
+	InternalGitURL string `json:"internalGitURL"`
 	// SecretRef is the reference to secret that contain Git server credentials
 	// +kubebuilder:validation:Optional
 	SecretRef SecretReference `json:"secretRef"`
