@@ -427,8 +427,9 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(ctx context.Context, resource 
 					Namespace: globals.GetProjectNamespace(resource.Name),
 				},
 				Spec: v1alpha1.CustomPackageSpec{
-					Replicate:    true,
-					GitServerURL: resource.Status.Gitea.ExternalURL,
+					Replicate:           true,
+					GitServerURL:        resource.Status.Gitea.ExternalURL,
+					InternalGitServeURL: resource.Status.Gitea.InternalURL,
 					GitServerAuthSecretRef: v1alpha1.SecretReference{
 						Name:      resource.Status.Gitea.AdminUserSecretName,
 						Namespace: resource.Status.Gitea.AdminUserSecretNamespace,

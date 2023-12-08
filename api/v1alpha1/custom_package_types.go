@@ -26,7 +26,9 @@ type CustomPackageSpec struct {
 	// Replicate specifies whether to replicate remote or local contents to the local gitea server.
 	Replicate bool `json:"replicate"`
 	// GitServerURL specifies the base URL for the git server for API calls. for example, http://gitea.cnoe.localtest.me:8880
-	GitServerURL           string          `json:"gitServerURL"`
+	GitServerURL string `json:"gitServerURL"`
+	// InternalGitServeURL specifies the base URL for the git server accessible within the cluster. for example, http://my-gitea-http.gitea.svc.cluster.local:3000
+	InternalGitServeURL    string          `json:"internalGitServeURL"`
 	GitServerAuthSecretRef SecretReference `json:"gitServerAuthSecretRef"`
 
 	ArgoCD ArgoCDPackageSpec `json:"argoCD,omitempty"`

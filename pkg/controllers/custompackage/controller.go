@@ -71,9 +71,20 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 	}
 
 	appName := app.GetName()
-	if app.Spec.HasMultipleSources() {
-		for j := range app.Spec.Sources {
-			s := app.Spec.Sources[j]
+	if resource.Spec.Replicate {
+		if app.Spec.HasMultipleSources() {
+			for j := range app.Spec.Sources {
+				s := app.Spec.Sources[j]
+				res, repo, sErr := r.reconcileArgocdSource(ctx, resource, appName, resource.Spec.ArgoCD.ApplicationFile, s.RepoURL)
+				if sErr != nil {
+					return res, sErr
+				}
+				if repo != nil {
+					s.RepoURL = repo.Status.InternalGitRepositoryUrl
+				}
+			}
+		} else {
+			s := app.Spec.Source
 			res, repo, sErr := r.reconcileArgocdSource(ctx, resource, appName, resource.Spec.ArgoCD.ApplicationFile, s.RepoURL)
 			if sErr != nil {
 				return res, sErr
@@ -81,15 +92,6 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 			if repo != nil {
 				s.RepoURL = repo.Status.InternalGitRepositoryUrl
 			}
-		}
-	} else {
-		s := app.Spec.Source
-		res, repo, sErr := r.reconcileArgocdSource(ctx, resource, appName, resource.Spec.ArgoCD.ApplicationFile, s.RepoURL)
-		if sErr != nil {
-			return res, sErr
-		}
-		if repo != nil {
-			s.RepoURL = repo.Status.InternalGitRepositoryUrl
 		}
 	}
 
@@ -102,7 +104,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 				return ctrl.Result{}, fmt.Errorf("creating %s app CR: %w", appName, err)
 			}
 
-			return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: requeueTime}, nil
 		}
 		return ctrl.Result{}, fmt.Errorf("getting argocd application object: %w", err)
 	}
@@ -148,8 +150,9 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 				Type: "local",
 				Path: absPath,
 			},
-			GitURL:    resource.Spec.GitServerURL,
-			SecretRef: resource.Spec.GitServerAuthSecretRef,
+			GitURL:         resource.Spec.GitServerURL,
+			InternalGitURL: resource.Spec.InternalGitServeURL,
+			SecretRef:      resource.Spec.GitServerAuthSecretRef,
 		},
 	}
 

@@ -63,6 +63,10 @@ spec:
                 description: GitServerURL specifies the base URL for the git server
                   for API calls. for example, http://gitea.cnoe.localtest.me:8880
                 type: string
+              internalGitServeURL:
+                description: InternalGitServeURL specifies the base URL for the git
+                  server accessible within the cluster. for example, http://my-gitea-http.gitea.svc.cluster.local:3000
+                type: string
               replicate:
                 description: // Type specifies what kind of package this is. local
                   means local files specified in the Directory field must be synced
@@ -73,6 +77,7 @@ spec:
             required:
             - gitServerAuthSecretRef
             - gitServerURL
+            - internalGitServeURL
             - replicate
             type: object
           status:
