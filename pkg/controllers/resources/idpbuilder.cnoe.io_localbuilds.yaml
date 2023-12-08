@@ -64,8 +64,6 @@ spec:
                       type:
                         type: string
                     type: object
-                required:
-                - customPackageDirs
                 type: object
             type: object
           status:

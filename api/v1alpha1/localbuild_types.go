@@ -30,7 +30,7 @@ type PackageConfigsSpec struct {
 	GitConfig                GitConfigSpec                             `json:"gitConfig,omitempty"`
 	Argo                     ArgoPackageConfigSpec                     `json:"argoPackageConfigs,omitempty"`
 	EmbeddedArgoApplications EmbeddedArgoApplicationsPackageConfigSpec `json:"embeddedArgoApplicationsPackageConfigs,omitempty"`
-	CustomPackageDirs        []string                                  `json:"customPackageDirs"`
+	CustomPackageDirs        []string                                  `json:"customPackageDirs,omitempty"`
 }
 
 type LocalbuildSpec struct {
