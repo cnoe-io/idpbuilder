@@ -68,11 +68,8 @@ spec:
                   server accessible within the cluster. for example, http://my-gitea-http.gitea.svc.cluster.local:3000
                 type: string
               replicate:
-                description: // Type specifies what kind of package this is. local
-                  means local files specified in the Directory field must be synced
-                  to a Git Repository Type string `json:"type"` Replicate specifies
-                  whether to replicate remote or local contents to the local gitea
-                  server.
+                description: Replicate specifies whether to replicate remote or local
+                  contents to the local gitea server.
                 type: boolean
             required:
             - gitServerAuthSecretRef
