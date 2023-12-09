@@ -43,6 +43,10 @@ spec:
                         description: Enabled controls whether to install ArgoCD.
                         type: boolean
                     type: object
+                  customPackageDirs:
+                    items:
+                      type: string
+                    type: array
                   embeddedArgoApplicationsPackageConfigs:
                     description: EmbeddedArgoApplicationsPackageConfigSpec Controls
                       the installation of the embedded argo applications.

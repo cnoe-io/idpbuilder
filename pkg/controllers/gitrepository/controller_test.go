@@ -259,6 +259,7 @@ func TestGitRepositoryContentReconcileEmbedded(t *testing.T) {
 				EmbeddedAppName: "nginx",
 				Type:            "embedded",
 			},
+			InternalGitURL: "http://cnoe.io",
 		},
 	}
 
@@ -315,6 +316,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 						Path: resourcePath,
 						Type: "local",
 					},
+					InternalGitURL: "http://cnoe.io",
 				},
 			},
 			expect: expect{
@@ -322,6 +324,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 					ExternalGitRepositoryUrl: dir,
 					LatestCommit:             v1alpha1.Commit{Hash: hash},
 					Synced:                   true,
+					InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
 				},
 			},
 		},
@@ -340,12 +343,14 @@ func TestGitRepositoryReconcile(t *testing.T) {
 						Path: addDir,
 						Type: "local",
 					},
+					InternalGitURL: "http://cnoe.io",
 				},
 			},
 			expect: expect{
 				resource: v1alpha1.GitRepositoryStatus{
 					ExternalGitRepositoryUrl: dir,
 					Synced:                   true,
+					InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
 				},
 			},
 		},

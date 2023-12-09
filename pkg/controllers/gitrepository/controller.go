@@ -141,6 +141,7 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 		return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, fmt.Errorf("failed to create or update repo %w", err)
 	}
 	repo.Status.ExternalGitRepositoryUrl = giteaRepo.CloneURL
+	repo.Status.InternalGitRepositoryUrl = getRepositoryURL(repo.Namespace, repo.Name, repo.Spec.InternalGitURL)
 
 	err = r.reconcileRepoContent(ctx, repo, giteaRepo)
 	if err != nil {
@@ -280,4 +281,8 @@ func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string) error {
 		return fmt.Errorf("copying files: %w", err)
 	}
 	return nil
+}
+
+func getRepositoryURL(namespace, name, baseUrl string) string {
+	return fmt.Sprintf("%s/giteaAdmin/%s-%s.git", baseUrl, namespace, name)
 }

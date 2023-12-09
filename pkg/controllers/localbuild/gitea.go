@@ -3,8 +3,6 @@ package localbuild
 import (
 	"context"
 	"embed"
-	"fmt"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,8 +51,4 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace
 	resource.Status.Gitea.Available = true
 	return ctrl.Result{}, nil
-}
-
-func getRepositoryURL(namespace, name, baseUrl string) string {
-	return fmt.Sprintf("%s/giteaAdmin/%s-%s.git", baseUrl, namespace, name)
 }

@@ -10,6 +10,8 @@ type GitRepositorySpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
 	GitURL string `json:"gitURL"`
+	// InternalGitURL is the base URL of Git server accessible within the cluster only.
+	InternalGitURL string `json:"internalGitURL"`
 	// SecretRef is the reference to secret that contain Git server credentials
 	// +kubebuilder:validation:Optional
 	SecretRef SecretReference `json:"secretRef"`
@@ -18,7 +20,7 @@ type GitRepositorySpec struct {
 type GitRepositorySource struct {
 	// +kubebuilder:validation:Enum:=argocd;backstage;crossplane;gitea;nginx
 	// +kubebuilder:validation:Optional
-	EmbeddedAppName string `json:"embeddedAppName"`
+	EmbeddedAppName string `json:"embeddedAppName,omitempty"`
 	// Path is the absolute path to directory that contains Kustomize structure or raw manifests.
 	// This is required when Type is set to local.
 	// +kubebuilder:validation:Optional
