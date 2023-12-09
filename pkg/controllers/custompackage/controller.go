@@ -40,6 +40,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	logger.Info("reconciling custom package", "name", req.Name, "namespace", req.Namespace)
+	defer r.postProcessReconcile(ctx, req, &pkg)
 	result, err := r.reconcileCustomPackage(ctx, &pkg)
 	if err != nil {
 		r.Recorder.Event(&pkg, "Warning", "reconcile error", err.Error())
@@ -48,6 +49,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	return result, err
+}
+
+func (r *Reconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, pkg *v1alpha1.CustomPackage) {
+	logger := log.FromContext(ctx)
+	err := r.Status().Update(ctx, pkg)
+	if err != nil {
+		logger.Error(err, "failed updating repo status")
+	}
 }
 
 // create an in-cluster repository CR, update the application spec, then apply
@@ -67,11 +76,12 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 
 	app, ok := objs[0].(*argov1alpha1.Application)
 	if !ok {
-		return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application %s", resource.Spec.ArgoCD.ApplicationFile)
+		return ctrl.Result{}, fmt.Errorf("object is not an PackageSpec application %s", resource.Spec.ArgoCD.ApplicationFile)
 	}
 
 	appName := app.GetName()
 	if resource.Spec.Replicate {
+		repoRefs := make([]v1alpha1.ObjectRef, 0, 1)
 		if app.Spec.HasMultipleSources() {
 			for j := range app.Spec.Sources {
 				s := app.Spec.Sources[j]
@@ -81,6 +91,11 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 				}
 				if repo != nil {
 					s.RepoURL = repo.Status.InternalGitRepositoryUrl
+					repoRefs = append(repoRefs, v1alpha1.ObjectRef{
+						Namespace: repo.Namespace,
+						Name:      repo.Name,
+						UID:       string(repo.ObjectMeta.UID),
+					})
 				}
 			}
 		} else {
@@ -91,8 +106,14 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 			}
 			if repo != nil {
 				s.RepoURL = repo.Status.InternalGitRepositoryUrl
+				repoRefs = append(repoRefs, v1alpha1.ObjectRef{
+					Namespace: repo.Namespace,
+					Name:      repo.Name,
+					UID:       string(repo.ObjectMeta.UID),
+				})
 			}
 		}
+		resource.Status.GitRepositoryRefs = repoRefs
 	}
 
 	foundAppObj := argov1alpha1.Application{}

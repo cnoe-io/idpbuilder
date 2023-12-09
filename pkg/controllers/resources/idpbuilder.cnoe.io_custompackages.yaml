@@ -68,6 +68,7 @@ spec:
                   server accessible within the cluster. for example, http://my-gitea-http.gitea.svc.cluster.local:3000
                 type: string
               replicate:
+                default: false
                 description: Replicate specifies whether to replicate remote or local
                   contents to the local gitea server.
                 type: boolean
@@ -79,6 +80,21 @@ spec:
             type: object
           status:
             properties:
+              gitRepositoryRefs:
+                items:
+                  properties:
+                    apiVersion:
+                      type: string
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                    uid:
+                      type: string
+                  type: object
+                type: array
               synced:
                 type: boolean
             type: object

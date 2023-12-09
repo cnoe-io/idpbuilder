@@ -1,6 +1,8 @@
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -22,6 +24,7 @@ type CustomPackageList struct {
 // CustomPackageSpec controls the installation of the custom applications.
 type CustomPackageSpec struct {
 	// Replicate specifies whether to replicate remote or local contents to the local gitea server.
+	// +kubebuilder:default:=false
 	Replicate bool `json:"replicate"`
 	// GitServerURL specifies the base URL for the git server for API calls.
 	// for example, http://gitea.cnoe.localtest.me:8880
@@ -42,5 +45,14 @@ type ArgoCDPackageSpec struct {
 }
 
 type CustomPackageStatus struct {
-	Synced bool `json:"synced,omitempty"`
+	Synced            bool        `json:"synced,omitempty"`
+	GitRepositoryRefs []ObjectRef `json:"gitRepositoryRefs,omitempty"`
+}
+
+type ObjectRef struct {
+	APIVersion string `json:"apiVersion,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Kind       string `json:"kind,omitempty"`
+	UID        string `json:"uid,omitempty"`
 }

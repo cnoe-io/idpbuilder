@@ -62,16 +62,16 @@ func create(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	var absPaths []string
+	var absDirPaths []string
 	if len(extraPackagesDirs) > 0 {
 		p, err := getPackageAbsDirs(extraPackagesDirs)
 		if err != nil {
 			return err
 		}
-		absPaths = p
+		absDirPaths = p
 	}
 
-	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping, absPaths, k8s.GetScheme(), ctxCancel)
+	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping, absDirPaths, k8s.GetScheme(), ctxCancel)
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err
