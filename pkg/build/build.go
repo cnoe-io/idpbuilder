@@ -3,12 +3,15 @@ package build
 import (
 	"context"
 	"fmt"
+
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -177,4 +180,40 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	err = <-managerExit
 	close(managerExit)
 	return err
+}
+
+type ArgoConfig struct {
+	Username string
+	Password string
+	Url      string
+
+}
+
+func (b *Build) GetArgoConfig() (*ArgoConfig, error) {
+	kubeConfig, err := b.GetKubeConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	kubeClient, err := b.GetKubeClient(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	secret := &corev1.Secret{}
+
+	err = kubeClient.Get(context.Background(), types.NamespacedName{
+		Namespace: "argocd",
+		Name: "argocd-initial-admin-secret",
+	}, secret)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ArgoConfig{
+		Username: "admin",
+		Password: string(secret.Data["password"]),
+		Url: "https://argocd.cnoe.localtest.me:8443/",
+	}, nil
+
 }
