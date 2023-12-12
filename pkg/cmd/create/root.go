@@ -72,18 +72,14 @@ func create(cmd *cobra.Command, args []string) error {
 	}
 
 	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping, absDirPaths, k8s.GetScheme(), ctxCancel)
-	
+
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err
 	}
 
-	argoConfig, err := b.GetArgoConfig()
-	if err != nil {
-		return err
-	}
-
 	fmt.Print("\n\n########################### Finished Creating IDP Successfully! ############################\n\n\n")
-	fmt.Printf("Can Access ArgoCD at %s\nUsername: %s\nPassword: %s\n", argoConfig.Url, argoConfig.Username, argoConfig.Password)
+	fmt.Print("Can Access ArgoCD at https://argocd.cnoe.localtest.me:8443/\nUsername: admin\n")
+	fmt.Print(`Password can be retrieved by running: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`, "\n")
 
 
 	return nil
