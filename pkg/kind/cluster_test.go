@@ -19,10 +19,6 @@ func TestGetConfig(t *testing.T) {
 	expectConfig := `# Kind kubernetes release images https://github.com/kubernetes-sigs/kind/releases
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
-    endpoint = ["http://idpbuilder-testcase-registry:5000"]
 nodes:
 - role: control-plane
   image: "kindest/node:v1.26.3"
@@ -55,10 +51,6 @@ func TestExtraPortMappings(t *testing.T) {
 	expectConfig := `# Kind kubernetes release images https://github.com/kubernetes-sigs/kind/releases
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
-    endpoint = ["http://idpbuilder-testcase-registry:5000"]
 nodes:
 - role: control-plane
   image: "kindest/node:v1.26.3"

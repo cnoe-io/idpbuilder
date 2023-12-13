@@ -247,3 +247,4 @@ Next, import it `./idpbuilder create --kindConfig <path to the config file>`
 ## Extending the IDP builder
 
 We are actively working to include more patterns and examples of extending idpbuilder to get started easily.
+

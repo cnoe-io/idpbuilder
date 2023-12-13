@@ -6,7 +6,6 @@ require (
 	code.gitea.io/sdk/gitea v0.16.0
 	github.com/argoproj/argo-cd/v2 v2.8.3
 	github.com/docker/docker v24.0.6+incompatible
-	github.com/docker/go-connections v0.4.0
 	github.com/go-git/go-git/v5 v5.10.0
 	github.com/google/go-cmp v0.5.9
 	github.com/spf13/cobra v1.7.0
@@ -46,6 +45,7 @@ require (
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
+	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
