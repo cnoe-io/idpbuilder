@@ -45,6 +45,8 @@ type ArgoCDPackageSpec struct {
 }
 
 type CustomPackageStatus struct {
+	// A Custom package is considered synced when the in-cluster repository url is set as the repository URL
+	// This only applies for a package that references local directories
 	Synced            bool        `json:"synced,omitempty"`
 	GitRepositoryRefs []ObjectRef `json:"gitRepositoryRefs,omitempty"`
 }

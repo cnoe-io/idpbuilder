@@ -3,6 +3,11 @@ package custompackage
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	argov1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
@@ -10,14 +15,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	"os"
-	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-	"time"
 )
 
 const (
@@ -82,6 +83,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 	appName := app.GetName()
 	if resource.Spec.Replicate {
 		repoRefs := make([]v1alpha1.ObjectRef, 0, 1)
+		synced := true
 		if app.Spec.HasMultipleSources() {
 			for j := range app.Spec.Sources {
 				s := app.Spec.Sources[j]
@@ -90,6 +92,9 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 					return res, sErr
 				}
 				if repo != nil {
+					if synced {
+						synced = repo.Status.InternalGitRepositoryUrl != ""
+					}
 					s.RepoURL = repo.Status.InternalGitRepositoryUrl
 					repoRefs = append(repoRefs, v1alpha1.ObjectRef{
 						Namespace: repo.Namespace,
@@ -105,6 +110,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 				return res, sErr
 			}
 			if repo != nil {
+				synced = repo.Status.InternalGitRepositoryUrl != ""
 				s.RepoURL = repo.Status.InternalGitRepositoryUrl
 				repoRefs = append(repoRefs, v1alpha1.ObjectRef{
 					Namespace: repo.Namespace,
@@ -114,6 +120,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 			}
 		}
 		resource.Status.GitRepositoryRefs = repoRefs
+		resource.Status.Synced = synced
 	}
 
 	foundAppObj := argov1alpha1.Application{}

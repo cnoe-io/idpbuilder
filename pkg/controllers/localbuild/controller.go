@@ -3,11 +3,12 @@ package localbuild
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	argov1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -51,6 +52,7 @@ type LocalbuildReconciler struct {
 	client.Client
 	Scheme         *runtime.Scheme
 	CancelFunc     context.CancelFunc
+	ExitOnSync     bool
 	shouldShutdown bool
 }
 
@@ -375,13 +377,14 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 }
 
 func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1alpha1.Localbuild) (bool, error) {
-	if len(resource.Spec.PackageConfigs.CustomPackageDirs) > 0 {
+	if !r.ExitOnSync {
 		return false, nil
 	}
+
 	repos := &v1alpha1.GitRepositoryList{}
 	err := r.Client.List(ctx, repos, client.InNamespace(resource.Namespace))
 	if err != nil {
-		return false, fmt.Errorf("getting repo list %w", err)
+		return false, fmt.Errorf("listing repositories %w", err)
 	}
 	for i := range repos.Items {
 		repo := repos.Items[i]
@@ -389,6 +392,20 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 			return false, nil
 		}
 	}
+
+	pkgs := &v1alpha1.CustomPackageList{}
+	err = r.Client.List(ctx, pkgs, client.InNamespace(resource.Namespace))
+	if err != nil {
+		return false, fmt.Errorf("listing custom packages %w", err)
+	}
+
+	for i := range pkgs.Items {
+		pkg := pkgs.Items[i]
+		if !pkg.Status.Synced {
+			return false, nil
+		}
+	}
+
 	return true, nil
 }
 
