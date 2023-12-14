@@ -102,7 +102,7 @@ func create(cmd *cobra.Command, args []string) error {
 
 	// Run controllers
 	managerExit := make(chan error)
-	if err := controllers.RunControllers(ctx, mgr, managerExit, ctxCancel); err != nil {
+	if err := controllers.RunControllers(ctx, mgr, managerExit, ctxCancel, true); err != nil {
 		setupLog.Error(err, "Running controllers")
 		return err
 	}

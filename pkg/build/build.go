@@ -29,11 +29,12 @@ type Build struct {
 	kubeVersion       string
 	extraPortsMapping string
 	customPackageDirs []string
+	exitOnSync        bool
 	scheme            *runtime.Scheme
 	CancelFunc        context.CancelFunc
 }
 
-func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, customPackageDirs []string, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
+func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
 	return &Build{
 		name:              name,
 		kindConfigPath:    kindConfigPath,
@@ -41,6 +42,7 @@ func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMappi
 		kubeVersion:       kubeVersion,
 		extraPortsMapping: extraPortsMapping,
 		customPackageDirs: customPackageDirs,
+		exitOnSync:        exitOnSync,
 		scheme:            scheme,
 		CancelFunc:        ctxCancel,
 	}
@@ -96,7 +98,7 @@ func (b *Build) ReconcileCRDs(ctx context.Context, kubeClient client.Client) err
 }
 
 func (b *Build) RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error) error {
-	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc)
+	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync)
 }
 
 func (b *Build) Run(ctx context.Context, recreateCluster bool) error {

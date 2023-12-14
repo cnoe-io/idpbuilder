@@ -24,6 +24,7 @@ var (
 	extraPortsMapping string
 	kindConfigPath    string
 	extraPackagesDirs []string
+	noExit            bool
 )
 
 var CreateCmd = &cobra.Command{
@@ -39,7 +40,8 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kubeVersion", "v1.26.3", "Version of the kind kubernetes cluster to create.")
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extraPorts", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kindConfig", "", "Path of the kind config file to be used instead of the default.")
-	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "paths to custom packages")
+	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "Paths to custom packages")
+	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")
 
 	zapfs := flag.NewFlagSet("zap", flag.ExitOnError)
 	opts := zap.Options{
@@ -71,7 +73,12 @@ func create(cmd *cobra.Command, args []string) error {
 		absDirPaths = p
 	}
 
-	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping, absDirPaths, k8s.GetScheme(), ctxCancel)
+	exitOnSync := true
+	if cmd.Flags().Changed("no-exit") {
+		exitOnSync = !noExit
+	}
+
+	b := build.NewBuild(buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping, absDirPaths, exitOnSync, k8s.GetScheme(), ctxCancel)
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err
