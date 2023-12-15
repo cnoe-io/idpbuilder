@@ -60,7 +60,7 @@ func create(cmd *cobra.Command, args []string) error {
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
 	if buildName == "" {
-		fmt.Print("Must specify buildName\n")
+		fmt.Print("Must specify build-name\n")
 		os.Exit(1)
 	}
 
