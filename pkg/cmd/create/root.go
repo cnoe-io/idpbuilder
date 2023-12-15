@@ -36,10 +36,10 @@ var CreateCmd = &cobra.Command{
 
 func init() {
 	CreateCmd.PersistentFlags().BoolVar(&recreateCluster, "recreate", false, "Delete cluster first if it already exists.")
-	CreateCmd.PersistentFlags().StringVar(&buildName, "buildName", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
-	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kubeVersion", "v1.26.3", "Version of the kind kubernetes cluster to create.")
-	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extraPorts", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
-	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kindConfig", "", "Path of the kind config file to be used instead of the default.")
+	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
+	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.26.3", "Version of the kind kubernetes cluster to create.")
+	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
+	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
 	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "Paths to custom packages")
 	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")
 
@@ -60,7 +60,7 @@ func create(cmd *cobra.Command, args []string) error {
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
 	if buildName == "" {
-		fmt.Print("Must specify buildName\n")
+		fmt.Print("Must specify build-name\n")
 		os.Exit(1)
 	}
 
@@ -87,7 +87,6 @@ func create(cmd *cobra.Command, args []string) error {
 	fmt.Print("\n\n########################### Finished Creating IDP Successfully! ############################\n\n\n")
 	fmt.Print("Can Access ArgoCD at https://argocd.cnoe.localtest.me:8443/\nUsername: admin\n")
 	fmt.Print(`Password can be retrieved by running: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`, "\n")
-
 
 	return nil
 }

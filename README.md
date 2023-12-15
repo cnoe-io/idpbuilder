@@ -34,18 +34,18 @@ This can be useful in several ways:
 
 ### Run
 
-`./idpbuilder create --buildName localdev`
+`./idpbuilder create --build-name localdev`
 
 You can also define the kubernetes version to image and which corresponds to the kind pre-built [image](https://github.com/kubernetes-sigs/kind/releases).
-`./idpbuilder create --kubeVersion v1.27.3`
+`./idpbuilder create --kube-version v1.27.3`
 
 If it is needed to expose some extra Ports between the docker container and the kubernetes host, they can be declared as such
-`./idpbuilder create --extraPorts 22:32222`
+`./idpbuilder create --extra-ports 22:32222`
 
 It is also possible to use your own kind config file
-`./idpbuilder create --buildName local --kindConfig ./my-kind.yaml`
+`./idpbuilder create --build-name local --kind-config ./my-kind.yaml`
 
-**NOTE**: Be sure to include in your kind config the section `containerdConfigPatches` where the registry hostname includes the name specified with the parameter: `--buildname`
+**NOTE**: Be sure to include in your kind config the section `containerdConfigPatches` where the registry hostname includes the name specified with the parameter: `--build-name`
 ```yaml
 containerdConfigPatches:
 - |-

@@ -42,8 +42,8 @@ var CreateCmd = &cobra.Command{
 }
 
 func init() {
-	CreateCmd.PersistentFlags().StringVar(&buildName, "buildName", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc)")
-	CreateCmd.PersistentFlags().StringVar(&serverName, "serverName", "", "Name of gitserver, must be unique within a build (name)")
+	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc)")
+	CreateCmd.PersistentFlags().StringVar(&serverName, "server-name", "", "Name of gitserver, must be unique within a build (name)")
 	CreateCmd.PersistentFlags().StringVar(&sourcePath, "source", "", "Path to directory to use as gitserver source")
 
 	zapfs := flag.NewFlagSet("zap", flag.ExitOnError)
