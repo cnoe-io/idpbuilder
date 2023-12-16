@@ -27,7 +27,7 @@ type CustomPackageSpec struct {
 	// +kubebuilder:default:=false
 	Replicate bool `json:"replicate"`
 	// GitServerURL specifies the base URL for the git server for API calls.
-	// for example, http://gitea.cnoe.localtest.me:8880
+	// for example, https://gitea.cnoe.localtest.me:8443
 	GitServerURL string `json:"gitServerURL"`
 	// InternalGitServeURL specifies the base URL for the git server accessible within the cluster.
 	// for example, http://my-gitea-http.gitea.svc.cluster.local:3000

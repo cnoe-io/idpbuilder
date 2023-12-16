@@ -50,8 +50,8 @@ This command creates a kind cluster, expose associated endpoints to your local m
 They are deployed as ArgoCD Applications with the Gitea repositories set as their sources. 
 
 UIs for Backstage, Gitea, and ArgoCD are accessible on the machine:
-* Gitea: http://gitea.cnoe.localtest.me:8443/explore/repos
-* Backstage: http://backstage.cnoe.localtest.me:8880/
+* Gitea: https://gitea.cnoe.localtest.me:8443/explore/repos
+* Backstage: https://backstage.cnoe.localtest.me:8443/
 * ArgoCD: https://argocd.cnoe.localtest.me:8443/applications
 
 ArgoCD username is `admin` and the password can be obtained with 
