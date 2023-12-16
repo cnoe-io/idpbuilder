@@ -1,0 +1,22 @@
+# this is an ordinary ArgoCD application file
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook2
+  namespace: argocd
+  labels:
+    example: basic
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: guestbook
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guestbook2
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

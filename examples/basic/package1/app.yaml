@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+  labels:
+    example: basic
+spec:
+  destination:
+    namespace: my-app
+    server: "https://kubernetes.default.svc"
+  source:
+    # cnoe:// indicates we want to sync from a local directory.
+    # values after cnoe:// is treated as a relative path from this file.
+    repoURL: cnoe://manifests
+    targetRevision: HEAD
+    # with path set to '.' and cnoe://manifests. we are wanting ArgoCD to sync from the ./manifests directory.
+    path: "."
+  project: default
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
