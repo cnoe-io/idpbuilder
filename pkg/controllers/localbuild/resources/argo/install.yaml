@@ -19398,6 +19398,7 @@ metadata:
     app.kubernetes.io/part-of: argocd
   name: argocd-notifications-controller
 spec:
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: argocd-notifications-controller
