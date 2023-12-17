@@ -4,4 +4,5 @@ resources:
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.8.7/manifests/install.yaml
 
 patches:
+  - path: dex-server.yaml
   - path: notifications-controller.yaml
