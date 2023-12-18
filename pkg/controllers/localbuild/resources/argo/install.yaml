@@ -1,5 +1,5 @@
 # UCP ARGO INSTALL RESOURCES
-# This is an auto-generated file. DO NOT EDIT
+# This file is auto-generated with 'hack/argo-cd/generate-manifests.sh'
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -788,8 +788,7 @@ spec:
                 properties:
                   name:
                     description: Name is an alternate way of specifying the target
-                      cluster by its symbolic name. This must be set if Server is
-                      not set.
+                      cluster by its symbolic name
                     type: string
                   namespace:
                     description: Namespace specifies the target namespace for the
@@ -797,9 +796,8 @@ spec:
                       namespace-scoped resources that have not set a value for .metadata.namespace
                     type: string
                   server:
-                    description: Server specifies the URL of the target cluster's
-                      Kubernetes control plane API. This must be set if Name is not
-                      set.
+                    description: Server specifies the URL of the target cluster and
+                      must be set to the Kubernetes control plane API
                     type: string
                 type: object
               ignoreDifferences:
@@ -3797,8 +3795,7 @@ spec:
                         properties:
                           name:
                             description: Name is an alternate way of specifying the
-                              target cluster by its symbolic name. This must be set
-                              if Server is not set.
+                              target cluster by its symbolic name
                             type: string
                           namespace:
                             description: Namespace specifies the target namespace
@@ -3807,9 +3804,8 @@ spec:
                               not set a value for .metadata.namespace
                             type: string
                           server:
-                            description: Server specifies the URL of the target cluster's
-                              Kubernetes control plane API. This must be set if Name
-                              is not set.
+                            description: Server specifies the URL of the target cluster
+                              and must be set to the Kubernetes control plane API
                             type: string
                         type: object
                       ignoreDifferences:
@@ -10045,8 +10041,6 @@ spec:
                                         type: string
                                       group:
                                         type: string
-                                      includeSharedProjects:
-                                        type: boolean
                                       includeSubgroups:
                                         type: boolean
                                       insecure:
@@ -10061,8 +10055,6 @@ spec:
                                         - key
                                         - secretName
                                         type: object
-                                      topic:
-                                        type: string
                                     required:
                                     - group
                                     type: object
@@ -14528,8 +14520,6 @@ spec:
                                         type: string
                                       group:
                                         type: string
-                                      includeSharedProjects:
-                                        type: boolean
                                       includeSubgroups:
                                         type: boolean
                                       insecure:
@@ -14544,8 +14534,6 @@ spec:
                                         - key
                                         - secretName
                                         type: object
-                                      topic:
-                                        type: string
                                     required:
                                     - group
                                     type: object
@@ -16940,8 +16928,6 @@ spec:
                               type: string
                             group:
                               type: string
-                            includeSharedProjects:
-                              type: boolean
                             includeSubgroups:
                               type: boolean
                             insecure:
@@ -16956,8 +16942,6 @@ spec:
                               - key
                               - secretName
                               type: object
-                            topic:
-                              type: string
                           required:
                           - group
                           type: object
@@ -18172,8 +18156,7 @@ spec:
                   properties:
                     name:
                       description: Name is an alternate way of specifying the target
-                        cluster by its symbolic name. This must be set if Server is
-                        not set.
+                        cluster by its symbolic name
                       type: string
                     namespace:
                       description: Namespace specifies the target namespace for the
@@ -18181,9 +18164,8 @@ spec:
                         namespace-scoped resources that have not set a value for .metadata.namespace
                       type: string
                     server:
-                      description: Server specifies the URL of the target cluster's
-                        Kubernetes control plane API. This must be set if Name is
-                        not set.
+                      description: Server specifies the URL of the target cluster
+                        and must be set to the Kubernetes control plane API
                       type: string
                   type: object
                 type: array
@@ -18741,6 +18723,18 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+- apiGroups:
+  - argoproj.io
+  resources:
+  - workflows
+  verbs:
+  - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -18980,8 +18974,7 @@ metadata:
   name: argocd-dex-server
 spec:
   ports:
-  - appProtocol: TCP
-    name: http
+  - name: http
     port: 5556
     protocol: TCP
     targetPort: 5556
@@ -19238,7 +19231,7 @@ spec:
               key: applicationsetcontroller.allowed.scm.providers
               name: argocd-cmd-params-cm
               optional: true
-        image: quay.io/argoproj/argocd:latest
+        image: quay.io/argoproj/argocd:v2.8.7
         imagePullPolicy: Always
         name: argocd-applicationset-controller
         ports:
@@ -19304,6 +19297,7 @@ metadata:
     app.kubernetes.io/part-of: argocd
   name: argocd-dex-server
 spec:
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: argocd-dex-server
@@ -19361,7 +19355,7 @@ spec:
         - -n
         - /usr/local/bin/argocd
         - /shared/argocd-dex
-        image: quay.io/argoproj/argocd:latest
+        image: quay.io/argoproj/argocd:v2.8.7
         imagePullPolicy: Always
         name: copyutil
         securityContext:
@@ -19405,6 +19399,7 @@ metadata:
     app.kubernetes.io/part-of: argocd
   name: argocd-notifications-controller
 spec:
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: argocd-notifications-controller
@@ -19431,7 +19426,13 @@ spec:
               key: notificationscontroller.log.level
               name: argocd-cmd-params-cm
               optional: true
-        image: quay.io/argoproj/argocd:latest
+        - name: ARGOCD_APPLICATION_NAMESPACES
+          valueFrom:
+            configMapKeyRef:
+              key: application.namespaces
+              name: argocd-cmd-params-cm
+              optional: true
+        image: quay.io/argoproj/argocd:v2.8.7
         imagePullPolicy: Always
         livenessProbe:
           tcpSocket:
@@ -19689,6 +19690,18 @@ spec:
               key: reposerver.streamed.manifest.max.extracted.size
               name: argocd-cmd-params-cm
               optional: true
+        - name: ARGOCD_REPO_SERVER_HELM_MANIFEST_MAX_EXTRACTED_SIZE
+          valueFrom:
+            configMapKeyRef:
+              key: reposerver.helm.manifest.max.extracted.size
+              name: argocd-cmd-params-cm
+              optional: true
+        - name: ARGOCD_REPO_SERVER_DISABLE_HELM_MANIFEST_MAX_EXTRACTED_SIZE
+          valueFrom:
+            configMapKeyRef:
+              key: reposerver.disable.helm.manifest.max.extracted.size
+              name: argocd-cmd-params-cm
+              optional: true
         - name: ARGOCD_GIT_MODULES_ENABLED
           valueFrom:
             configMapKeyRef:
@@ -19701,7 +19714,7 @@ spec:
           value: /helm-working-dir
         - name: HELM_DATA_HOME
           value: /helm-working-dir
-        image: quay.io/argoproj/argocd:latest
+        image: quay.io/argoproj/argocd:v2.8.7
         imagePullPolicy: Always
         livenessProbe:
           failureThreshold: 3
@@ -19753,7 +19766,7 @@ spec:
         - -n
         - /usr/local/bin/argocd
         - /var/run/argocd/argocd-cmp-server
-        image: quay.io/argoproj/argocd:latest
+        image: quay.io/argoproj/argocd:v2.8.7
         name: copyutil
         securityContext:
           allowPrivilegeEscalation: false
@@ -20040,7 +20053,7 @@ spec:
               key: server.enable.proxy.extension
               name: argocd-cmd-params-cm
               optional: true
-        image: quay.io/argoproj/argocd:latest
+        image: quay.io/argoproj/argocd:v2.8.7
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
@@ -20286,7 +20299,7 @@ spec:
               key: controller.kubectl.parallelism.limit
               name: argocd-cmd-params-cm
               optional: true
-        image: quay.io/argoproj/argocd:latest
+        image: quay.io/argoproj/argocd:v2.8.7
         imagePullPolicy: Always
         name: argocd-application-controller
         ports:
