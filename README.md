@@ -4,8 +4,7 @@ Table of Contents
 * [IDP Builder](#idp-builder)
   * [About](#about)
   * [Quickstart](#quickstart)
-    * [Build](#build)
-    * [Run](#run)
+    * [Running the idpbuilder](#running-the-idpbuilder)
     * [Use](#use)
   * [Architecture](#architecture)
 * [Extending the IDP builder](#extending-the-idpbuilder)
@@ -28,41 +27,135 @@ This can be useful in several ways:
 
 ## Quickstart:
 
-### Build
+### Running the idpbuilder
 
-`make`
+To get started, run this command:  
 
-### Run
-
-`./idpbuilder create --build-name localdev`
-
-You can also define the kubernetes version to image and which corresponds to the kind pre-built [image](https://github.com/kubernetes-sigs/kind/releases).
-`./idpbuilder create --kube-version v1.27.3`
-
-If it is needed to expose some extra Ports between the docker container and the kubernetes host, they can be declared as such
-`./idpbuilder create --extra-ports 22:32222`
-
-It is also possible to use your own kind config file
-`./idpbuilder create --build-name local --kind-config ./my-kind.yaml`
-
-**NOTE**: Be sure to include in your kind config the section `containerdConfigPatches` where the registry hostname includes the name specified with the parameter: `--build-name`
-```yaml
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:5001"]
-    endpoint = ["http://idpbuilder-<localBuildName>-registry:5000"]
+```
+./idpbuilder create
 ```
 
-### Use
+This command creates a Kubernetes Cluster (Kind cluster) with core packages installed. Core packages are Gitea, ArgoCD, and ingress-nginx.
 
-#### GUI
+* ArgoCD is the GitOps solution to deploy manifests to Kubernetes clusters. In this project, a package is an ArgoCD application. 
+* Gitea server is the in-cluster Git server that ArgoCD can be configured to sync resources from. You can sync from local file systems to this.
+* Ingress-nginx is used as a method to access in-cluster resources such as ArgoCD UI and Gitea UI.
 
-GUIs for core packages are available at the following addresses:  
+See the [Architecture](#Architecture) section for more information on further information on how core packages are installed and configured.
+
+Once idpbuilder finishes provisioning cluster and packages, you can access GUIs by going to the following addresses in your browser.
 
 * ArgoCD: https://argocd.cnoe.localtest.me:8443/
 * Backstage: https://backstage.cnoe.localtest.me:8443/
 * Gitea: https://gitea.cnoe.localtest.me:8443/
 
+You can obtain credentials for these packages by running the following commands:
+
+```bash
+# argoCD password. username is admin.
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
+
+# gitea admin credentials
+kubectl get secrets -n gitea gitea-admin-secret \
+  -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
+```
+
+### Use
+
+Run the following command to see available flags and sub commands
+
+```bash
+# for general command information
+./idpbuilder --help 
+
+# for sub command specific information
+./idpbuilder create --help
+```
+
+#### Examples
+
+You can specify the kubernetes version by using the `--kube-version` flag. Supported versions are available [here](https://github.com/kubernetes-sigs/kind/releases).
+
+```
+./idpbuilder create --kube-version v1.27.3
+```
+
+If you need to expose more ports between the docker container and the kubernetes host, you can use the `--extra-ports` flag. For example:
+
+```
+./idpbuilder create --extra-ports 22:32222`
+```
+
+If you want to specify your own kind configuration file, use the `--kind-config` flag.
+
+```
+./idpbuilder create --build-name local --kind-config ./my-kind.yaml`
+```
+
+You can also specify the name of build. This name is used as part of the cluster, namespace, and git repositories.
+
+```
+./idpbuilder create --build-name localdev 
+```
+
+### Custom Packages
+
+Idpbuilder supports specifying custom packages using the flag `--package-dir` flag. This flag expects a directory containing ArgoCD application files.
+
+Let's take a look at [this example](examples/basic). This example defines two custom package directories to deploy to the cluster.
+
+To deploy these packages, run the following commands from this repository's root.
+
+```
+./idpbuilder create --package-dir examples/basic/package1  --package-dir examples/basic/package2
+```
+
+Running this command should create three additional ArgoCD applications in your cluster.
+
+```sh
+$ kubectl get Applications -n argocd  -l example=basic
+NAME         SYNC STATUS   HEALTH STATUS
+guestbook    Synced        Healthy
+guestbook2   Synced        Healthy
+my-app       Synced        Healthy
+```
+
+Let's break this down. The [first package directory](examples/basic/package1) defines an application. This corresponds to the `my-app` application above. In this application, we want to deploy manifests from local machine in GitOps way.
+
+The directory contains an [ArgoCD application file](examples/basic/package1/app.yaml). This is a normal ArgoCD application file except for one field.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+spec:
+  source:
+    repoURL: cnoe://manifests
+```
+
+The `cnoe://` prefix in the `repoURL` field indicates that we want to sync from a local directory.
+Values after `cnoe://` is treated as a relative path from this file. In this example, we are instructing idpbuilder to make ArgoCD sync from files in the [manifests directory](examples/basic/package1/manifests).
+
+As a result the following actions were taken by idpbuilder: 
+1. Create a Gitea repository.
+2. Fill the repository with contents from the manifests directory.
+3. Update the Application spec to use the newly created repository.
+
+You can verify this by going to this address in your browser: https://gitea.cnoe.localtest.me:8443/giteaAdmin/idpbuilder-localdev-my-app-manifests
+
+![img.png](docs/images/my-app-repo.png)
+
+
+This is the repository that corresponds to the [manifests](examples/basic/package1/manifests) folder.
+It contains a file called `alpine.yaml`, synced from the `manifests` directory above.
+
+You can also view the updated Application spec by going to this address: https://argocd.cnoe.localtest.me:8443/applications/argocd/my-app
+
+![myapp](docs/images/my-app.png)
+
+
+The second package directory defines two normal ArgoCD applications referencing a remote repository.
+They are applied as-is.
 
 ## Architecture
 
