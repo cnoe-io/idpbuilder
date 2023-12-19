@@ -15,7 +15,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	gohttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -77,12 +77,12 @@ func (r *RepositoryReconciler) getCredentials(ctx context.Context, repo *v1alpha
 	return string(username), string(password), nil
 }
 
-func (r *RepositoryReconciler) getBasicAuth(ctx context.Context, repo *v1alpha1.GitRepository) (gohttp.BasicAuth, error) {
+func (r *RepositoryReconciler) getBasicAuth(ctx context.Context, repo *v1alpha1.GitRepository) (githttp.BasicAuth, error) {
 	u, p, err := r.getCredentials(ctx, repo)
 	if err != nil {
-		return gohttp.BasicAuth{}, err
+		return githttp.BasicAuth{}, err
 	}
-	return gohttp.BasicAuth{
+	return githttp.BasicAuth{
 		Username: u,
 		Password: p,
 	}, nil
