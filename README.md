@@ -93,6 +93,12 @@ If you want to specify your own kind configuration file, use the `--kind-config`
 ./idpbuilder create --build-name local --kind-config ./my-kind.yaml`
 ```
 
+You can also specify the name of build. This name is used as part of the cluster, namespace, and git repositories.
+
+```
+./idpbuilder create --build-name localdev 
+```
+
 ### Custom Packages
 
 Idpbuilder supports specifying custom packages using the flag `--package-dir` flag. This flag expects a directory containing ArgoCD application files.
