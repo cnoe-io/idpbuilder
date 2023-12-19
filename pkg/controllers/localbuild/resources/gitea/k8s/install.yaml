@@ -28,7 +28,7 @@ stringData:
     ENABLE_PPROF=false
     HTTP_PORT=3000
     PROTOCOL=http
-    ROOT_URL=http://gitea.cnoe.localtest.me:8880
+    ROOT_URL=https://gitea.cnoe.localtest.me:8443
     SSH_DOMAIN=gitea.cnoe.localtest.me
     SSH_LISTEN_PORT=2222
     SSH_PORT=22

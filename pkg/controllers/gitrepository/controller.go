@@ -2,7 +2,9 @@ package gitrepository
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,7 +15,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -75,12 +77,12 @@ func (r *RepositoryReconciler) getCredentials(ctx context.Context, repo *v1alpha
 	return string(username), string(password), nil
 }
 
-func (r *RepositoryReconciler) getBasicAuth(ctx context.Context, repo *v1alpha1.GitRepository) (http.BasicAuth, error) {
+func (r *RepositoryReconciler) getBasicAuth(ctx context.Context, repo *v1alpha1.GitRepository) (githttp.BasicAuth, error) {
 	u, p, err := r.getCredentials(ctx, repo)
 	if err != nil {
-		return http.BasicAuth{}, err
+		return githttp.BasicAuth{}, err
 	}
-	return http.BasicAuth{
+	return githttp.BasicAuth{
 		Username: u,
 		Password: p,
 	}, nil
@@ -123,7 +125,12 @@ func (r *RepositoryReconciler) postProcessReconcile(ctx context.Context, req ctr
 func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alpha1.GitRepository) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 	logger.Info("reconciling", "name", repo.Name, "dir", repo.Spec.Source)
-	giteaClient, err := r.GiteaClientFunc(repo.Spec.GitURL)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	giteaClient, err := r.GiteaClientFunc(repo.Spec.GitURL, gitea.SetHTTPClient(client))
 	if err != nil {
 		return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, fmt.Errorf("failed to get gitea client: %w", err)
 	}
@@ -159,8 +166,9 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 	}
 
 	clonedRepo, err := git.PlainClone(tempDir, false, &git.CloneOptions{
-		URL:        giteaRepo.CloneURL,
-		NoCheckout: true,
+		URL:             giteaRepo.CloneURL,
+		NoCheckout:      true,
+		InsecureSkipTLS: true,
 	})
 	if err != nil {
 		return fmt.Errorf("cloning repo: %w", err)
@@ -210,7 +218,8 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		return fmt.Errorf("getting basic auth: %w", err)
 	}
 	err = clonedRepo.Push(&git.PushOptions{
-		Auth: &auth,
+		Auth:            &auth,
+		InsecureSkipTLS: true,
 	})
 	if err != nil {
 		return fmt.Errorf("pushing to git: %w", err)

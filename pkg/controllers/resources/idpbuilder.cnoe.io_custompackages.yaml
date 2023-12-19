@@ -61,7 +61,7 @@ spec:
                 type: object
               gitServerURL:
                 description: GitServerURL specifies the base URL for the git server
-                  for API calls. for example, http://gitea.cnoe.localtest.me:8880
+                  for API calls. for example, https://gitea.cnoe.localtest.me:8443
                 type: string
               internalGitServeURL:
                 description: InternalGitServeURL specifies the base URL for the git

@@ -16,9 +16,6 @@ nodes:
         system-reserved: memory=4Gi
         node-labels: "ingress-ready=true"
   extraPortMappings:
-  - containerPort: 80
-    hostPort: 8880
-    protocol: TCP
   - containerPort: 443
     hostPort: 8443
     protocol: TCP
