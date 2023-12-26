@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app2
+  namespace: argocd
+spec:
+  destination:
+    namespace: my-app2
+    server: "https://kubernetes.default.svc"
+  sources:
+    - repoURL: cnoe://busybox
+      targetRevision: HEAD
+      path: "."
+  project: default
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

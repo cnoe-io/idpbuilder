@@ -111,6 +111,23 @@ func TestReconcileCustomPkg(t *testing.T) {
 				},
 			},
 		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test3",
+				Namespace: "test",
+				UID:       "abc",
+			},
+			Spec: v1alpha1.CustomPackageSpec{
+				Replicate:           true,
+				GitServerURL:        "https://cnoe.io",
+				InternalGitServeURL: "http://internal.cnoe.io",
+				ArgoCD: v1alpha1.ArgoCDPackageSpec{
+					ApplicationFile: filepath.Join(cwd, "test/resources/customPackages/testDir/app2.yaml"),
+					Name:            "my-app2",
+					Namespace:       "argocd",
+				},
+			},
+		},
 	}
 
 	for _, n := range []string{"argocd", "test"} {
@@ -181,5 +198,20 @@ func TestReconcileCustomPkg(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected %s arogapp : %v", n, err)
 		}
+	}
+
+	localApp2 := argov1alpha1.Application{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-app2",
+			Namespace: "argocd",
+		},
+	}
+	err = c.Get(context.Background(), client.ObjectKeyFromObject(&localApp2), &localApp2)
+	if err != nil {
+		t.Fatalf("failed getting my-app2 %v", err)
+	}
+
+	if strings.HasPrefix(localApp2.Spec.Sources[0].RepoURL, "cnoe://") {
+		t.Fatalf("cnoe:// prefix should be removed")
 	}
 }

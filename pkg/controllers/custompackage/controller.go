@@ -86,7 +86,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 		synced := true
 		if app.Spec.HasMultipleSources() {
 			for j := range app.Spec.Sources {
-				s := app.Spec.Sources[j]
+				s := &app.Spec.Sources[j]
 				res, repo, sErr := r.reconcileArgocdSource(ctx, resource, appName, resource.Spec.ArgoCD.ApplicationFile, s.RepoURL)
 				if sErr != nil {
 					return res, sErr
