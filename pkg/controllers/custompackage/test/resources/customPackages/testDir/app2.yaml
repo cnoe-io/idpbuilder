@@ -8,9 +8,12 @@ spec:
     namespace: my-app2
     server: "https://kubernetes.default.svc"
   sources:
-    - repoURL: cnoe://busybox
+    - repoURL: cnoe://app2
       targetRevision: HEAD
-      path: "."
+      path: "one"
+    - repoURL: cnoe://app2
+      targetRevision: HEAD
+      path: "two"
   project: default
   syncPolicy:
     automated:

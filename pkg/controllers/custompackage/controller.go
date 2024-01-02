@@ -190,8 +190,13 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 		}
 		return nil
 	})
+	// it's possible for an application to specify the same directory multiple times in the spec.
+	// if there is a repository already created for this package, no further action is necessary.
+	if !errors.IsAlreadyExists(err) {
+		return repo, err
+	}
 
-	return repo, err
+	return repo, nil
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
