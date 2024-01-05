@@ -18851,6 +18851,13 @@ subjects:
   namespace: argocd
 ---
 apiVersion: v1
+data:
+  application.resourceTrackingMethod: annotation
+  resource.exclusions: |
+    - kinds:
+        - ProviderConfigUsage
+      apiGroups:
+        - "*"
 kind: ConfigMap
 metadata:
   labels:
