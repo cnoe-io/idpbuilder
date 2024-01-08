@@ -260,3 +260,4 @@ This script runs kustomize to modify the basic installation manifests provided b
 ## Extending the IDP builder
 
 We are actively working to include more patterns and examples of extending idpbuilder to get started easily.
+

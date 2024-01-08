@@ -73,17 +73,11 @@ func (c *Cluster) getConfig() ([]byte, error) {
 
 	retBuff := bytes.Buffer{}
 	if err = template.Execute(&retBuff, struct {
-		RegistryHostname     string
-		ExposedRegistryPort  uint16
-		InternalRegistryPort uint16
-		KubernetesVersion    string
-		ExtraPortsMapping    []PortMapping
+		KubernetesVersion string
+		ExtraPortsMapping []PortMapping
 	}{
-		RegistryHostname:     c.getRegistryContainerName(),
-		ExposedRegistryPort:  ExposedRegistryPort,
-		InternalRegistryPort: InternalRegistryPort,
-		KubernetesVersion:    c.kubeVersion,
-		ExtraPortsMapping:    portMappingPairs,
+		KubernetesVersion: c.kubeVersion,
+		ExtraPortsMapping: portMappingPairs,
 	}); err != nil {
 		return []byte{}, err
 	}
