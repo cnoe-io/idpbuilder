@@ -54,6 +54,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, pkg *v1alpha1.CustomPackage) {
 	logger := log.FromContext(ctx)
+	pkg.Status.ObservedGeneration = pkg.GetGeneration()
 	err := r.Status().Update(ctx, pkg)
 	if err != nil {
 		logger.Error(err, "failed updating repo status")
@@ -173,7 +174,13 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 			Name:      repoName,
 			Namespace: resource.Namespace,
 		},
-		Spec: v1alpha1.GitRepositorySpec{
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
+			return err
+		}
+		repo.Spec = v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
 				Type: "local",
 				Path: absPath,
@@ -181,13 +188,9 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 			GitURL:         resource.Spec.GitServerURL,
 			InternalGitURL: resource.Spec.InternalGitServeURL,
 			SecretRef:      resource.Spec.GitServerAuthSecretRef,
-		},
-	}
-
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
-		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
-			return err
+			CLIRunId:       resource.Spec.CLIRunId,
 		}
+
 		return nil
 	})
 	// it's possible for an application to specify the same directory multiple times in the spec.

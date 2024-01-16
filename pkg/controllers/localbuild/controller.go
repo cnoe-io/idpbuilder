@@ -215,7 +215,7 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 	}
 	for i := range repos.Items {
 		repo := repos.Items[i]
-		if !repo.Status.Synced {
+		if !repo.Status.Synced || repo.ObjectMeta.GetGeneration() != repo.Status.ObservedGeneration {
 			return false, nil
 		}
 	}
@@ -228,7 +228,7 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 	for i := range pkgs.Items {
 		pkg := pkgs.Items[i]
-		if !pkg.Status.Synced {
+		if !pkg.Status.Synced || pkg.ObjectMeta.GetGeneration() != pkg.Status.ObservedGeneration {
 			return false, nil
 		}
 	}
@@ -270,7 +270,13 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(ctx context.Context, resource 
 					Name:      getCustomPackageName(file.Name(), appName),
 					Namespace: globals.GetProjectNamespace(resource.Name),
 				},
-				Spec: v1alpha1.CustomPackageSpec{
+			}
+			_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
+				if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
+					return err
+				}
+				customPkg.Spec = v1alpha1.CustomPackageSpec{
+					CLIRunId:            resource.Spec.CLIRunId,
 					Replicate:           true,
 					GitServerURL:        resource.Status.Gitea.ExternalURL,
 					InternalGitServeURL: resource.Status.Gitea.InternalURL,
@@ -283,13 +289,6 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(ctx context.Context, resource 
 						Name:            appName,
 						Namespace:       appNS,
 					},
-				},
-				Status: v1alpha1.CustomPackageStatus{},
-			}
-
-			_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
-				if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
-					return err
 				}
 				return nil
 			})

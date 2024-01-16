@@ -23,18 +23,18 @@ type CustomPackageList struct {
 
 // CustomPackageSpec controls the installation of the custom applications.
 type CustomPackageSpec struct {
+	ArgoCD   ArgoCDPackageSpec `json:"argoCD,omitempty"`
+	CLIRunId string            `json:"runId,omitempty"`
+	// GitServerURL specifies the base URL for the git server for API calls.
+	// for example, https://gitea.cnoe.localtest.me:8443
+	GitServerURL           string          `json:"gitServerURL"`
+	GitServerAuthSecretRef SecretReference `json:"gitServerAuthSecretRef"`
+	// InternalGitServeURL specifies the base URL for the git server accessible within the cluster.
+	// for example, http://my-gitea-http.gitea.svc.cluster.local:3000
+	InternalGitServeURL string `json:"internalGitServeURL"`
 	// Replicate specifies whether to replicate remote or local contents to the local gitea server.
 	// +kubebuilder:default:=false
 	Replicate bool `json:"replicate"`
-	// GitServerURL specifies the base URL for the git server for API calls.
-	// for example, https://gitea.cnoe.localtest.me:8443
-	GitServerURL string `json:"gitServerURL"`
-	// InternalGitServeURL specifies the base URL for the git server accessible within the cluster.
-	// for example, http://my-gitea-http.gitea.svc.cluster.local:3000
-	InternalGitServeURL    string          `json:"internalGitServeURL"`
-	GitServerAuthSecretRef SecretReference `json:"gitServerAuthSecretRef"`
-
-	ArgoCD ArgoCDPackageSpec `json:"argoCD,omitempty"`
 }
 
 type ArgoCDPackageSpec struct {
@@ -45,6 +45,7 @@ type ArgoCDPackageSpec struct {
 }
 
 type CustomPackageStatus struct {
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// A Custom package is considered synced when the in-cluster repository url is set as the repository URL
 	// This only applies for a package that references local directories
 	Synced            bool        `json:"synced,omitempty"`

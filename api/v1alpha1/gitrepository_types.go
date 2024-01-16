@@ -5,7 +5,7 @@ import (
 )
 
 type GitRepositorySpec struct {
-	Source GitRepositorySource `json:"source,omitempty"`
+	CLIRunId string `json:"runId,omitempty"`
 	// GitURL is the base URL of Git server used for API calls.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
@@ -14,7 +14,8 @@ type GitRepositorySpec struct {
 	InternalGitURL string `json:"internalGitURL"`
 	// SecretRef is the reference to secret that contain Git server credentials
 	// +kubebuilder:validation:Optional
-	SecretRef SecretReference `json:"secretRef"`
+	SecretRef SecretReference     `json:"secretRef"`
+	Source    GitRepositorySource `json:"source,omitempty"`
 }
 
 type GitRepositorySource struct {
@@ -54,9 +55,9 @@ type GitRepositoryStatus struct {
 	InternalGitRepositoryUrl string `json:"internalGitRepositoryUrl"`
 	// Path is the path within the repository that contains the files.
 	// +kubebuilder:validation:Optional
-	Path string `json:"path"`
-
-	Synced bool `json:"synced"`
+	Path               string `json:"path"`
+	ObservedGeneration int64  `json:"observedGeneration,omitempty"`
+	Synced             bool   `json:"synced"`
 }
 
 // +kubebuilder:object:root=true

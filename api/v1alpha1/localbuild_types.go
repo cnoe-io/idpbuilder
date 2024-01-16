@@ -35,6 +35,9 @@ type PackageConfigsSpec struct {
 
 type LocalbuildSpec struct {
 	PackageConfigs PackageConfigsSpec `json:"packageConfigs,omitempty"`
+	// CLIRunId is used to ensure controllers have a chance to fully reconcile resources every time the CLI is invoked.
+	// This is generated everytime the CLI is invoked.
+	CLIRunId string `json:"runId,omitempty"`
 }
 
 type LocalbuildStatus struct {

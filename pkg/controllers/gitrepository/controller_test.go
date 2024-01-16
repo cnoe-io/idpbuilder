@@ -377,6 +377,10 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			if !reflect.DeepEqual(v.input.Status, v.expect.resource) {
 				t.Fatalf("objects not equal")
 			}
+
+			if v.input.ObjectMeta.GetGeneration() != v.expect.resource.ObservedGeneration {
+				t.Fatalf("observed generation not equal")
+			}
 		})
 	}
 }
