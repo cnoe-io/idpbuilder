@@ -16,17 +16,17 @@ Take a look at the [kind.yaml](./kind.yaml) file. The most relevant part is this
 
 ```yaml
 nodes:
-- role: control-plane
-  extraMounts:
-    - hostPath: /home/ubuntu/backup # replace with your own path
-      containerPath: /backup
+  - role: control-plane
+    extraMounts:
+      - hostPath: /home/ubuntu/backup # replace with your own path
+        containerPath: /backup
 ```
 
 This instructs Kind to make your machine's directory at `/home/ubuntu/backup`
-available at `/backup` for the Kubernetes node. 
+available at `/backup` for the Kubernetes node.
 
 You **must** change this value for your own setup. This directory also must exist on your machine.
-For example, you may want to change it to `/Users/my-name/backup`.  
+For example, you may want to change it to `/Users/my-name/backup`.
 
 Once you've made the change, run this command from the root of this repository.
 
@@ -73,7 +73,9 @@ Once you log in, you will notice a bucket is already created for you. Velero wil
 
 ![image](./images/bucket.png)
 
-Let's try creating a backup of an example application. 
+### Backup
+
+Let's try creating a backup of an example application.
 
 First, create an example nginx app straight from the velero repository.
 
@@ -111,5 +113,62 @@ drwxr-xr-x 2 ubuntu ubuntu 4.0K Jan 18 01:25 nginx-backup.tar.gz
 drwxr-xr-x 2 ubuntu ubuntu 4.0K Jan 18 01:25 velero-backup.json
 ```
 
+### Restore
 
+Let's simulate a cluster loss by deleting the kind cluster forcibly.
+
+```bash
+kind delete clusters localdev && docker system prune -f
+```
+
+Once it is destroyed, create it again.
+
+```bash
+idpbuilder create --kind-config examples/local-backup/kind.yaml --kind-config examples/local-backup/kind.yaml
+```
+
+Make sure everything looks good:
+
+```bash
+$ kubectl get application -n argocd
+NAME     SYNC STATUS   HEALTH STATUS
+argocd   Synced        Healthy
+gitea    Synced        Healthy
+minio    Synced        Healthy
+nginx    Synced        Healthy
+velero   Synced        Healthy
+```
+
+Let's make sure Velero can validate the minio bucket:
+
+```bash
+$ kubectl get  backupstoragelocations.velero.io  -n velero
+NAME      PHASE       LAST VALIDATED   AGE   DEFAULT
+default   Available   4s               52m   true
+```
+
+Looks good. Let's make sure the backup from the destroyed cluster is available.
+
+```bash
+$ kubectl get backup -n velero
+NAME           AGE
+nginx-backup   1m
+```
+
+Target this backup to restore objects.
+
+```bash
+kubectl apply -f examples/local-backup/demo/restore.yaml
+```
+
+This command is equivalent to `velero restore create --from-backup nginx-backup`.
+
+Verify everything was restored:
+```bash
+$ kubectl get backup -n velero  -o custom-columns="NAME":.metadata.name,"PHASE":.status.phase
+NAME           PHASE
+nginx-backup   Completed
+
+$ kubectl get pods -n nginx-example
+```
 
