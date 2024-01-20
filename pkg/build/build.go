@@ -2,23 +2,20 @@ package build
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"time"
 )
 
 var (
@@ -145,20 +142,20 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	// Create localbuild resource
 	localBuild := v1alpha1.Localbuild{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: b.name,
 		},
 	}
 
-	runID, err := ensureUniqueRunID(ctx, kubeClient, localBuild)
-	if err != nil {
-		return err
-	}
+	cliStartTime := time.Now().Format(time.RFC3339Nano)
 
 	setupLog.Info("Creating localbuild resource")
 	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
+		if localBuild.ObjectMeta.Annotations == nil {
+			localBuild.ObjectMeta.Annotations = map[string]string{}
+		}
+		localBuild.ObjectMeta.Annotations[v1alpha1.CliStartTimeAnnotation] = cliStartTime
 		localBuild.Spec = v1alpha1.LocalbuildSpec{
 			PackageConfigs: v1alpha1.PackageConfigsSpec{
 				Argo: v1alpha1.ArgoPackageConfigSpec{
@@ -172,7 +169,6 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 				},
 				CustomPackageDirs: b.customPackageDirs,
 			},
-			CLIRunId: runID,
 		}
 		return nil
 	})
@@ -188,37 +184,4 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	err = <-managerExit
 	close(managerExit)
 	return err
-}
-
-func ensureUniqueRunID(ctx context.Context, kubeClient client.Client, build v1alpha1.Localbuild) (string, error) {
-	err := kubeClient.Get(ctx, types.NamespacedName{Namespace: build.Namespace, Name: build.Name}, &build)
-	if err != nil && !errors.IsNotFound(err) {
-		return "", fmt.Errorf("failed getting local build: %w", err)
-	}
-
-	currentID := build.Spec.CLIRunId
-
-	count := 0
-	for count < 5 {
-		count += 1
-		id, err := generateRunId()
-		if err != nil {
-			return "", err
-		}
-
-		if currentID != id {
-			return id, nil
-		}
-	}
-
-	return "", fmt.Errorf("failed to generate unique ID")
-}
-
-func generateRunId() (string, error) {
-	randB := make([]byte, 16)
-	_, err := rand.Read(randB)
-	if err != nil {
-		return "", fmt.Errorf("failed reading random bytes: %w", err)
-	}
-	return base64.RawStdEncoding.EncodeToString(randB), nil
 }

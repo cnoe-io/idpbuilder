@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 	"time"
 
@@ -60,6 +61,7 @@ type testCase struct {
 
 type fakeClient struct {
 	client.Client
+	patchObj client.Object
 }
 
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
@@ -68,6 +70,23 @@ func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.O
 		giteaAdminUsernameKey: []byte("abc"),
 		giteaAdminPasswordKey: []byte("abc"),
 	}
+	return nil
+}
+
+func (f *fakeClient) Status() client.StatusWriter {
+	return fakeStatusWriter{}
+}
+
+func (f *fakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	f.patchObj = obj
+	return nil
+}
+
+type fakeStatusWriter struct {
+	client.StatusWriter
+}
+
+func (f fakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return nil
 }
 
@@ -378,9 +397,40 @@ func TestGitRepositoryReconcile(t *testing.T) {
 				t.Fatalf("objects not equal")
 			}
 
-			if v.input.ObjectMeta.GetGeneration() != v.expect.resource.ObservedGeneration {
-				t.Fatalf("observed generation not equal")
-			}
 		})
+	}
+}
+
+func TestGitRepositoryPostReconcile(t *testing.T) {
+	c := fakeClient{}
+	reconciler := RepositoryReconciler{
+		Client: &c,
+	}
+	testTime := time.Now().Format(time.RFC3339Nano)
+	repo := v1alpha1.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: "test",
+			Annotations: map[string]string{
+				v1alpha1.CliStartTimeAnnotation: testTime,
+			},
+		},
+	}
+
+	reconciler.postProcessReconcile(context.Background(), ctrl.Request{}, &repo)
+	annotations := c.patchObj.GetAnnotations()
+	v, ok := annotations[v1alpha1.LastObservedCLIStartTimeAnnotation]
+	if !ok {
+		t.Fatalf("expected annotation not found: %s", v1alpha1.LastObservedCLIStartTimeAnnotation)
+	}
+	if v != testTime {
+		t.Fatalf("annotation values does not match")
+	}
+
+	repo.Annotations[v1alpha1.LastObservedCLIStartTimeAnnotation] = "abc"
+	reconciler.postProcessReconcile(context.Background(), ctrl.Request{}, &repo)
+	v = annotations[v1alpha1.LastObservedCLIStartTimeAnnotation]
+	if v != testTime {
+		t.Fatalf("annotation values does not match")
 	}
 }

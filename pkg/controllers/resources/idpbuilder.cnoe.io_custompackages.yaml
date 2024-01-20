@@ -72,8 +72,6 @@ spec:
                 description: Replicate specifies whether to replicate remote or local
                   contents to the local gitea server.
                 type: boolean
-              runId:
-                type: string
             required:
             - gitServerAuthSecretRef
             - gitServerURL
@@ -97,9 +95,6 @@ spec:
                       type: string
                   type: object
                 type: array
-              observedGeneration:
-                format: int64
-                type: integer
               synced:
                 description: A Custom package is considered synced when the in-cluster
                   repository url is set as the repository URL This only applies for

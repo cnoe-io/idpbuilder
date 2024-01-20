@@ -7,6 +7,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// LastObservedCLIStartTimeAnnotation indicates when the controller acted on a resource.
+	LastObservedCLIStartTimeAnnotation = "cnoe.io/last-observed-cli-start-time"
+	// CliStartTimeAnnotation indicates when the CLI was invoked.
+	CliStartTimeAnnotation = "cnoe.io/cli-start-time"
+	FieldManager           = "idpbuilder"
+)
+
 // ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
 // If no fields are specified then the binary embedded resources will be used to intall ArgoCD.
 type ArgoPackageConfigSpec struct {
@@ -35,9 +43,6 @@ type PackageConfigsSpec struct {
 
 type LocalbuildSpec struct {
 	PackageConfigs PackageConfigsSpec `json:"packageConfigs,omitempty"`
-	// CLIRunId is used to ensure controllers have a chance to fully reconcile resources every time the CLI is invoked.
-	// This is generated everytime the CLI is invoked.
-	CLIRunId string `json:"runId,omitempty"`
 }
 
 type LocalbuildStatus struct {

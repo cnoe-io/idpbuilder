@@ -23,8 +23,7 @@ type CustomPackageList struct {
 
 // CustomPackageSpec controls the installation of the custom applications.
 type CustomPackageSpec struct {
-	ArgoCD   ArgoCDPackageSpec `json:"argoCD,omitempty"`
-	CLIRunId string            `json:"runId,omitempty"`
+	ArgoCD ArgoCDPackageSpec `json:"argoCD,omitempty"`
 	// GitServerURL specifies the base URL for the git server for API calls.
 	// for example, https://gitea.cnoe.localtest.me:8443
 	GitServerURL           string          `json:"gitServerURL"`
@@ -45,7 +44,6 @@ type ArgoCDPackageSpec struct {
 }
 
 type CustomPackageStatus struct {
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// A Custom package is considered synced when the in-cluster repository url is set as the repository URL
 	// This only applies for a package that references local directories
 	Synced            bool        `json:"synced,omitempty"`

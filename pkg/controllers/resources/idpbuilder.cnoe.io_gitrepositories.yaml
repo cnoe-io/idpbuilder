@@ -40,8 +40,6 @@ spec:
                 description: InternalGitURL is the base URL of Git server accessible
                   within the cluster only.
                 type: string
-              runId:
-                type: string
               secretRef:
                 description: SecretRef is the reference to secret that contain Git
                   server credentials
@@ -100,9 +98,6 @@ spec:
                 description: InternalGitRepositoryUrl is the url for the in-cluster
                   repository accessible within the cluster.
                 type: string
-              observedGeneration:
-                format: int64
-                type: integer
               path:
                 description: Path is the path within the repository that contains
                   the files.

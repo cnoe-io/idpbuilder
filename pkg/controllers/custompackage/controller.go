@@ -3,6 +3,7 @@ package custompackage
 import (
 	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,10 +55,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, pkg *v1alpha1.CustomPackage) {
 	logger := log.FromContext(ctx)
-	pkg.Status.ObservedGeneration = pkg.GetGeneration()
+
 	err := r.Status().Update(ctx, pkg)
 	if err != nil {
 		logger.Error(err, "failed updating repo status")
+	}
+
+	err = util.UpdateSyncAnnotation(ctx, r.Client, pkg)
+	if err != nil {
+		logger.Error(err, "failed updating repo annotation")
 	}
 }
 
@@ -176,10 +182,18 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 		},
 	}
 
+	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
+
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
 		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
 			return err
 		}
+
+		if repo.ObjectMeta.Annotations == nil {
+			repo.ObjectMeta.Annotations = make(map[string]string)
+		}
+		util.SetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations, cliStartTime)
+
 		repo.Spec = v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
 				Type: "local",
@@ -188,7 +202,6 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 			GitURL:         resource.Spec.GitServerURL,
 			InternalGitURL: resource.Spec.InternalGitServeURL,
 			SecretRef:      resource.Spec.GitServerAuthSecretRef,
-			CLIRunId:       resource.Spec.CLIRunId,
 		}
 
 		return nil

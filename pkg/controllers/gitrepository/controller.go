@@ -97,13 +97,12 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	defer r.postProcessReconcile(ctx, req, &gitRepo)
 	if !r.shouldProcess(gitRepo) {
 		return ctrl.Result{Requeue: false}, nil
 	}
 
 	logger.Info("reconciling GitRepository", "name", req.Name, "namespace", req.Namespace)
-	defer r.postProcessReconcile(ctx, req, &gitRepo)
-
 	result, err := r.reconcileGitRepo(ctx, &gitRepo)
 	if err != nil {
 		r.Recorder.Event(&gitRepo, "Warning", "reconcile error", err.Error())
@@ -116,10 +115,15 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 func (r *RepositoryReconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, repo *v1alpha1.GitRepository) {
 	logger := log.FromContext(ctx)
-	repo.Status.ObservedGeneration = repo.GetGeneration()
+
 	err := r.Status().Update(ctx, repo)
 	if err != nil {
 		logger.Error(err, "failed updating repo status")
+	}
+
+	err = util.UpdateSyncAnnotation(ctx, r.Client, repo)
+	if err != nil {
+		logger.Error(err, "failed updating repo annotation")
 	}
 }
 
@@ -156,7 +160,6 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 
 	repo.Status.ExternalGitRepositoryUrl = giteaRepo.CloneURL
 	repo.Status.InternalGitRepositoryUrl = getRepositoryURL(repo.Namespace, repo.Name, repo.Spec.InternalGitURL)
-	repo.Status.ObservedGeneration = repo.Generation
 	repo.Status.Synced = true
 	return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, nil
 }

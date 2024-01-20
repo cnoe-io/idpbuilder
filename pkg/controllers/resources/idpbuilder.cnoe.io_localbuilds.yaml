@@ -65,11 +65,6 @@ spec:
                         type: string
                     type: object
                 type: object
-              runId:
-                description: CLIRunId is used to ensure controllers have a chance
-                  to fully reconcile resources every time the CLI is invoked. This
-                  is generated everytime the CLI is invoked.
-                type: string
             type: object
           status:
             properties:
