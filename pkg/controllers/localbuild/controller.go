@@ -3,6 +3,7 @@ package localbuild
 import (
 	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
@@ -208,14 +209,31 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 		return false, nil
 	}
 
+	cliStartTime, err := util.GetCLIStartTimeAnnotationValue(resource.Annotations)
+	if err != nil {
+		return true, err
+	}
+
 	repos := &v1alpha1.GitRepositoryList{}
-	err := r.Client.List(ctx, repos, client.InNamespace(resource.Namespace))
+	err = r.Client.List(ctx, repos, client.InNamespace(resource.Namespace))
 	if err != nil {
 		return false, fmt.Errorf("listing repositories %w", err)
 	}
 	for i := range repos.Items {
 		repo := repos.Items[i]
-		if !repo.Status.Synced {
+
+		_, gErr := util.GetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations)
+		if gErr != nil {
+			// this means this repository resource is not managed by localbuild
+			continue
+		}
+
+		observedTime, gErr := util.GetLastObservedSyncTimeAnnotationValue(repo.ObjectMeta.Annotations)
+		if gErr != nil {
+			return false, gErr
+		}
+
+		if !repo.Status.Synced || cliStartTime != observedTime {
 			return false, nil
 		}
 	}
@@ -228,7 +246,17 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 	for i := range pkgs.Items {
 		pkg := pkgs.Items[i]
-		if !pkg.Status.Synced {
+		_, gErr := util.GetCLIStartTimeAnnotationValue(pkg.ObjectMeta.Annotations)
+		if gErr != nil {
+			continue
+		}
+
+		observedTime, gErr := util.GetLastObservedSyncTimeAnnotationValue(pkg.ObjectMeta.Annotations)
+		if gErr != nil {
+			return false, gErr
+		}
+
+		if !pkg.Status.Synced || cliStartTime != observedTime {
 			return false, nil
 		}
 	}
@@ -270,7 +298,24 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(ctx context.Context, resource 
 					Name:      getCustomPackageName(file.Name(), appName),
 					Namespace: globals.GetProjectNamespace(resource.Name),
 				},
-				Spec: v1alpha1.CustomPackageSpec{
+			}
+
+			cliStartTime, err := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
+			if err != nil {
+				logger.Error(err, "this resource may not sync correctly")
+			}
+
+			_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
+				if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
+					return err
+				}
+				if customPkg.ObjectMeta.Annotations == nil {
+					customPkg.ObjectMeta.Annotations = make(map[string]string)
+				}
+
+				util.SetCLIStartTimeAnnotationValue(customPkg.ObjectMeta.Annotations, cliStartTime)
+
+				customPkg.Spec = v1alpha1.CustomPackageSpec{
 					Replicate:           true,
 					GitServerURL:        resource.Status.Gitea.ExternalURL,
 					InternalGitServeURL: resource.Status.Gitea.InternalURL,
@@ -283,13 +328,6 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(ctx context.Context, resource 
 						Name:            appName,
 						Namespace:       appNS,
 					},
-				},
-				Status: v1alpha1.CustomPackageStatus{},
-			}
-
-			_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
-				if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
-					return err
 				}
 				return nil
 			})
@@ -309,7 +347,24 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 			Name:      repoName,
 			Namespace: globals.GetProjectNamespace(resource.Name),
 		},
-		Spec: v1alpha1.GitRepositorySpec{
+	}
+
+	cliStartTime, err := util.GetCLIStartTimeAnnotationValue(resource.Annotations)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
+			return err
+		}
+
+		if repo.ObjectMeta.Annotations == nil {
+			repo.ObjectMeta.Annotations = make(map[string]string)
+		}
+		util.SetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations, cliStartTime)
+
+		repo.Spec = v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
 				Type: repoType,
 			},
@@ -319,19 +374,14 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 				Name:      resource.Status.Gitea.AdminUserSecretName,
 				Namespace: resource.Status.Gitea.AdminUserSecretNamespace,
 			},
-		},
-	}
-
-	if repoType == "embedded" {
-		repo.Spec.Source.EmbeddedAppName = embeddedName
-	} else {
-		repo.Spec.Source.Path = absPath
-	}
-
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
-		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
-			return err
 		}
+
+		if repoType == "embedded" {
+			repo.Spec.Source.EmbeddedAppName = embeddedName
+		} else {
+			repo.Spec.Source.Path = absPath
+		}
+
 		return nil
 	})
 

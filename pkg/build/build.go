@@ -3,7 +3,6 @@ package build
 import (
 	"context"
 	"fmt"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
@@ -16,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"time"
 )
 
 var (
@@ -142,15 +142,20 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	// Create localbuild resource
 	localBuild := v1alpha1.Localbuild{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: b.name,
 		},
 	}
 
+	cliStartTime := time.Now().Format(time.RFC3339Nano)
+
 	setupLog.Info("Creating localbuild resource")
 	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
+		if localBuild.ObjectMeta.Annotations == nil {
+			localBuild.ObjectMeta.Annotations = map[string]string{}
+		}
+		localBuild.ObjectMeta.Annotations[v1alpha1.CliStartTimeAnnotation] = cliStartTime
 		localBuild.Spec = v1alpha1.LocalbuildSpec{
 			PackageConfigs: v1alpha1.PackageConfigsSpec{
 				Argo: v1alpha1.ArgoPackageConfigSpec{
@@ -160,7 +165,6 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					Enabled: true,
 				},
 				GitConfig: v1alpha1.GitConfigSpec{
-					// hint: for the old behavior, replace Type value below with globals.GitServerResourcename()
 					Type: globals.GiteaResourceName(),
 				},
 				CustomPackageDirs: b.customPackageDirs,
