@@ -2,19 +2,17 @@ package create
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/cnoe-io/idpbuilder/pkg/build"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
 	"k8s.io/client-go/util/homedir"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 var (
@@ -30,10 +28,11 @@ var (
 )
 
 var CreateCmd = &cobra.Command{
-	Use:   "create",
-	Short: "(Re)Create an IDP cluster",
-	Long:  ``,
-	RunE:  create,
+	Use:     "create",
+	Short:   "(Re)Create an IDP cluster",
+	Long:    ``,
+	RunE:    create,
+	PreRunE: preCreateE,
 }
 
 func init() {
@@ -45,15 +44,10 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
 	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "Paths to custom packages")
 	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")
+}
 
-	zapfs := flag.NewFlagSet("zap", flag.ExitOnError)
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(zapfs)
-	CreateCmd.Flags().AddGoFlagSet(zapfs)
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+func preCreateE(cmd *cobra.Command, args []string) error {
+	return helpers.SetLogger()
 }
 
 func create(cmd *cobra.Command, args []string) error {
