@@ -37,7 +37,7 @@ var CreateCmd = &cobra.Command{
 func init() {
 	CreateCmd.PersistentFlags().BoolVar(&recreateCluster, "recreate", false, "Delete cluster first if it already exists.")
 	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
-	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.26.3", "Version of the kind kubernetes cluster to create.")
+	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.27.3", "Version of the kind kubernetes cluster to create.")
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
 	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "Paths to custom packages")
