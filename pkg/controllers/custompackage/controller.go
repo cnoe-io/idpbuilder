@@ -3,11 +3,12 @@ package custompackage
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 
 	argov1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -160,7 +161,7 @@ func (r *Reconciler) reconcileArgocdSource(ctx context.Context, resource *v1alph
 	process, absPath, err := isCNOEDirectory(pkgDir, repoURL)
 	if err != nil {
 		logger.Error(err, "processing argocd app source", "dir", pkgDir, "repoURL", repoURL)
-		return ctrl.Result{RequeueAfter: time.Second * 60}, nil, nil
+		return ctrl.Result{}, nil, err
 	}
 	if !process {
 		return ctrl.Result{}, nil, nil
