@@ -1,0 +1,33 @@
+# the only purpose of this is to resolve `keycloak.cnoe.localtest.me` to a cluster IP
+# normally, `keycloak.cnoe.localtest.me` resolves to 127.0.0.1 and thus oidc endpoint configurations cannot be obtained.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        rewrite name keycloak.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
+        rewrite name gitea.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
+        rewrite name argocd.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
+        rewrite name argo.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
+        loop
+        reload
+        loadbalance
+    }

@@ -1,0 +1,8 @@
+resources:
+  - ../base
+  - external-secret.yaml
+  - ingress.yaml
+  - sa-admin.yaml
+patches:
+  - path: patches/cm-argo-workflows.yaml
+  - path: patches/deployment-argo-server.yaml
