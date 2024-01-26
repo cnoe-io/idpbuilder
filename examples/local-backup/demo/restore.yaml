@@ -7,4 +7,4 @@ metadata:
 spec:
   backupName: nginx-backup
   includedNamespaces:
-    - '*'
+    - 'nginx-example'

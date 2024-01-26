@@ -34,7 +34,7 @@ Once you've made the change, run this command from the root of this repository.
 # example: mkdir /Users/my-name/backup
 mkdir <path/to/directory> 
 
-idpbuilder create --kind-config examples/local-backup/kind.yaml --kind-config examples/local-backup/kind.yaml
+idpbuilder create --kind-config examples/local-backup/kind.yaml --package-dir examples/local-backup/
 ```
 
 This command:
@@ -42,11 +42,6 @@ This command:
 2. Creates two custom packages: [MinIO](./minio.yaml) and [Velero](./velero.yaml).
 
 Once the command exits, you can check the status of installation by going to https://argocd.cnoe.localtest.me:8443/applications.
-
-Username is `admin`, and password is obtained with:
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
-```
 
 You can also check the status with the following command:
 
@@ -56,14 +51,14 @@ kubectl get application -n argocd
 
 ## Using it
 
-Once minio and velero ArgoCD applications are ready, you can start playing with it.
+Once MinIO and Velero ArgoCD applications are ready, you can start playing with it.
 
 MinIO console is accessible at [https://minio.cnoe.localtest.me:8443/login](https://minio.cnoe.localtest.me:8443/login)
 
 You can log in to the console by obtaining credentials:
 
 ```bash
-kubectl -n minio get secret minio -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
+kubectl -n minio get secret root-creds -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
 # example output
 # rootPassword: aKKZzLnyry6OYZts17vMTf32H5ghFL4WYgu6bHujm
 # rootUser: ge8019yksArb7BICt3MLY9
@@ -77,7 +72,7 @@ Once you log in, you will notice a bucket is already created for you. Velero wil
 
 Let's try creating a backup of an example application.
 
-First, create an example nginx app straight from the velero repository.
+First, create an example nginx app straight from the Velero repository.
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/vmware-tanzu/velero/main/examples/nginx-app/base.yaml
@@ -89,7 +84,7 @@ Once they are created and running, create a backup.
 kubectl apply -f examples/local-backup/demo/backup.yaml
 ```
 
-This command is equivalent to this velero command:  `velero backup create nginx-backup --selector app=nginx`
+This command is equivalent to this Velero command:  `velero backup create nginx-backup --selector app=nginx`
 
 After you run the command, go back to the MinIO console. You will notice that file objects are created in your bucket.
 
@@ -124,7 +119,7 @@ kind delete clusters localdev && docker system prune -f
 Once it is destroyed, create it again.
 
 ```bash
-idpbuilder create --kind-config examples/local-backup/kind.yaml --kind-config examples/local-backup/kind.yaml
+idpbuilder create --kind-config examples/local-backup/kind.yaml --package-dir examples/local-backup/
 ```
 
 Make sure everything looks good:
@@ -139,7 +134,7 @@ nginx    Synced        Healthy
 velero   Synced        Healthy
 ```
 
-Let's make sure Velero can validate the minio bucket:
+Let's make sure Velero can validate the MinIO bucket:
 
 ```bash
 $ kubectl get  backupstoragelocations.velero.io  -n velero

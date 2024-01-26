@@ -6,7 +6,7 @@ metadata:
   namespace: velero
 spec:
   includedNamespaces:
-    - '*'
+    - 'nginx-example'
   labelSelector:
     matchLabels:
       app: nginx
