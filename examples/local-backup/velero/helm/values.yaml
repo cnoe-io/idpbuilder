@@ -1,0 +1,23 @@
+resources:
+  requests:
+    memory: 128Mi
+snapshotsEnabled: false
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.8.2
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: idpbuilder-backups
+      credential:
+        name: secret-key
+        key: aws
+      config:
+        region: minio
+        s3Url: http://minio.minio.svc.cluster.local:9000
+        s3ForcePathStyle: "true"

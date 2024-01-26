@@ -1,0 +1,23 @@
+replicas: 1
+mode: standalone
+
+resources:
+  requests:
+    memory: 128Mi
+
+persistence:
+  enabled: true
+  storageClass: standard
+  size: 512Mi
+  volumeName: backup
+
+buckets:
+  - name: idpbuilder-backups
+
+consoleIngress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - minio.cnoe.localtest.me
+
+existingSecret: root-creds
