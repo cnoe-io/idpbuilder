@@ -1,3 +1,5 @@
+# INGRESS-NGINX INSTALL RESOURCES
+# This file is auto-generated with 'hack/ingress-nginx/generate-manifests.sh'
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -348,6 +350,11 @@ spec:
   - IPv4
   ipFamilyPolicy: SingleStack
   ports:
+  - appProtocol: https
+    name: https-8443
+    port: 8443
+    protocol: TCP
+    targetPort: https
   - appProtocol: http
     name: http
     port: 80
