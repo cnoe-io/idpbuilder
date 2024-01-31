@@ -78,15 +78,16 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *LocalbuildReconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) {
 	log := log.FromContext(ctx)
 
-	resource.Status.ObservedGeneration = resource.GetGeneration()
-	if err := r.Status().Update(ctx, resource); err != nil {
-		log.Error(err, "Failed to update resource status after reconcile")
-	}
-
 	log.Info("Checking if we should shutdown")
 	if r.shouldShutdown {
 		log.Info("Shutting Down")
 		r.CancelFunc()
+		return
+	}
+
+	resource.Status.ObservedGeneration = resource.GetGeneration()
+	if err := r.Status().Update(ctx, resource); err != nil {
+		log.Error(err, "Failed to update resource status after reconcile")
 	}
 }
 
