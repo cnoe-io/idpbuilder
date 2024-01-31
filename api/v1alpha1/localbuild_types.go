@@ -29,8 +29,9 @@ type EmbeddedArgoApplicationsPackageConfigSpec struct {
 }
 
 // GitConfigSpec controls what git server to use for the idpbuilder
-// It can take on the values of either gitea or gitserver
+// Supported values are either 'gitea' or 'gitserver'
 type GitConfigSpec struct {
+	// +kubebuilder:validation:Enum:=gitea;gitserver
 	Type string `json:"type,omitempty"`
 }
 

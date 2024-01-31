@@ -58,10 +58,12 @@ spec:
                     type: object
                   gitConfig:
                     description: GitConfigSpec controls what git server to use for
-                      the idpbuilder It can take on the values of either gitea or
-                      gitserver
+                      the idpbuilder Supported values are either 'gitea' or 'gitserver'
                     properties:
                       type:
+                        enum:
+                        - gitea
+                        - gitserver
                         type: string
                     type: object
                 type: object
