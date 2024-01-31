@@ -206,6 +206,8 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 }
 
 func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1alpha1.Localbuild) (bool, error) {
+	logger := log.FromContext(ctx)
+
 	if !r.ExitOnSync {
 		return false, nil
 	}
@@ -231,7 +233,8 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 		observedTime, gErr := util.GetLastObservedSyncTimeAnnotationValue(repo.ObjectMeta.Annotations)
 		if gErr != nil {
-			return false, gErr
+			logger.Info(gErr.Error())
+			return false, nil
 		}
 
 		if !repo.Status.Synced || cliStartTime != observedTime {
@@ -254,7 +257,8 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 		observedTime, gErr := util.GetLastObservedSyncTimeAnnotationValue(pkg.ObjectMeta.Annotations)
 		if gErr != nil {
-			return false, gErr
+			logger.Info(gErr.Error())
+			return false, nil
 		}
 
 		if !pkg.Status.Synced || cliStartTime != observedTime {
