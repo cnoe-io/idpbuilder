@@ -166,7 +166,7 @@ data:
       locations:
         # Examples from a public GitHub repository.
         - type: url
-          target: https://gitea.cnoe.localtest.me:8443/giteaAdmin/entities/src/branch/main/catalog-info.yaml
+          target: https://gitea.cnoe.localtest.me:8443/giteaAdmin/idpbuilder-localdev-backstage-entities/src/branch/main/catalog-info.yaml
         ## Uncomment these lines to add an example org
         # - type: url
         #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml

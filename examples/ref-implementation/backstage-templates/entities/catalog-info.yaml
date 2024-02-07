@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: basic-example-templates
+  description: A collection of example templates
+spec:
+  targets:
+    - ./basic/template.yaml
+    - ./argo-workflows/template.yaml
+    - ./app-with-bucket/template.yaml
