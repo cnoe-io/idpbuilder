@@ -2,6 +2,19 @@
 
 This example creates a local version of the CNOE reference implementation.
 
+## Prerequisites
+
+Ensure you have the following tools installed on your computer.
+
+**Required**
+
+- [idpbuilder](https://github.com/cnoe-io/idpbuilder/releases/latest): version `0.0.2` or later
+- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl): version `1.27` or later
+
+**Optional**
+
+- AWS credentials: if you want to create AWS resources
+
 ## Installation
 
 Run the following command from the root of this repository.
@@ -97,7 +110,7 @@ Back in the entity page, you can view more details about Spark jobs by navigatin
 
 ## Application with cloud resources.
 
-Similarly to the above, we can deploy an application with cloud resources using Backstage templates.
+Similar to the above, we can deploy an application with cloud resources using Backstage templates.
 In this example, we will create an application with a S3 Bucket.
 
 Choose a template named `App with S3 bucket`, type `demo3` as the name, then choose a region to create this bucket in.
