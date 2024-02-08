@@ -3,15 +3,16 @@ package localbuild
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	argov1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
+	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/resources/localbuild"
