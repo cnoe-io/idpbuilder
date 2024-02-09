@@ -1,5 +1,6 @@
 LD_FLAGS=-ldflags " \
     -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.idpbuilderVersion=$(shell git describe --tags --dirty --broken) \
+    -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.goVersion=$(shell go env GOVERSION) \
     -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.goOs=$(shell go env GOOS) \
     -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.goArch=$(shell go env GOARCH) \
     -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.gitCommit=$(shell git rev-parse HEAD) \

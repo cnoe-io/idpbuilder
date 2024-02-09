@@ -26,6 +26,7 @@ func init() {
 
 var (
 	idpbuilderVersion = "unknown"
+	goVersion         = "unknown"
 	goOs              = "unknown"
 	goArch            = "unknown"
 	gitCommit         = "$Format:%H$"          // sha1 from git, output of $(git rev-parse HEAD)
@@ -34,6 +35,7 @@ var (
 
 type idpbuilderInfo struct {
 	IdpbuilderVersion string `json:"idpbuilderVersion"`
+	GoVersion         string `json:"goVersion"`
 	GoOs              string `json:"goOs"`
 	GoArch            string `json:"goArch"`
 	GitCommit         string `json:"gitCommit"`
@@ -45,6 +47,7 @@ func version(cmd *cobra.Command, args []string) error {
 	case "wide":
 		cmd.Println(fmt.Sprintf("Version: %#v", idpbuilderInfo{
 			idpbuilderVersion,
+			goVersion,
 			goOs,
 			goArch,
 			gitCommit,
@@ -63,8 +66,9 @@ func version(cmd *cobra.Command, args []string) error {
 		}
 		cmd.Println(yamlInfo)
 	case "":
-		cmd.Println(fmt.Sprintf("idpbuilder %s %s/%s",
+		cmd.Println(fmt.Sprintf("idpbuilder %s %s %s/%s",
 			idpbuilderVersion,
+			goVersion,
 			goOs,
 			goArch))
 	default:
@@ -77,6 +81,7 @@ func version(cmd *cobra.Command, args []string) error {
 func jsonInfo() (string, error) {
 	info := idpbuilderInfo{
 		IdpbuilderVersion: idpbuilderVersion,
+		GoVersion:         goVersion,
 		GoOs:              goOs,
 		GoArch:            goArch,
 		GitCommit:         gitCommit,
@@ -92,6 +97,7 @@ func jsonInfo() (string, error) {
 func yamlInfo() (string, error) {
 	info := idpbuilderInfo{
 		IdpbuilderVersion: idpbuilderVersion,
+		GoVersion:         goVersion,
 		GoOs:              goOs,
 		GoArch:            goArch,
 		GitCommit:         gitCommit,
