@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
 	"time"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -64,7 +65,7 @@ type fakeClient struct {
 	patchObj client.Object
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	s := obj.(*v1.Secret)
 	s.Data = map[string][]byte{
 		giteaAdminUsernameKey: []byte("abc"),
@@ -86,7 +87,7 @@ type fakeStatusWriter struct {
 	client.StatusWriter
 }
 
-func (f fakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+func (f fakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 	return nil
 }
 
