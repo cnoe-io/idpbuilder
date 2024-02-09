@@ -3,15 +3,16 @@ package localbuild
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	argov1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
+	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/resources/localbuild"
@@ -78,15 +79,16 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *LocalbuildReconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) {
 	log := log.FromContext(ctx)
 
-	resource.Status.ObservedGeneration = resource.GetGeneration()
-	if err := r.Status().Update(ctx, resource); err != nil {
-		log.Error(err, "Failed to update resource status after reconcile")
-	}
-
 	log.Info("Checking if we should shutdown")
 	if r.shouldShutdown {
 		log.Info("Shutting Down")
 		r.CancelFunc()
+		return
+	}
+
+	resource.Status.ObservedGeneration = resource.GetGeneration()
+	if err := r.Status().Update(ctx, resource); err != nil {
+		log.Error(err, "Failed to update resource status after reconcile")
 	}
 }
 
@@ -205,6 +207,8 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 }
 
 func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1alpha1.Localbuild) (bool, error) {
+	logger := log.FromContext(ctx)
+
 	if !r.ExitOnSync {
 		return false, nil
 	}
@@ -230,7 +234,8 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 		observedTime, gErr := util.GetLastObservedSyncTimeAnnotationValue(repo.ObjectMeta.Annotations)
 		if gErr != nil {
-			return false, gErr
+			logger.Info(gErr.Error())
+			return false, nil
 		}
 
 		if !repo.Status.Synced || cliStartTime != observedTime {
@@ -253,7 +258,8 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 		observedTime, gErr := util.GetLastObservedSyncTimeAnnotationValue(pkg.ObjectMeta.Annotations)
 		if gErr != nil {
-			return false, gErr
+			logger.Info(gErr.Error())
+			return false, nil
 		}
 
 		if !pkg.Status.Synced || cliStartTime != observedTime {
