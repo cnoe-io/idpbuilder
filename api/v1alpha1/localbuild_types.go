@@ -28,15 +28,7 @@ type EmbeddedArgoApplicationsPackageConfigSpec struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
-// GitConfigSpec controls what git server to use for the idpbuilder.
-// Supported values are either 'gitea' or 'gitserver'.
-type GitConfigSpec struct {
-	// +kubebuilder:validation:Enum:=gitea;gitserver
-	Type string `json:"type,omitempty"`
-}
-
 type PackageConfigsSpec struct {
-	GitConfig                GitConfigSpec                             `json:"gitConfig,omitempty"`
 	Argo                     ArgoPackageConfigSpec                     `json:"argoPackageConfigs,omitempty"`
 	EmbeddedArgoApplications EmbeddedArgoApplicationsPackageConfigSpec `json:"embeddedArgoApplicationsPackageConfigs,omitempty"`
 	CustomPackageDirs        []string                                  `json:"customPackageDirs,omitempty"`
