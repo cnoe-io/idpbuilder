@@ -21,7 +21,7 @@ var VersionCmd = &cobra.Command{
 }
 
 func init() {
-	VersionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", "Print the idpbuilder version information in a given output format.")
+	VersionCmd.Flags().StringVarP(&outputFormat, "output", "o", "", `Print the idpbuilder version information in a given output format. Accepts "wide", "json", and "yaml".`)
 }
 
 var (
