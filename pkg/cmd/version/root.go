@@ -72,7 +72,7 @@ func version(cmd *cobra.Command, args []string) error {
 			goOs,
 			goArch))
 	default:
-		cmd.PrintErrln(fmt.Errorf("Unknown output format."))
+		return fmt.Errorf("invalid output format: %s", outputFormat)
 	}
 
 	return nil
