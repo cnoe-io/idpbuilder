@@ -10,10 +10,11 @@ Ensure you have the following tools installed on your computer.
 
 - [idpbuilder](https://github.com/cnoe-io/idpbuilder/releases/latest): version `0.0.2` or later
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl): version `1.27` or later
+- Your computer should have at least 6 GB RAM allocated to Docker. If you are on Docker Desktop, see [this guide](https://docs.docker.com/desktop/settings/mac/).
 
 **Optional**
 
-- AWS credentials: if you want to create AWS resources
+- AWS credentials: Access Key and secret Key. If you want to create AWS resources in one of examples below.
 
 ## Installation
 
@@ -34,6 +35,17 @@ This will take ~6 minutes for everything to come up. To track the progress, you 
 5. **Keycloak** as the identity provider for applications.
 6. **Spark Operator** to demonstrate an example Spark workload through Backstage.
 
+If you don't want to install a package above, you can remove the ArgoCD Application file corresponding to the package you want to remove.
+For example, if you want to remove Spark Operator, you can delete [this file](./spark-operator.yaml).
+
+```bash
+# remove spark operator from this installation.
+rm examples/ref-implementation/spark-operator.yaml
+```
+
+The only package that cannot be removed this way is Keycloak because other packages rely on it. 
+
+
 #### Accessing UIs
 - Argo CD: https://argocd.cnoe.localtest.me:8443
 - Argo Workflows: https://argo.cnoe.localtest.me:8443
@@ -53,7 +65,17 @@ kubectl -n keycloak get secret keycloak-config \
   -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
 ```
 
-Use the username **`user1`** and the password value given by `USER_PASSWORD` field to login to the backstage instance. 
+Use the username **`user1`** and the password value given by `USER_PASSWORD` field to login to the backstage instance.
+`user1` is an admin user who has access to everything in the cluster, while `user2` is a regular user with limited access.
+Both users use the same password retrieved above.
+
+If you want to create a new user or change existing users:
+
+1. Go to the [Keycloak UI](https://keycloak.cnoe.localtest.me:8443/admin/master/console/). 
+Login with the username `cnoe-admin`. Password is the `KEYCLOAK_ADMIN_PASSWORD` field from the command above. 
+2. Select `cnoe` from the realms drop down menu.
+3. Select users tab.
+
 
 ## Basic Deployment
 
@@ -104,7 +126,7 @@ In the entity page, there is a card for Argo Workflows, and it should say runnin
 You can click the name in the card to go to the Argo Workflows UI to view more details about this workflow run. 
 When prompted to log in, click the login button under single sign on. Argo Workflows is configured to use SSO with Keycloak allowing you to login with the same credentials as Backstage login.
 
-Note that Argo Workflows are not usually not deployed this way. This is just an example to show you how you can integrate workflows, backstage, and spark.
+Note that Argo Workflows are not usually deployed this way. This is just an example to show you how you can integrate workflows, backstage, and spark.
 
 Back in the entity page, you can view more details about Spark jobs by navigating to the Spark tab.
 
