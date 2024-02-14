@@ -13,9 +13,9 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.idpbuilderVersion=$(shell git describe --always --tags --dirty --broken)
-      - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.gitCommit=$(shell git rev-parse HEAD)
-      - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+      - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.idpbuilderVersion={{ .Version }}
+      - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.gitCommit={{ .FullCommit }}
+      - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.buildDate={{ .CommitDate }}
     binary: idpbuilder
     ignore:
       - goos: linux
