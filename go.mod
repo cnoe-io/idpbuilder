@@ -10,7 +10,7 @@ require (
 	github.com/docker/docker v24.0.6+incompatible
 	github.com/go-git/go-git/v5 v5.10.0
 	github.com/google/go-cmp v0.6.0
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	k8s.io/api v0.29.1
 	k8s.io/apiextensions-apiserver v0.24.2
