@@ -46,7 +46,6 @@ See the [Architecture](#Architecture) section for more information on further in
 Once idpbuilder finishes provisioning cluster and packages, you can access GUIs by going to the following addresses in your browser.
 
 * ArgoCD: https://argocd.cnoe.localtest.me:8443/
-* Backstage: https://backstage.cnoe.localtest.me:8443/
 * Gitea: https://gitea.cnoe.localtest.me:8443/
 
 You can obtain credentials for these packages by running the following commands:
