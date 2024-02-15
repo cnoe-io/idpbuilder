@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: backstage
+  name: backstage-templates
   namespace: argocd
   labels:
     env: dev
@@ -11,6 +11,8 @@ spec:
     repoURL: cnoe://backstage-templates/entities
     targetRevision: HEAD
     path: "."
+    directory:
+      exclude: 'catalog-info.yaml'
   destination:
     server: "https://kubernetes.default.svc"
     namespace: backstage
@@ -19,3 +21,4 @@ spec:
       - CreateNamespace=true
     automated:
       selfHeal: true
+
