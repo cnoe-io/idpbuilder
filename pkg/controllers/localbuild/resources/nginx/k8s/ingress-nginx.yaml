@@ -323,6 +323,7 @@ subjects:
 apiVersion: v1
 data:
   allow-snippet-annotations: "true"
+  proxy-buffer-size: 32k
 kind: ConfigMap
 metadata:
   labels:

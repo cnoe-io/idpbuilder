@@ -6,6 +6,7 @@ resources:
 patches:
   - path: deployment-ingress-nginx.yaml
   - path: service-ingress-nginx.yaml
+  - path: cm-ingress-nginx-controller.yaml
   - target:
       group: ""
       version: v1
