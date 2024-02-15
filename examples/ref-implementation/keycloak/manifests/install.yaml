@@ -45,7 +45,7 @@ spec:
           envFrom:
             - secretRef:
                 name: keycloak-config
-          image: quay.io/keycloak/keycloak:22.0.0
+          image: quay.io/keycloak/keycloak:22.0.3
           name: keycloak
           ports:
             - containerPort: 8080
