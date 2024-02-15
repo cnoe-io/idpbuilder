@@ -20,13 +20,16 @@ sudo mv linux-${TARGETARCH}/helm /usr/local/bin && rm helm3.tar.gz && rm -R linu
 curl -L -o kubebuilder "https://go.kubebuilder.io/dl/latest/${TARGETOS}/${TARGETARCH}" && chmod +x kubebuilder
 sudo mv kubebuilder /usr/local/bin/
 
+# Install Github CLI
+type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+&& sudo apt update \
+&& sudo apt install gh -y
 
-# install protocol buffer compiler (protoc)
-sudo apt update
-sudo apt install -y protobuf-compiler
-
+# Setup kubectl and k autocompletion
 sudo apt install bash-completion
-
 printf "
 source <(kubectl completion bash)
 alias k=kubectl
