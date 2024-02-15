@@ -1,0 +1,26 @@
+{
+  "image": "mcr.microsoft.com/vscode/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "1.21"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/python:1": {}
+  },
+  "forwardPorts": [
+    8443
+  ],
+  "hostRequirements": {
+    "cpus": 8
+  },
+  "postCreateCommand": ".devcontainer/postCreateCommand.sh",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/go/src/github.com/cnoe-io/idpbuilder,type=bind",
+  "workspaceFolder": "/home/vscode/go/src/github.com/cnoe-io/idpbuilder",
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/go/bin",
+    "GOPATH": "/home/vscode/go"
+  }
+}
