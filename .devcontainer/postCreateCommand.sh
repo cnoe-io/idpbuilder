@@ -27,6 +27,10 @@ curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo 
 && sudo apt update \
 && sudo apt install gh -y
 
+# Make sure go path is owned by vscode
+sudo chown -R vscode:vscode /home/vscode/go
+
+
 # Setup kubectl and k autocompletion
 sudo apt install bash-completion
 printf "
