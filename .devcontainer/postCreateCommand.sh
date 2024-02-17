@@ -48,3 +48,10 @@ fi
 
 # Make sure go path is owned by vscode
 sudo chown -R vscode:vscode /home/vscode/go
+
+# Compile idpbuilder
+echo "Compiling idpbuilder"
+export PATH=$PATH:/usr/local/go/bin
+make build
+# Add idpbuilder to PATH
+echo "export PATH=\$PATH:/home/vscode/go/src/github.com/cnoe-io/idpbuilder" >> $HOME/.bashrc
