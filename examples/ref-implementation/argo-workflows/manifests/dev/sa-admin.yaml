@@ -1,0 +1,32 @@
+# Used by users in the admin group
+# TODO Need to tighten up permissions.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin
+  namespace: argo
+  annotations:
+    workflows.argoproj.io/rbac-rule: "'admin' in groups"
+    workflows.argoproj.io/rbac-rule-precedence: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: admin
+    namespace: argo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: admin.service-account-token
+  annotations:
+    kubernetes.io/service-account.name: admin
+  namespace: argo
+type: kubernetes.io/service-account-token
