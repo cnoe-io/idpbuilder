@@ -86,7 +86,7 @@ Click on the `Create...` button on the left, then select the `Create a Basic Dep
 ![img.png](images/backstage-templates.png)
 
 
-In the next screen, type `demo` for the name field, then click create. 
+In the next screen, type `demo` for the name field, then click Review, then Create. 
 Once steps run, click the Open In Catalog button to go to the entity page. 
 
 ![img.png](images/basic-template-flow.png)
