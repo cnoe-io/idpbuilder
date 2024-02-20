@@ -18,7 +18,7 @@
     "8443": {
       "label": "CNOE",
       "onAutoForward": "notify",
-      "protocol": "http"
+      "protocol": ""
     }
   }
 }
