@@ -352,8 +352,8 @@ spec:
   ipFamilyPolicy: SingleStack
   ports:
   - appProtocol: https
-    name: https-8443
-    port: 8443
+    name: https-9443
+    port: 9443
     protocol: TCP
     targetPort: https
   - appProtocol: http
@@ -434,7 +434,7 @@ spec:
         - --controller-class=k8s.io/ingress-nginx
         - --ingress-class=nginx
         - --configmap=$(POD_NAMESPACE)/ingress-nginx-controller
-        - --validating-webhook=:8443
+        - --validating-webhook=:9443
         - --validating-webhook-certificate=/usr/local/certificates/cert
         - --validating-webhook-key=/usr/local/certificates/key
         - --watch-ingress-without-class=true
@@ -478,7 +478,7 @@ spec:
           hostPort: 443
           name: https
           protocol: TCP
-        - containerPort: 8443
+        - containerPort: 9443
           name: webhook
           protocol: TCP
         readinessProbe:

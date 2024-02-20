@@ -106,8 +106,8 @@ data:
 
     integrations:
       gitea:
-        - baseUrl: https://gitea.cnoe.localtest.me:8443
-          host: gitea.cnoe.localtest.me:8443
+        - baseUrl: https://gitea.cnoe.localtest.me:9443
+          host: gitea.cnoe.localtest.me:9443
           username: ${GITEA_USERNAME}
           password: ${GITEA_PASSWORD}
         - baseUrl: https://gitea.cnoe.localtest.me
@@ -166,7 +166,7 @@ data:
       locations:
         # Examples from a public GitHub repository.
         - type: url
-          target: https://gitea.cnoe.localtest.me:8443/giteaAdmin/idpbuilder-localdev-backstage-entities/src/branch/main/catalog-info.yaml
+          target: https://gitea.cnoe.localtest.me:9443/giteaAdmin/idpbuilder-localdev-backstage-entities/src/branch/main/catalog-info.yaml
         ## Uncomment these lines to add an example org
         # - type: url
         #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml
@@ -184,7 +184,7 @@ data:
         - type: 'config'
           instances:
             - name: in-cluster
-              url: https://argocd.cnoe.localtest.me:8443
+              url: https://argocd.cnoe.localtest.me:9443
               username: admin
               password: ${ARGOCD_ADMIN_PASSWORD}
     argoWorkflows:
@@ -362,14 +362,14 @@ spec:
     template:
       engineVersion: v2
       data:
-        BACKSTAGE_FRONTEND_URL: https://backstage.cnoe.localtest.me:8443
+        BACKSTAGE_FRONTEND_URL: https://backstage.cnoe.localtest.me:9443
         POSTGRES_HOST: postgresql.backstage.svc.cluster.local
         POSTGRES_PORT: '5432'
         POSTGRES_DB: backstage
         POSTGRES_USER: backstage
         POSTGRES_PASSWORD: "{{.POSTGRES_PASSWORD}}"
-        ARGO_WORKFLOWS_URL: https://argo.cnoe.localtest.me:8443
-        KEYCLOAK_NAME_METADATA: https://keycloak.cnoe.localtest.me:8443/realms/cnoe/.well-known/openid-configuration
+        ARGO_WORKFLOWS_URL: https://argo.cnoe.localtest.me:9443
+        KEYCLOAK_NAME_METADATA: https://keycloak.cnoe.localtest.me:9443/realms/cnoe/.well-known/openid-configuration
         KEYCLOAK_CLIENT_SECRET: "{{.BACKSTAGE_CLIENT_SECRET}}"
         ARGOCD_AUTH_TOKEN: "argocd.token={{.ARGOCD_SESSION_TOKEN}}"
         ARGO_CD_URL: 'https://argocd-server.argocd.svc.cluster.local/api/v1/'

@@ -15,7 +15,7 @@ spec:
         name:
           type: string
           description: name of this application
-        
+
   steps:
     - id: template
       name: Generating component
@@ -31,7 +31,7 @@ spec:
       input:
         description: This is an example app
         # Hard coded value for this demo purposes only.
-        repoUrl: gitea.cnoe.localtest.me:8443?repo=${{parameters.name}}
+        repoUrl: gitea.cnoe.localtest.me:9443?repo=${{parameters.name}}
         defaultBranch: main
     - id: create-argocd-app
       name: Create ArgoCD App

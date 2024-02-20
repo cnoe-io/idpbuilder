@@ -28,7 +28,7 @@ stringData:
     ENABLE_PPROF=false
     HTTP_PORT=3000
     PROTOCOL=http
-    ROOT_URL=https://gitea.cnoe.localtest.me:8443
+    ROOT_URL=https://gitea.cnoe.localtest.me:9443
     SSH_DOMAIN=gitea.cnoe.localtest.me
     SSH_LISTEN_PORT=2222
     SSH_PORT=22
@@ -69,7 +69,7 @@ stringData:
         # skip empty line
         return
       fi
-      
+
       # 'xargs echo -n' trims all leading/trailing whitespaces and a trailing new line
       local setting="$(awk -F '=' '{print $1}' <<< "${line}" | xargs echo -n)"
 
@@ -178,10 +178,10 @@ stringData:
 
       env2ini::log "...Initial secrets generated\n"
     }
-    
+
     # save existing envs prior to script execution. Necessary to keep order of preexisting and custom envs
     env | (grep GITEA || [[ $? == 1 ]]) > /tmp/existing-envs
-    
+
     # MUST BE CALLED BEFORE OTHER CONFIGURATION
     env2ini::generate_initial_secrets
 
@@ -243,7 +243,7 @@ stringData:
     mkdir -p "${GITEA_TEMP}"
     chmod ug+rwx "${GITEA_TEMP}"
 
-    
+
 
   configure_gitea.sh: |-
     #!/usr/bin/env bash
@@ -308,7 +308,7 @@ spec:
   ports:
   - name: http
     port: 3000
-    targetPort: 
+    targetPort:
   selector:
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
@@ -379,7 +379,7 @@ spec:
         version: "1.20.5"
         app.kubernetes.io/managed-by: Helm
     spec:
-      
+
       securityContext:
         fsGroup: 1000
       initContainers:
@@ -403,7 +403,7 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /data
-            
+
           securityContext:
             {}
           resources:
@@ -433,7 +433,7 @@ spec:
               mountPath: /data
             - name: inline-config-sources
               mountPath: /env-to-ini-mounts/inlines/
-            
+
           securityContext:
             {}
           resources:
@@ -475,7 +475,7 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /data
-            
+
           resources:
             limits: {}
             requests:
@@ -534,7 +534,7 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: /data
-            
+
       volumes:
         - name: init
           secret:

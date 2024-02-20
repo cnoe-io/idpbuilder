@@ -1,8 +1,9 @@
 package kind
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetConfig(t *testing.T) {
@@ -31,7 +32,7 @@ nodes:
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 443
-    hostPort: 8443
+    hostPort: 9443
     protocol: TCP
   `
 	assert.Equal(t, expectConfig, string(cfg))
@@ -63,7 +64,7 @@ nodes:
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 443
-    hostPort: 8443
+    hostPort: 9443
     protocol: TCP
   - containerPort: 32222
     hostPort: 22

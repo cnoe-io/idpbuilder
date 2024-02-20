@@ -1,4 +1,4 @@
-# Reference implementation 
+# Reference implementation
 
 This example creates a local version of the CNOE reference implementation.
 
@@ -24,7 +24,7 @@ Run the following command from the root of this repository.
 idpbuilder create --package-dir examples/ref-implementation
 ```
 
-This will take ~6 minutes for everything to come up. To track the progress, you can go to the [ArgoCD UI](https://argocd.cnoe.localtest.me:8443/applications).
+This will take ~6 minutes for everything to come up. To track the progress, you can go to the [ArgoCD UI](https://argocd.cnoe.localtest.me:9443/applications).
 
 ### What was installed?
 
@@ -43,21 +43,21 @@ For example, if you want to remove Spark Operator, you can delete [this file](./
 rm examples/ref-implementation/spark-operator.yaml
 ```
 
-The only package that cannot be removed this way is Keycloak because other packages rely on it. 
+The only package that cannot be removed this way is Keycloak because other packages rely on it.
 
 
 #### Accessing UIs
-- Argo CD: https://argocd.cnoe.localtest.me:8443
-- Argo Workflows: https://argo.cnoe.localtest.me:8443
-- Backstage: https://backstage.cnoe.localtest.me:8443
-- Gitea: https://gitea.cnoe.localtest.me:8443
-- Keycloak: https://keycloak.cnoe.localtest.me:8443/admin/master/console/
+- Argo CD: https://argocd.cnoe.localtest.me:9443
+- Argo Workflows: https://argo.cnoe.localtest.me:9443
+- Backstage: https://backstage.cnoe.localtest.me:9443
+- Gitea: https://gitea.cnoe.localtest.me:9443
+- Keycloak: https://keycloak.cnoe.localtest.me:9443/admin/master/console/
 
 # Using it
 
-For this example, we will walk through a few demonstrations. Once applications are ready, go to the [backstage URL](https://backstage.cnoe.localtest.me:8443).
+For this example, we will walk through a few demonstrations. Once applications are ready, go to the [backstage URL](https://backstage.cnoe.localtest.me:9443).
 
-Click on the Sign-In button, you will be asked to log into the Keycloak instance. There are two users set up in this 
+Click on the Sign-In button, you will be asked to log into the Keycloak instance. There are two users set up in this
 configuration, and their password can be retrieved with the following command:
 
 ```bash
@@ -71,8 +71,8 @@ Both users use the same password retrieved above.
 
 If you want to create a new user or change existing users:
 
-1. Go to the [Keycloak UI](https://keycloak.cnoe.localtest.me:8443/admin/master/console/). 
-Login with the username `cnoe-admin`. Password is the `KEYCLOAK_ADMIN_PASSWORD` field from the command above. 
+1. Go to the [Keycloak UI](https://keycloak.cnoe.localtest.me:9443/admin/master/console/).
+Login with the username `cnoe-admin`. Password is the `KEYCLOAK_ADMIN_PASSWORD` field from the command above.
 2. Select `cnoe` from the realms drop down menu.
 3. Select users tab.
 
@@ -86,21 +86,21 @@ Click on the `Create...` button on the left, then select the `Create a Basic Dep
 ![img.png](images/backstage-templates.png)
 
 
-In the next screen, type `demo` for the name field, then click Review, then Create. 
-Once steps run, click the Open In Catalog button to go to the entity page. 
+In the next screen, type `demo` for the name field, then click Review, then Create.
+Once steps run, click the Open In Catalog button to go to the entity page.
 
 ![img.png](images/basic-template-flow.png)
 
-In the demo entity page, you will notice a ArgoCD overview card associated with this entity. 
+In the demo entity page, you will notice a ArgoCD overview card associated with this entity.
 You can click on the ArgoCD Application name to see more details.
 
 ![img.png](images/demo-entity.png)
 
 ### What just happened?
 
-1. Backstage created [a git repository](https://gitea.cnoe.localtest.me:8443/giteaAdmin/demo), then pushed templated contents to it.
-2. Backstage created [an ArgoCD Application](https://argocd.cnoe.localtest.me:8443/applications/argocd/demo?) and pointed it to the git repository.
-3. Backstage registered the application as [a component](https://gitea.cnoe.localtest.me:8443/giteaAdmin/demo/src/branch/main/catalog-info.yaml) in Backstage.
+1. Backstage created [a git repository](https://gitea.cnoe.localtest.me:9443/giteaAdmin/demo), then pushed templated contents to it.
+2. Backstage created [an ArgoCD Application](https://argocd.cnoe.localtest.me:9443/applications/argocd/demo?) and pointed it to the git repository.
+3. Backstage registered the application as [a component](https://gitea.cnoe.localtest.me:9443/giteaAdmin/demo/src/branch/main/catalog-info.yaml) in Backstage.
 4. ArgoCD deployed the manifests stored in the repo to the cluster.
 5. Backstage retrieved application health from ArgoCD API, then displayed it.
 
@@ -122,8 +122,8 @@ Click on the Open In Catalog button to go to the entity page.
 
 Deployment processes are the same as the first example. Instead of deploying a pod, we deployed a workflow to create a Spark job.
 
-In the entity page, there is a card for Argo Workflows, and it should say running or succeeded. 
-You can click the name in the card to go to the Argo Workflows UI to view more details about this workflow run. 
+In the entity page, there is a card for Argo Workflows, and it should say running or succeeded.
+You can click the name in the card to go to the Argo Workflows UI to view more details about this workflow run.
 When prompted to log in, click the login button under single sign on. Argo Workflows is configured to use SSO with Keycloak allowing you to login with the same credentials as Backstage login.
 
 Note that Argo Workflows are not usually deployed this way. This is just an example to show you how you can integrate workflows, backstage, and spark.
@@ -137,20 +137,20 @@ In this example, we will create an application with a S3 Bucket.
 
 Choose a template named `App with S3 bucket`, type `demo3` as the name, then choose a region to create this bucket in.
 
-Once you click the create button, you will have a very similar setup as the basic example. 
+Once you click the create button, you will have a very similar setup as the basic example.
 The only difference is we now have a resource for a S3 Bucket which is managed by Crossplane.
 
 Note that Bucket is **not** created because Crossplane doesn't have necessary credentials to do so.
 If you'd like it to actually create a bucket, update [the credentials secret file](crossplane-providers/provider-secret.yaml), then run `idpbuilder create --package-dir examples/ref-implementation`.
 
-In this example, we used Crossplane to provision resources, but you can use other cloud resource management tools such as Terraform instead. 
-Regardless of your tool choice, concepts are the same. We use Backstage as the templating mechanism and UI for users, then use Kubernetes API with GitOps to deploy resources. 
+In this example, we used Crossplane to provision resources, but you can use other cloud resource management tools such as Terraform instead.
+Regardless of your tool choice, concepts are the same. We use Backstage as the templating mechanism and UI for users, then use Kubernetes API with GitOps to deploy resources.
 
 ## Notes
 
 - In these examples, we have used the pattern of creating a new repository for every app, then having ArgoCD deploy it.
-This is done for convenience and demonstration purposes only. There are alternative actions that you can use. 
+This is done for convenience and demonstration purposes only. There are alternative actions that you can use.
 For example, you can create a PR to an existing repository, create a repository but not deploy them yet, etc.
 
-- If Backstage's pipelining and templating mechanisms is too simple, you can use more advanced workflow engines like Tekton or Argo Workflows. 
-  You can invoke them in Backstage templates, then track progress similar to how it was described above.  
+- If Backstage's pipelining and templating mechanisms is too simple, you can use more advanced workflow engines like Tekton or Argo Workflows.
+  You can invoke them in Backstage templates, then track progress similar to how it was described above.

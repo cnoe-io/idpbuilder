@@ -9,7 +9,7 @@ spec:
   ipFamilyPolicy: SingleStack
   ports:
     - appProtocol: https
-      name: https-8443
-      port: 8443
+      name: https-9443
+      port: 9443
       protocol: TCP
       targetPort: https

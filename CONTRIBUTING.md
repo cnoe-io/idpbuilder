@@ -1,6 +1,6 @@
 # Contributing guide
 
-Welcome to the project, and thanks for considering contributing to this project. 
+Welcome to the project, and thanks for considering contributing to this project.
 
 If you have any questions or need clarifications on topics covered here, please feel free to reach out to us on the [#cnoe-interest](https://cloud-native.slack.com/archives/C05TN9WFN5S) channel on CNCF Slack.
 
@@ -30,7 +30,7 @@ Ensure your docker daemon is running and available. e.g. `docker images` command
     /home/ubuntu/idpbuilder/bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
     go fmt ./...
     go vet ./...
-    go build -o idpbuilder main.go  
+    go build -o idpbuilder main.go
     ```
 3. Once build finishes, you should have an executable file called `idpbuilder` in the root of the repository.
 4. The file is ready to use. Execute this command to confirm: `./idpbuilder --help`
@@ -47,24 +47,24 @@ This command creates a kind cluster, expose associated endpoints to your local m
 3. [Gitea](https://about.gitea.com/) resources.
 4. [Backstage](https://backstage.io/) resources.
 
-They are deployed as ArgoCD Applications with the Gitea repositories set as their sources. 
+They are deployed as ArgoCD Applications with the Gitea repositories set as their sources.
 
 UIs for Backstage, Gitea, and ArgoCD are accessible on the machine:
-* Gitea: https://gitea.cnoe.localtest.me:8443/explore/repos
-* Backstage: https://backstage.cnoe.localtest.me:8443/
-* ArgoCD: https://argocd.cnoe.localtest.me:8443/applications
+* Gitea: https://gitea.cnoe.localtest.me:9443/explore/repos
+* Backstage: https://backstage.cnoe.localtest.me:9443/
+* ArgoCD: https://argocd.cnoe.localtest.me:9443/applications
 
-ArgoCD username is `admin` and the password can be obtained with 
+ArgoCD username is `admin` and the password can be obtained with
 ```
 kubectl -n argocd get secret argocd-initial-admin-secret -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
 ```
 
-Gitea admin credentials can be obtained with 
+Gitea admin credentials can be obtained with
 ```
 kubectl get secrets -n gitea gitea-admin-secret -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
 ```
 
-All ArgoCD applications should be synced and healthy. You can check them in the UI or 
+All ArgoCD applications should be synced and healthy. You can check them in the UI or
 ```
 kubectl get application -n argocd
 ```

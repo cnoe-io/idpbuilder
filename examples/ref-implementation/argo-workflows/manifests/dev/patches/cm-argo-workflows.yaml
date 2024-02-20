@@ -6,15 +6,15 @@ metadata:
 data:
   config: |
     sso:
-      insecureSkipVerify: true 
-      issuer: https://keycloak.cnoe.localtest.me:8443/realms/cnoe
+      insecureSkipVerify: true
+      issuer: https://keycloak.cnoe.localtest.me:9443/realms/cnoe
       clientId:
         name: keycloak-oidc
         key: client-id
       clientSecret:
         name: keycloak-oidc
         key: secret-key
-      redirectUrl: https://argo.cnoe.localtest.me:8443/oauth2/callback
+      redirectUrl: https://argo.cnoe.localtest.me:9443/oauth2/callback
       rbac:
         enabled: true
       scopes:

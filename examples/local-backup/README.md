@@ -32,7 +32,7 @@ Once you've made the change, run this command from the root of this repository.
 
 ```bash
 # example: mkdir /Users/my-name/backup
-mkdir <path/to/directory> 
+mkdir <path/to/directory>
 
 idpbuilder create --kind-config examples/local-backup/kind.yaml --package-dir examples/local-backup/
 ```
@@ -41,7 +41,7 @@ This command:
 1. Creates a standard idpbuilder installation, a kind cluster and core packages (ArgoCD, Gitea, and Ingress-Nginx).
 2. Creates two custom packages: [MinIO](./minio.yaml) and [Velero](./velero.yaml).
 
-Once the command exits, you can check the status of installation by going to https://argocd.cnoe.localtest.me:8443/applications.
+Once the command exits, you can check the status of installation by going to https://argocd.cnoe.localtest.me:9443/applications.
 
 You can also check the status with the following command:
 
@@ -53,7 +53,7 @@ kubectl get application -n argocd
 
 Once MinIO and Velero ArgoCD applications are ready, you can start playing with it.
 
-MinIO console is accessible at [https://minio.cnoe.localtest.me:8443/login](https://minio.cnoe.localtest.me:8443/login)
+MinIO console is accessible at [https://minio.cnoe.localtest.me:9443/login](https://minio.cnoe.localtest.me:9443/login)
 
 You can log in to the console by obtaining credentials:
 

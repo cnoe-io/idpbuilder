@@ -25,7 +25,7 @@ type CustomPackageList struct {
 type CustomPackageSpec struct {
 	ArgoCD ArgoCDPackageSpec `json:"argoCD,omitempty"`
 	// GitServerURL specifies the base URL for the git server for API calls.
-	// for example, https://gitea.cnoe.localtest.me:8443
+	// for example, https://gitea.cnoe.localtest.me:9443
 	GitServerURL           string          `json:"gitServerURL"`
 	GitServerAuthSecretRef SecretReference `json:"gitServerAuthSecretRef"`
 	// InternalGitServeURL specifies the base URL for the git server accessible within the cluster.

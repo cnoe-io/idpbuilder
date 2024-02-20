@@ -85,7 +85,7 @@ func create(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Print("\n\n########################### Finished Creating IDP Successfully! ############################\n\n\n")
-	fmt.Print("Can Access ArgoCD at https://argocd.cnoe.localtest.me:8443/\nUsername: admin\n")
+	fmt.Print("Can Access ArgoCD at https://argocd.cnoe.localtest.me:9443/\nUsername: admin\n")
 	fmt.Print(`Password can be retrieved by running: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d`, "\n")
 
 	return nil
