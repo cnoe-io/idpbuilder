@@ -12,5 +12,13 @@
   "remoteEnv": {
     "PATH": "${containerEnv:PATH}:/home/vscode/go/bin",
     "GOPATH": "/home/vscode/go"
+  },
+  "forwardPorts": [8443],
+  "portsAttributes": {
+    "8443": {
+      "label": "CNOE",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    }
   }
 }
