@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/create"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/delete"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/list"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/version"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +19,8 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(create.CreateCmd)
+	rootCmd.AddCommand(delete.DeleteCmd)
+	rootCmd.AddCommand(list.ListCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 }
 

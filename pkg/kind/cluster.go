@@ -118,7 +118,6 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	}
 	if clusterExitsts {
 		if recreate {
-			fmt.Printf("Existing cluster %s found. Deleting.\n", c.name)
 			c.provider.Delete(c.name, "")
 		} else {
 			fmt.Printf("Cluster %s already exists\n", c.name)
