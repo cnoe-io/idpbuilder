@@ -37,6 +37,7 @@ type LocalbuildReconciler struct {
 	CancelFunc     context.CancelFunc
 	ExitOnSync     bool
 	shouldShutdown bool
+	Config         util.TemplateConfig
 }
 
 type subReconciler func(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error)
@@ -399,14 +400,14 @@ func getCustomPackageName(fileName, appName string) string {
 	return fmt.Sprintf("%s-%s", strings.ToLower(s[0]), appName)
 }
 
-func GetEmbeddedRawInstallResources(name string) ([][]byte, error) {
+func GetEmbeddedRawInstallResources(name string, template interface{}) ([][]byte, error) {
 	switch name {
 	case "argocd":
-		return RawArgocdInstallResources()
+		return RawArgocdInstallResources(template)
 	case "gitea":
-		return RawGiteaInstallResources()
+		return RawGiteaInstallResources(template)
 	case "nginx":
-		return RawNginxInstallResources()
+		return RawNginxInstallResources(template)
 	default:
 		return nil, fmt.Errorf("unsupported embedded app name %s", name)
 	}

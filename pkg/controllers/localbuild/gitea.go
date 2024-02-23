@@ -3,6 +3,7 @@ package localbuild
 import (
 	"context"
 	"embed"
+	"fmt"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
@@ -15,7 +16,7 @@ const (
 	giteaNamespace   = "gitea"
 	giteaAdminSecret = "gitea-admin-secret"
 	// this is the URL accessible outside cluster. resolves to localhost
-	giteaIngressURL = "https://gitea.cnoe.localtest.me:8443"
+	giteaIngressURL = "https://gitea.cnoe.localtest.me:%s"
 	// this is the URL accessible within cluster for ArgoCD to fetch resources.
 	// resolves to cluster ip
 	giteaSvcURL = "http://my-gitea-http.gitea.svc.cluster.local:3000"
@@ -24,8 +25,8 @@ const (
 //go:embed resources/gitea/k8s/*
 var installGiteaFS embed.FS
 
-func RawGiteaInstallResources() ([][]byte, error) {
-	return util.ConvertFSToBytes(installGiteaFS, "resources/gitea/k8s")
+func RawGiteaInstallResources(tmpl interface{}) ([][]byte, error) {
+	return util.ConvertFSToBytes(installGiteaFS, "resources/gitea/k8s", tmpl)
 }
 
 func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
@@ -43,10 +44,10 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		},
 	}
 
-	if result, err := gitea.Install(ctx, req, resource, r.Client, r.Scheme); err != nil {
+	if result, err := gitea.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
-	resource.Status.Gitea.ExternalURL = giteaIngressURL
+	resource.Status.Gitea.ExternalURL = fmt.Sprintf(giteaIngressURL, r.Config.Port)
 	resource.Status.Gitea.InternalURL = giteaSvcURL
 	resource.Status.Gitea.AdminUserSecretName = giteaAdminSecret
 	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace

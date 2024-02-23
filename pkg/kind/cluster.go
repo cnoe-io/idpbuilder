@@ -1,15 +1,14 @@
 package kind
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"fmt"
 	"io/fs"
 	"os"
 	"strings"
-	"text/template"
 
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"sigs.k8s.io/kind/pkg/cluster"
 )
 
@@ -20,6 +19,7 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
+	cfg               util.TemplateConfig
 }
 
 type PortMapping struct {
@@ -35,16 +35,15 @@ func SplitFunc(input, sep string) []string {
 }
 func (c *Cluster) getConfig() ([]byte, error) {
 
+	var rawConfigTempl []byte
+	var err error
+
 	if c.kindConfigPath != "" {
-		f, err := os.ReadFile(c.kindConfigPath)
-		if err != nil {
-			return []byte{}, err
-		} else {
-			return f, nil
-		}
+		rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
+	} else {
+		rawConfigTempl, err = fs.ReadFile(configFS, "resources/kind.yaml")
 	}
 
-	rawConfigTempl, err := fs.ReadFile(configFS, "resources/kind.yaml")
 	if err != nil {
 		return []byte{}, err
 	}
@@ -66,25 +65,23 @@ func (c *Cluster) getConfig() ([]byte, error) {
 		portMappingPairs = nil
 	}
 
-	template, err := template.New("kind.yaml").Parse(string(rawConfigTempl))
-	if err != nil {
-		return []byte{}, err
-	}
-
-	retBuff := bytes.Buffer{}
-	if err = template.Execute(&retBuff, struct {
+	var retBuff []byte
+	if retBuff, err = util.ApplyTemplate(rawConfigTempl, struct {
 		KubernetesVersion string
 		ExtraPortsMapping []PortMapping
+		Port              string
 	}{
 		KubernetesVersion: c.kubeVersion,
 		ExtraPortsMapping: portMappingPairs,
+		Port:              c.cfg.Port,
 	}); err != nil {
 		return []byte{}, err
 	}
-	return retBuff.Bytes(), nil
+
+	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.TemplateConfig) (*Cluster, error) {
 	provider := cluster.NewProvider(cluster.ProviderWithDocker())
 
 	return &Cluster{
@@ -94,6 +91,7 @@ func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMap
 		kubeVersion:       kubeVersion,
 		kubeConfigPath:    kubeConfigPath,
 		extraPortsMapping: extraPortsMapping,
+		cfg:               cfg,
 	}, nil
 }
 

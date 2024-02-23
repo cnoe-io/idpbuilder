@@ -1,12 +1,14 @@
 package kind
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetConfig(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "")
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.TemplateConfig{})
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}
@@ -38,7 +40,7 @@ nodes:
 }
 
 func TestExtraPortMappings(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222")
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.TemplateConfig{})
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}

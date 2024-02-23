@@ -17,8 +17,8 @@ const (
 	argocdNamespace string = "argocd"
 )
 
-func RawArgocdInstallResources() ([][]byte, error) {
-	return util.ConvertFSToBytes(installArgoFS, "resources/argo")
+func RawArgocdInstallResources(tmpl interface{}) ([][]byte, error) {
+	return util.ConvertFSToBytes(installArgoFS, "resources/argo", tmpl)
 }
 
 func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
@@ -47,7 +47,7 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		skipReadinessCheck: true,
 	}
 
-	if result, err := argocd.Install(ctx, req, resource, r.Client, r.Scheme); err != nil {
+	if result, err := argocd.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
 

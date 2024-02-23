@@ -15,5 +15,5 @@ nodes:
       containerPath: /backup
   extraPortMappings:
   - containerPort: 443
-    hostPort: 8443
+    hostPort: {{ .Port }}
     protocol: TCP

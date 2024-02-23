@@ -46,6 +46,7 @@ type RepositoryReconciler struct {
 	GiteaClientFunc GiteaClientFunc
 	Recorder        record.EventRecorder
 	Scheme          *runtime.Scheme
+	Config          util.TemplateConfig
 }
 
 func getRepositoryName(repo v1alpha1.GitRepository) string {
@@ -180,7 +181,7 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		return fmt.Errorf("cloning repo: %w", err)
 	}
 
-	err = writeRepoContents(repo, tempDir)
+	err = writeRepoContents(repo, tempDir, r.Config)
 	if err != nil {
 		return err
 	}
@@ -275,9 +276,9 @@ func (r *RepositoryReconciler) shouldProcess(repo v1alpha1.GitRepository) bool {
 	return true
 }
 
-func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string) error {
+func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, template interface{}) error {
 	if repo.Spec.Source.EmbeddedAppName != "" {
-		resources, err := localbuild.GetEmbeddedRawInstallResources(repo.Spec.Source.EmbeddedAppName)
+		resources, err := localbuild.GetEmbeddedRawInstallResources(repo.Spec.Source.EmbeddedAppName, template)
 		if err != nil {
 			return fmt.Errorf("getting embedded resource; %w", err)
 		}

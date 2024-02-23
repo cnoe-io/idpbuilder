@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitrepository"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
@@ -11,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, ctxCancel context.CancelFunc, exitOnSync bool) error {
+func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, ctxCancel context.CancelFunc, exitOnSync bool, cfg util.TemplateConfig) error {
 	log := log.FromContext(ctx)
 
 	// Run Localbuild controller
@@ -20,6 +21,7 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		Scheme:     mgr.GetScheme(),
 		ExitOnSync: exitOnSync,
 		CancelFunc: ctxCancel,
+		Config:     cfg,
 	}).SetupWithManager(mgr); err != nil {
 		log.Error(err, "unable to create localbuild controller")
 		return err
@@ -30,6 +32,7 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("gitrepository-controller"),
 		GiteaClientFunc: gitrepository.NewGiteaClient,
+		Config:          cfg,
 	}).SetupWithManager(mgr, nil)
 	if err != nil {
 		log.Error(err, "unable to create repo controller")

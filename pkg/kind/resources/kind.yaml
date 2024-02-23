@@ -13,7 +13,7 @@ nodes:
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 443
-    hostPort: 8443
+    hostPort: {{ .Port }}
     protocol: TCP
   {{ range .ExtraPortsMapping }}- containerPort: {{ .ContainerPort }}
     hostPort: {{ .HostPort }}

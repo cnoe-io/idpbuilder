@@ -39,12 +39,12 @@ type EmbeddedInstallation struct {
 	resourceFS embed.FS
 }
 
-func (e *EmbeddedInstallation) rawInstallResources() ([][]byte, error) {
-	return util.ConvertFSToBytes(e.resourceFS, e.resourcePath)
+func (e *EmbeddedInstallation) rawInstallResources(template interface{}) ([][]byte, error) {
+	return util.ConvertFSToBytes(e.resourceFS, e.resourcePath, template)
 }
 
-func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme) ([]client.Object, error) {
-	rawResources, err := e.rawInstallResources()
+func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme, template interface{}) ([]client.Object, error) {
+	rawResources, err := e.rawInstallResources(template)
 	if err != nil {
 		return nil, err
 	}
@@ -60,11 +60,11 @@ func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace 
 	}
 }
 
-func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme) (ctrl.Result, error) {
+func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.TemplateConfig) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	nsClient := client.NewNamespacedClient(cli, e.namespace)
-	installObjs, err := e.installResources(sc)
+	installObjs, err := e.installResources(sc, cfg)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -15,7 +15,7 @@ type FS interface {
 	ReadFile(name string) ([]byte, error)
 }
 
-func ConvertFSToBytes(inFS FS, name string) ([][]byte, error) {
+func ConvertFSToBytes(inFS FS, name string, tmpl interface{}) ([][]byte, error) {
 	d, err := inFS.ReadDir(name)
 	if err != nil {
 		return nil, err
@@ -28,8 +28,14 @@ func ConvertFSToBytes(inFS FS, name string) ([][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		rawResources = append(rawResources, rawResource)
+
+		if returnedRawResource, err := ApplyTemplate(rawResource, tmpl); err == nil {
+			rawResources = append(rawResources, returnedRawResource)
+		} else {
+			return nil, err
+		}
 	}
+
 	return rawResources, nil
 }
 
