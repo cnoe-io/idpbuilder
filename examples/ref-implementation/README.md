@@ -26,6 +26,8 @@ idpbuilder create --package-dir examples/ref-implementation
 
 This will take ~6 minutes for everything to come up. To track the progress, you can go to the [ArgoCD UI](https://argocd.cnoe.localtest.me:8443/applications).
 
+**_NOTE:_**: _This example assumes that you run the reference implementation with the default port configguration of 8443 for the idpBuilder. If you happen to configure a different port for the idpBuilder, the manifests in the reference example need to be updated and be configured with the new port. you can use the [replace-port.sh](replace-port.sh) to change the port as desired prior to applying the manifest as instructed in the command above._
+
 ### What was installed?
 
 1. **Argo Workflows** to enable workflow orchestrations.

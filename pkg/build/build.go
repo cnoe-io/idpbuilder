@@ -3,9 +3,12 @@ package build
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -14,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"time"
 )
 
 var (
@@ -23,6 +25,7 @@ var (
 
 type Build struct {
 	name              string
+	cfg               util.TemplateConfig
 	kindConfigPath    string
 	kubeConfigPath    string
 	kubeVersion       string
@@ -33,7 +36,7 @@ type Build struct {
 	CancelFunc        context.CancelFunc
 }
 
-func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
+func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.TemplateConfig, customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
 	return &Build{
 		name:              name,
 		kindConfigPath:    kindConfigPath,
@@ -43,13 +46,14 @@ func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMappi
 		customPackageDirs: customPackageDirs,
 		exitOnSync:        exitOnSync,
 		scheme:            scheme,
+		cfg:               cfg,
 		CancelFunc:        ctxCancel,
 	}
 }
 
 func (b *Build) ReconcileKindCluster(ctx context.Context, recreateCluster bool) error {
 	// Initialize Kind Cluster
-	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping)
+	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping, b.cfg)
 	if err != nil {
 		setupLog.Error(err, "Error Creating kind cluster")
 		return err
@@ -89,7 +93,7 @@ func (b *Build) GetKubeClient(kubeConfig *rest.Config) (client.Client, error) {
 
 func (b *Build) ReconcileCRDs(ctx context.Context, kubeClient client.Client) error {
 	// Ensure idpbuilder CRDs
-	if err := controllers.EnsureCRDs(ctx, b.scheme, kubeClient); err != nil {
+	if err := controllers.EnsureCRDs(ctx, b.scheme, kubeClient, b.cfg); err != nil {
 		setupLog.Error(err, "Error creating idpbuilder CRDs")
 		return err
 	}
@@ -97,7 +101,7 @@ func (b *Build) ReconcileCRDs(ctx context.Context, kubeClient client.Client) err
 }
 
 func (b *Build) RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error) error {
-	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync)
+	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync, b.cfg)
 }
 
 func (b *Build) Run(ctx context.Context, recreateCluster bool) error {

@@ -31,6 +31,7 @@ type Reconciler struct {
 	client.Client
 	Recorder record.EventRecorder
 	Scheme   *runtime.Scheme
+	Config   util.TemplateConfig
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -75,7 +76,12 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 		return ctrl.Result{}, fmt.Errorf("reading file %s: %w", resource.Spec.ArgoCD.ApplicationFile, err)
 	}
 
-	objs, err := k8s.ConvertYamlToObjects(r.Scheme, b)
+	var returnedRawResource []byte
+	if returnedRawResource, err = util.ApplyTemplate(b, r.Config); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	objs, err := k8s.ConvertYamlToObjects(r.Scheme, returnedRawResource)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("converting yaml to object %w", err)
 	}

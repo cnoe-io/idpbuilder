@@ -11,7 +11,7 @@ func TestGetRawInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	resources, err := e.rawInstallResources()
+	resources, err := e.rawInstallResources(struct{ Port string }{"8443"})
 	if err != nil {
 		t.Fatalf("GetRawInstallResources() error: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestGetK8sInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	objs, err := e.installResources(k8s.GetScheme())
+	objs, err := e.installResources(k8s.GetScheme(), struct{ Port string }{"8443"})
 	if err != nil {
 		t.Fatalf("GetK8sInstallResources() error: %v", err)
 	}

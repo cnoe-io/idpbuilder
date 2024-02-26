@@ -25,7 +25,7 @@ gitea:
       TYPE: level
     server:
       DOMAIN: gitea.cnoe.localtest.me
-      ROOT_URL: 'https://gitea.cnoe.localtest.me:8443'
+      ROOT_URL: 'https://gitea.cnoe.localtest.me:{{ .Port }}'
 
 service:
   ssh:
