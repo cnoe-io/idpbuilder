@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docker-registry-auth
+  namespace: docker-registry
+type: Opaque
+data:
+  htpasswd: aWRwYnVpbGRlcjokMnkkMDUkOGhTQUdWY2hCZ2hXb1A1Q0tULllkLkU5NGoxVXV2OHVJa3BWc2lxWW83OHBSTnJXUWUySkMKCg==
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: docker-registry-pod
+  namespace: docker-registry
+  labels:
+    app: registry
+spec:
+  containers:
+  - name: registry
+    image: registry:2.6.2
+    volumeMounts:
+    - name: registry-vol
+      mountPath: "/var/lib/registry"
+    env:
+    - name: REGISTRY_AUTH
+      value: "htpasswd"
+    - name: REGISTRY_AUTH_HTPASSWD_REALM
+      value: "Registry Realm"
+    - name: REGISTRY_AUTH_HTPASSWD_PATH
+      value: "/auth/htpasswd"
+  volumes:
+    - name: registry-vol
+      persistentVolumeClaim:
+        claimName: docker-registry-pvc
+    - name: auth-vol
+      secret:
+        secretName: docker-registry-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-registry
+  namespace: docker-registry
+spec:
+  selector:
+    app: registry
+  ports:
+  - port: 5000
+    targetPort: 5000
