@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: cnoe://docker-registry/manifests
+    repoURL: cnoe://manifests
     targetRevision: HEAD
     path: "."
   destination:
