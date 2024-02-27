@@ -227,9 +227,14 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 	for i := range repos.Items {
 		repo := repos.Items[i]
 
-		_, gErr := util.GetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations)
+		startTimeAnnotation, gErr := util.GetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations)
 		if gErr != nil {
 			// this means this repository resource is not managed by localbuild
+			continue
+		}
+
+		// this object is not part of this CLI invocation
+		if startTimeAnnotation != cliStartTime {
 			continue
 		}
 
@@ -252,8 +257,12 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 
 	for i := range pkgs.Items {
 		pkg := pkgs.Items[i]
-		_, gErr := util.GetCLIStartTimeAnnotationValue(pkg.ObjectMeta.Annotations)
+		startTimeAnnotation, gErr := util.GetCLIStartTimeAnnotationValue(pkg.ObjectMeta.Annotations)
 		if gErr != nil {
+			continue
+		}
+
+		if startTimeAnnotation != cliStartTime {
 			continue
 		}
 
