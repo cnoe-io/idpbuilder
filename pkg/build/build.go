@@ -113,13 +113,13 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	setupLog.Info("Getting Kube config")
+	setupLog.V(1).Info("Getting Kube config")
 	kubeConfig, err := b.GetKubeConfig()
 	if err != nil {
 		return err
 	}
 
-	setupLog.Info("Getting Kube client")
+	setupLog.V(1).Info("Getting Kube client")
 	kubeClient, err := b.GetKubeClient(kubeConfig)
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	setupLog.Info("Creating controller manager")
+	setupLog.V(1).Info("Creating controller manager")
 	// Create controller manager
 	mgr, err := ctrl.NewManager(kubeConfig, ctrl.Options{
 		Scheme: b.scheme,
@@ -143,7 +143,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	setupLog.Info("Running controllers")
+	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit); err != nil {
 		setupLog.Error(err, "Error running controllers")
 		return err

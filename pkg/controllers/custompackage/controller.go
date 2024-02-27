@@ -43,7 +43,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	logger.Info("reconciling custom package", "name", req.Name, "namespace", req.Namespace)
+	logger.V(1).Info("reconciling custom package", "name", req.Name, "namespace", req.Namespace)
 	defer r.postProcessReconcile(ctx, req, &pkg)
 	result, err := r.reconcileCustomPackage(ctx, &pkg)
 	if err != nil {

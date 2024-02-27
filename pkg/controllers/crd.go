@@ -29,7 +29,7 @@ func getK8sResources(scheme *runtime.Scheme, templateData any) ([]client.Object,
 }
 
 func EnsureCRD(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Client, obj client.Object) error {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Check if the CRD already exists
 	crd, ok := obj.(*apiextensionsv1.CustomResourceDefinition)
@@ -45,16 +45,16 @@ func EnsureCRD(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Cl
 	switch {
 	case apierrors.IsNotFound(err):
 		if err := kubeClient.Create(ctx, obj); err != nil {
-			log.Error(err, "Unable to create CRD", "resource", obj)
+			logger.Error(err, "Unable to create CRD", "resource", obj)
 			return err
 		}
 	case err != nil:
-		log.Error(err, "Unable to get CRD during initial check", "resource", obj)
+		logger.Error(err, "Unable to get CRD during initial check", "resource", obj)
 		return err
 	default:
 		crd.SetResourceVersion(curCRD.GetResourceVersion())
 		if err = kubeClient.Update(ctx, crd); err != nil {
-			log.Error(err, "Updating CRD", "resource", obj)
+			logger.Error(err, "Updating CRD", "resource", obj)
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func EnsureCRD(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Cl
 			types.NamespacedName{Name: obj.GetName(), Namespace: "default"},
 			&curCRD,
 		); err != nil {
-			log.Error(err, "Failed to get CRD", "crd name", obj.GetName())
+			logger.Error(err, "Failed to get CRD", "crd name", obj.GetName())
 			return err
 		}
 		crdEstablished := false
@@ -80,7 +80,7 @@ func EnsureCRD(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Cl
 		if crdEstablished {
 			break
 		} else {
-			log.Info("crd not yet established, waiting.", "crd name", obj.GetName())
+			logger.V(1).Info("crd not yet established, waiting.", "crd name", obj.GetName())
 		}
 		time.Sleep(time.Duration(time.Duration.Milliseconds(500)))
 	}

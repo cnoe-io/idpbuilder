@@ -13,7 +13,7 @@ import (
 )
 
 func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, ctxCancel context.CancelFunc, exitOnSync bool, cfg util.CorePackageTemplateConfig) error {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	// Run Localbuild controller
 	if err := (&localbuild.LocalbuildReconciler{
@@ -23,7 +23,7 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		CancelFunc: ctxCancel,
 		Config:     cfg,
 	}).SetupWithManager(mgr); err != nil {
-		log.Error(err, "unable to create localbuild controller")
+		logger.Error(err, "unable to create localbuild controller")
 		return err
 	}
 
@@ -35,7 +35,7 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		Config:          cfg,
 	}).SetupWithManager(mgr, nil)
 	if err != nil {
-		log.Error(err, "unable to create repo controller")
+		logger.Error(err, "unable to create repo controller")
 	}
 
 	err = (&custompackage.Reconciler{
@@ -44,14 +44,14 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		Recorder: mgr.GetEventRecorderFor("custompackage-controller"),
 	}).SetupWithManager(mgr)
 	if err != nil {
-		log.Error(err, "unable to create custom package controller")
+		logger.Error(err, "unable to create custom package controller")
 	}
 
 	// Start our manager in another goroutine
-	log.Info("starting manager")
+	logger.V(1).Info("starting manager")
 	go func() {
 		if err := mgr.Start(ctx); err != nil {
-			log.Error(err, "problem running manager")
+			logger.Error(err, "problem running manager")
 			exitCh <- err
 		}
 		exitCh <- nil
