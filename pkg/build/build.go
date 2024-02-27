@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -133,6 +134,9 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	// Create controller manager
 	mgr, err := ctrl.NewManager(kubeConfig, ctrl.Options{
 		Scheme: b.scheme,
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "Error creating controller manager")
