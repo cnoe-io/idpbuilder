@@ -10,7 +10,6 @@
   "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/go/src/github.com/cnoe-io/idpbuilder,type=bind",
   "workspaceFolder": "/home/vscode/go/src/github.com/cnoe-io/idpbuilder",
   "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/home/vscode/go/bin",
-    "GOPATH": "/home/vscode/go"
+    "PATH": "${containerEnv:PATH}:/home/vscode/go/bin"
   }
 }

@@ -1,17 +1,21 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
-curl -sLS https://get.arkade.dev | sudo sh
+# For Kubectl AMD64 / x86_64
+[ $(uname -m) = x86_64 ] && curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+# For Kubectl ARM64
+[ $(uname -m) = aarch64 ] && curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
 
-arkade get kind
-arkade get kubectl
-arkade get helm
-echo "export PATH=\$PATH:/home/vscode/.arkade/bin" >> $HOME/.bashrc
+# For Kind AMD64 / x86_64
+[ $(uname -m) = x86_64 ] && curl -sLo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
+# For Kind ARM64
+[ $(uname -m) = aarch64 ] && curl -sLo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-arm64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
 
 # Make sure go path is owned by vscode
 sudo chown -R vscode:vscode /home/vscode/go
-
-# Add idpbuilder to path
-echo "export PATH=\$PATH:/home/vscode/go/src/github.com/cnoe-io/idpbuilder" >> $HOME/.bashrc
 
 # setup autocomplete for kubectl and alias k
 mkdir $HOME/.kube
