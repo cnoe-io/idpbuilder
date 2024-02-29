@@ -5,7 +5,7 @@ metadata:
   namespace: docker-registry
 type: Opaque
 data:
-  htpasswd: aWRwYnVpbGRlcjokMnkkMDUkOGhTQUdWY2hCZ2hXb1A1Q0tULllkLkU5NGoxVXV2OHVJa3BWc2lxWW83OHBSTnJXUWUySkMKCg==
+  htpasswd: aWRwYnVpbGRlcjokMnkkMTEkVkVoa09aRE90SFZFbDJUMnFobGVwZXBGc3NMOTMvZlhoRzNaTHFyN1QvblpjajJKeXFoNWU=
 ---
 apiVersion: v1
 kind: Pod
@@ -17,10 +17,12 @@ metadata:
 spec:
   containers:
   - name: registry
-    image: registry:2.6.2
+    image: registry:2.8.3
     volumeMounts:
     - name: registry-vol
       mountPath: "/var/lib/registry"
+    - name: auth-vol
+      mountPath: "/auth/"
     env:
     - name: REGISTRY_AUTH
       value: "htpasswd"
