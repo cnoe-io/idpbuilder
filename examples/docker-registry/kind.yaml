@@ -1,0 +1,22 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  image: "kindest/node:v1.27.3"
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        system-reserved: memory=4Gi
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 443
+    hostPort: 8443
+    protocol: TCP
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.cnoe.localtest.me"]
+    endpoint = ["https://registry.cnoe.localtest.me"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.cnoe.localtest.me".tls]
+    insecure_skip_verify = true

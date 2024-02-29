@@ -1,0 +1,366 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: imageswap-system
+  labels:
+    app: imageswap
+    resource: namespace
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: imageswap-write
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: clusterrole
+rules:
+- apiGroups:
+  - admissionregistration.k8s.io
+  - certificates.k8s.io
+  - ""
+  resources:
+    - mutatingwebhookconfigurations
+    - certificatesigningrequests
+    - certificatesigningrequests/approval
+    - certificatesigningrequests/status
+    - signers
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - patch
+    - update
+    - delete
+    - approve
+    - sign
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: imageswap-read
+  labels:
+    app: imageswap
+    resource: clusterrole
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: imageswap-write-crb
+  labels:
+    app: imageswap
+    resource: clusterrolebinding
+roleRef:
+  kind: ClusterRole
+  name: imageswap-write
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: imageswap-sa
+  namespace: imageswap-system
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: imageswap-read-crb
+  labels:
+    app: imageswap
+    resource: clusterrolebinding
+roleRef:
+  kind: ClusterRole
+  name: imageswap-read
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: imageswap-sa
+  namespace: imageswap-system
+
+---
+# Define role for OPA/kube-mgmt to update configmaps with policy status.
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: imageswap-ops
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - update
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+  - update
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: imageswap-ops-rb
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: rolebinding
+roleRef:
+  kind: Role
+  name: imageswap-ops
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: imageswap-sa
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: imageswap-sa
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: serviceaccount
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: imageswap-env
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: configmap
+data:
+  FLASK_ENV: "production"
+  PYTHONUNBUFFERED: "TRUE"
+  IMAGESWAP_MODE: "MAPS"
+  IMAGESWAP_LOG_LEVEL: "INFO"
+
+---
+apiVersion: v1
+data:
+  imageswap-mwc: |
+    apiVersion: admissionregistration.k8s.io/v1
+    kind: MutatingWebhookConfiguration
+    metadata:
+      name: imageswap-webhook
+      labels:
+        app: imageswap
+        resource: mutatingwebhookconfiguration
+    webhooks:
+      - name: imageswap.webhook.k8s.twr.io
+        clientConfig:
+          service:
+            name: imageswap
+            namespace: imageswap-system
+            path: "/"
+          caBundle: $CA_BUNDLE
+        rules:
+          - operations:
+              - CREATE
+              - UPDATE
+            apiGroups:
+              - "*"
+            apiVersions:
+              - "*"
+            resources:
+              - "pods"
+        sideEffects: None
+        admissionReviewVersions: ["v1"]
+        failurePolicy: Fail
+        reinvocationPolicy: IfNeeded
+          #namespaceSelector:
+          #  matchLabels:
+          #    k8s.twr.io/imageswap: "enabled"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: imageswap-mwc-template
+  namespace: imageswap-system
+
+---
+apiVersion: v1
+data:
+  maps: |
+    default:
+      registry.cnoe.localtest.me:8443::registry.cnoe.localtest.me
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: imageswap-maps
+  namespace: imageswap-system
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: imageswap
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: service
+spec:
+  ports:
+  - name: https
+    port: 443
+    targetPort: 5000
+  selector:
+    app: imageswap
+  sessionAffinity: None
+  type: ClusterIP
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: imageswap-pdb
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: poddisruptionbudget
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: imageswap
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imageswap
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: imageswap
+  template:
+    metadata:
+      labels:
+        app: imageswap
+    spec:
+      serviceAccountName: imageswap-sa
+      securityContext:
+        runAsUser: 1898
+        runAsGroup: 1898
+      initContainers:
+        - name: imageswap-init
+          image: thewebroot/imageswap-init:v1.5.3
+          command: [/app/imageswap-init.py]
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+          env:
+          - name: IMAGESWAP_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: IMAGESWAP_NAMESPACE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          envFrom:
+            - configMapRef:
+                name: imageswap-env
+          volumeMounts:
+            - name: imageswap-tls
+              mountPath: /tls
+            - name: imageswap-mwc
+              mountPath: /mwc
+      containers:
+      - name: imageswap
+        image: thewebroot/imageswap:v1.5.3
+        ports:
+        - containerPort: 5000
+        command: ["gunicorn", "imageswap:app", "--config=config.py"]
+        imagePullPolicy: Always
+        securityContext:
+            allowPrivilegeEscalation: false
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 512Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
+        env:
+          - name: IMAGESWAP_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: IMAGESWAP_NAMESPACE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        envFrom:
+            - configMapRef:
+                name: imageswap-env
+        volumeMounts:
+          - name: imageswap-tls
+            mountPath: /tls
+          - name: imageswap-maps
+            mountPath: /app/maps
+      volumes:
+        - name: imageswap-mwc
+          configMap:
+              name: imageswap-mwc-template
+              items:
+              - key: imageswap-mwc
+                path: imageswap-mwc.yaml
+        - name: imageswap-maps
+          configMap:
+              name: imageswap-maps
+              items:
+              - key: maps
+                path: imageswap-maps.conf
+        - name: imageswap-tls
+          emptyDir: {}
+---
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: imageswap
+  namespace: imageswap-system
+  labels:
+    app: imageswap
+    resource: horizontalpodautoscaler
+spec:
+  maxReplicas: 6
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: imageswap
+  targetCPUUtilizationPercentage: 80
