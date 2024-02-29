@@ -16,7 +16,7 @@ import (
 )
 
 func TestGetConfig(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.TemplateConfig{})
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.TemplateConfig{Port: "8443"})
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}
@@ -48,7 +48,7 @@ nodes:
 }
 
 func TestExtraPortMappings(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.TemplateConfig{})
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.TemplateConfig{Port: "8443"})
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}
