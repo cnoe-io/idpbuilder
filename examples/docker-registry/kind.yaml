@@ -16,7 +16,7 @@ nodes:
     protocol: TCP
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.cnoe.localtest.me"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.cnoe.localtest.me:8443"]
     endpoint = ["https://registry.cnoe.localtest.me"]
   [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.cnoe.localtest.me".tls]
     insecure_skip_verify = true
