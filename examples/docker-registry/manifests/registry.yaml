@@ -5,6 +5,7 @@ metadata:
   namespace: docker-registry
 type: Opaque
 data:
+  # Username: idpbuilder Password: idpbuilder
   htpasswd: aWRwYnVpbGRlcjokMnkkMTEkVkVoa09aRE90SFZFbDJUMnFobGVwZXBGc3NMOTMvZlhoRzNaTHFyN1QvblpjajJKeXFoNWU=
 ---
 apiVersion: v1
@@ -23,13 +24,14 @@ spec:
       mountPath: "/var/lib/registry"
     - name: auth-vol
       mountPath: "/auth/"
-    env:
-    - name: REGISTRY_AUTH
-      value: "htpasswd"
-    - name: REGISTRY_AUTH_HTPASSWD_REALM
-      value: "Registry Realm"
-    - name: REGISTRY_AUTH_HTPASSWD_PATH
-      value: "/auth/htpasswd"
+  # Uncomment the following to enable registry basic auth
+  # env:
+  # - name: REGISTRY_AUTH
+  #   value: "htpasswd"
+  # - name: REGISTRY_AUTH_HTPASSWD_REALM
+  #   value: "Registry Realm"
+  # - name: REGISTRY_AUTH_HTPASSWD_PATH
+  #   value: "/auth/htpasswd"
   volumes:
     - name: registry-vol
       persistentVolumeClaim:
@@ -44,6 +46,7 @@ metadata:
   name: docker-registry
   namespace: docker-registry
 spec:
+  type: NodePort
   selector:
     app: registry
   ports:
