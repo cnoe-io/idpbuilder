@@ -3,17 +3,24 @@ package kind
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/cnoe-io/idpbuilder/pkg/docker"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"sigs.k8s.io/kind/pkg/cluster"
+	"sigs.k8s.io/kind/pkg/cluster/nodes"
+	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
 )
 
 type Cluster struct {
-	provider          *cluster.Provider
+	provider          IProvider
 	name              string
 	kubeVersion       string
 	kubeConfigPath    string
@@ -25,6 +32,15 @@ type Cluster struct {
 type PortMapping struct {
 	HostPort      string
 	ContainerPort string
+}
+
+type IProvider interface {
+	List() ([]string, error)
+	ListNodes(string) ([]nodes.Node, error)
+	CollectLogs(string, string) error
+	Delete(string, string) error
+	Create(string, ...cluster.CreateOption) error
+	ExportKubeConfig(string, string, bool) error
 }
 
 //go:embed resources/kind.yaml
@@ -109,16 +125,73 @@ func (c *Cluster) Exists() (bool, error) {
 	return false, nil
 }
 
+func (c *Cluster) RunsOnRightPort(cli client.APIClient, ctx context.Context) (bool, error) {
+
+	allNodes, err := c.provider.ListNodes(c.name)
+	if err != nil {
+		return false, err
+	}
+
+	cpNodes, err := nodeutils.ControlPlaneNodes(allNodes)
+	if err != nil {
+		return false, err
+	}
+
+	var cpNodeName string
+	for _, cpNode := range cpNodes {
+		if strings.Contains(cpNode.String(), c.name) {
+			cpNodeName = cpNode.String()
+		}
+	}
+	if cpNodeName == "" {
+		return false, nil
+	}
+
+	container, err := docker.GetContainerByName(ctx, cpNodeName, cli, types.ContainerListOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	if container == nil {
+		return false, nil
+	}
+
+	userPort, err := toUint16(c.cfg.Port)
+	if err != nil {
+		return false, err
+	}
+
+	return docker.IsUsingPort(container, userPort), nil
+}
+
 func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	clusterExitsts, err := c.Exists()
 	if err != nil {
 		return err
 	}
+
 	if clusterExitsts {
 		if recreate {
 			fmt.Printf("Existing cluster %s found. Deleting.\n", c.name)
 			c.provider.Delete(c.name, "")
 		} else {
+			// check if user is requesting a different port
+			// for the idpBuilder
+			cli, err := docker.GetDockerClient()
+			if err != nil {
+				return err
+			}
+
+			rightPort, err := c.RunsOnRightPort(cli, ctx)
+			if err != nil {
+				return err
+			}
+
+			if !rightPort {
+				return fmt.Errorf("cant serve port %s. cluster %s is already running on a different port", c.cfg.Port, c.name)
+			}
+
+			// reuse if there is no port conflict
 			fmt.Printf("Cluster %s already exists\n", c.name)
 			return nil
 		}
@@ -148,4 +221,19 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 
 func (c *Cluster) ExportKubeConfig(name string, internal bool) error {
 	return c.provider.ExportKubeConfig(name, c.kubeConfigPath, internal)
+}
+
+func toUint16(portString string) (uint16, error) {
+	// Convert port string to uint16
+	port, err := strconv.ParseUint(portString, 10, 16)
+	if err != nil {
+		return 0, err
+	}
+
+	// Port validation
+	if port > 65535 {
+		return 0, errors.New("Invalid port number")
+	}
+
+	return uint16(port), nil
 }
