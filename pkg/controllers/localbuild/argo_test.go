@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 )
 
 func TestGetRawInstallResources(t *testing.T) {
@@ -11,7 +12,14 @@ func TestGetRawInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	resources, err := e.rawInstallResources(struct{ Port string }{"8443"})
+	resources, err := e.rawInstallResources(
+		util.CorePackageTemplateConfig{
+			Protocol:       "",
+			Host:           "",
+			Port:           "",
+			UsePathRouting: false,
+		},
+	)
 	if err != nil {
 		t.Fatalf("GetRawInstallResources() error: %v", err)
 	}
@@ -31,7 +39,12 @@ func TestGetK8sInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	objs, err := e.installResources(k8s.GetScheme(), struct{ Port string }{"8443"})
+	objs, err := e.installResources(k8s.GetScheme(), util.CorePackageTemplateConfig{
+		Protocol:       "",
+		Host:           "",
+		Port:           "",
+		UsePathRouting: false,
+	})
 	if err != nil {
 		t.Fatalf("GetK8sInstallResources() error: %v", err)
 	}

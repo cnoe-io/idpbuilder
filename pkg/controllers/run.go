@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, ctxCancel context.CancelFunc, exitOnSync bool, cfg util.TemplateConfig) error {
+func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, ctxCancel context.CancelFunc, exitOnSync bool, cfg util.CorePackageTemplateConfig) error {
 	log := log.FromContext(ctx)
 
 	// Run Localbuild controller

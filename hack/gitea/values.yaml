@@ -24,8 +24,8 @@ gitea:
     queue:
       TYPE: level
     server:
-      DOMAIN: gitea.cnoe.localtest.me
-      ROOT_URL: 'https://gitea.cnoe.localtest.me:{{ .Port }}'
+      DOMAIN: '{{- if .UsePathRouting -}} {{ .Host }} {{- else -}} gitea.{{- .Host }} {{- end }}'
+      ROOT_URL: '{{- if .UsePathRouting }} {{- .Protocol }}://{{ .Host }}:{{ .Port }}/gitea {{- else }} {{- .Protocol }}://gitea.{{ .Host }}:{{ .Port }} {{- end }}'
 
 service:
   ssh:
@@ -34,11 +34,4 @@ service:
     externalTrafficPolicy: Local
 
 ingress:
-  enabled: true
-  apiVersion: 'networking.k8s.io/v1'
-  className: nginx
-  hosts:
-    - host: gitea.cnoe.localtest.me
-      paths:
-        - path: /
-          pathType: Prefix
+  enabled: false

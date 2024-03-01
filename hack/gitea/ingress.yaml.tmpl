@@ -1,0 +1,67 @@
+{{- if .UsePathRouting }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-gitea-path
+  namespace: gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Host }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /gitea(/|$)(.*)
+            pathType: ImplementationSpecific
+{{ else if ( ne .Host "cnoe.localtest.me") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-gitea-custom
+  namespace: gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: gitea.{{ .Host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+{{ end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: "gitea.cnoe.localtest.me"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000

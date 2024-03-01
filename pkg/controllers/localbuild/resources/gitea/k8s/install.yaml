@@ -1,4 +1,5 @@
----
+# GITEA INSTALL RESOURCES
+# This file is auto-generated with 'hack/gitea/generate-manifests.sh'
 # Source: gitea/templates/gitea/config.yaml
 apiVersion: v1
 kind: Secret
@@ -24,12 +25,12 @@ stringData:
   security: INSTALL_LOCK=true
   server: |-
     APP_DATA_PATH=/data
-    DOMAIN=gitea.cnoe.localtest.me
+    DOMAIN={{- if .UsePathRouting -}} {{ .Host }} {{- else -}} gitea.{{- .Host }} {{- end }}
     ENABLE_PPROF=false
     HTTP_PORT=3000
     PROTOCOL=http
-    ROOT_URL=https://gitea.cnoe.localtest.me:{{ .Port }}
-    SSH_DOMAIN=gitea.cnoe.localtest.me
+    ROOT_URL={{- if .UsePathRouting }} {{- .Protocol }}://{{ .Host }}:{{ .Port }}/gitea {{- else }} {{- .Protocol }}://gitea.{{ .Host }}:{{ .Port }} {{- end }}
+    SSH_DOMAIN={{- if .UsePathRouting -}} {{ .Host }} {{- else -}} gitea.{{- .Host }} {{- end }}
     SSH_LISTEN_PORT=2222
     SSH_PORT=22
     START_SSH_SERVER=true
@@ -369,7 +370,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 21e599f11581db3008ffb136e6a77f9d49e5c5ee478c234e91576476f56ddc45
+        checksum/config: a727070bdf60a2bb53744cb0893234188ca3917339f231a79454d661720f50b0
       labels:
         helm.sh/chart: gitea-9.5.1
         app: gitea
@@ -551,21 +552,60 @@ spec:
           emptyDir: {}
         - name: data
           emptyDir: {}
+{{- if .UsePathRouting }}
 ---
-# Source: gitea/templates/gitea/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-gitea-path
+  namespace: gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Host }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /gitea(/|$)(.*)
+            pathType: ImplementationSpecific
+{{ else if ( ne .Host "cnoe.localtest.me") }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-gitea-custom
+  namespace: gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: gitea.{{ .Host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+{{ end }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-gitea
-  labels:
-    helm.sh/chart: gitea-9.5.1
-    app: gitea
-    app.kubernetes.io/name: gitea
-    app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
-    app.kubernetes.io/managed-by: Helm
   annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 512m
 spec:
   ingressClassName: nginx
   rules:
@@ -588,4 +628,3 @@ type: Opaque
 stringData:
   username: giteaAdmin
   password: giteaPassword
-

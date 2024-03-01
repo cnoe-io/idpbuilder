@@ -26,7 +26,7 @@ var (
 
 type Build struct {
 	name              string
-	cfg               util.TemplateConfig
+	cfg               util.CorePackageTemplateConfig
 	kindConfigPath    string
 	kubeConfigPath    string
 	kubeVersion       string
@@ -37,7 +37,7 @@ type Build struct {
 	CancelFunc        context.CancelFunc
 }
 
-func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.TemplateConfig, customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
+func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig, customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
 	return &Build{
 		name:              name,
 		kindConfigPath:    kindConfigPath,

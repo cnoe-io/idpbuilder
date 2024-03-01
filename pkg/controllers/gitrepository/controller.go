@@ -46,7 +46,7 @@ type RepositoryReconciler struct {
 	GiteaClientFunc GiteaClientFunc
 	Recorder        record.EventRecorder
 	Scheme          *runtime.Scheme
-	Config          util.TemplateConfig
+	Config          util.CorePackageTemplateConfig
 }
 
 func getRepositoryName(repo v1alpha1.GitRepository) string {
@@ -138,12 +138,12 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 	client := &http.Client{Transport: tr}
 	giteaClient, err := r.GiteaClientFunc(repo.Spec.GitURL, gitea.SetHTTPClient(client))
 	if err != nil {
-		return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, fmt.Errorf("failed to get gitea client: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get gitea client: %w", err)
 	}
 
 	user, pass, err := r.getCredentials(ctx, repo)
 	if err != nil {
-		return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, fmt.Errorf("failed to get gitea credentials: %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to get gitea credentials: %w", err)
 	}
 
 	giteaClient.SetBasicAuth(user, pass)
@@ -151,12 +151,12 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 
 	giteaRepo, err := reconcileRepo(giteaClient, repo)
 	if err != nil {
-		return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, fmt.Errorf("failed to create or update repo %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to create or update repo %w", err)
 	}
 
 	err = r.reconcileRepoContent(ctx, repo, giteaRepo)
 	if err != nil {
-		return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, fmt.Errorf("failed to reconcile repo content %w", err)
+		return ctrl.Result{}, fmt.Errorf("failed to reconcile repo content %w", err)
 	}
 
 	repo.Status.ExternalGitRepositoryUrl = giteaRepo.CloneURL

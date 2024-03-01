@@ -5,7 +5,6 @@ resources:
 
 patches:
   - path: deployment-ingress-nginx.yaml
-  - path: service-ingress-nginx.yaml
   - path: cm-ingress-nginx-controller.yaml
   - target:
       group: ""
@@ -13,10 +12,8 @@ patches:
       kind: Service
       name: ingress-nginx-controller
       namespace: ingress-nginx
-    patch: |-
-      - op: remove
-        path: /spec/externalTrafficPolicy
-      - op: replace
-        path: /spec/type
-        value: NodePort
-
+    patch: |
+      $patch: delete
+      kind: Kustomization
+      metadata:
+        name: ingress-nginx-controller

@@ -1,5 +1,8 @@
 package util
 
-type TemplateConfig struct {
-	Port string
+type CorePackageTemplateConfig struct {
+	Protocol       string
+	Host           string
+	Port           string
+	UsePathRouting bool
 }

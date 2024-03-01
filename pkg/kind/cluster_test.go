@@ -16,7 +16,9 @@ import (
 )
 
 func TestGetConfig(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.TemplateConfig{Port: "8443"})
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.CorePackageTemplateConfig{
+		Port: "8443",
+	})
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}
@@ -44,11 +46,14 @@ nodes:
     hostPort: 8443
     protocol: TCP
   `
-	assert.Equal(t, expectConfig, string(cfg))
+	assert.YAMLEq(t, expectConfig, string(cfg))
 }
 
 func TestExtraPortMappings(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.TemplateConfig{Port: "8443"})
+
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.CorePackageTemplateConfig{
+		Port: "8443",
+	})
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}
@@ -79,7 +84,7 @@ nodes:
     hostPort: 22
     protocol: TCP`
 
-	assert.Equal(t, expectConfig, string(cfg))
+	assert.YAMLEq(t, expectConfig, string(cfg))
 }
 
 // Mock provider for testing
@@ -156,7 +161,7 @@ func TestRunsOnWrongPort(t *testing.T) {
 	cluster := &Cluster{
 		name:     "test-cluster",
 		provider: mockProvider,
-		cfg: util.TemplateConfig{
+		cfg: util.CorePackageTemplateConfig{
 			Port: "8080",
 		},
 	}
