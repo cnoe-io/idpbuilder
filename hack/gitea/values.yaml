@@ -35,7 +35,9 @@ service:
     externalTrafficPolicy: Local
 
 ingress:
+  # NOTE: The ingress is generated in a later step for path based routing feature See: hack/argo-cd/generate-manifests.sh
   enabled: false
 
 image:
   pullPolicy: "IfNotPresent"
+  rootless: true
