@@ -7,5 +7,6 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "postCreateCommand": ".devcontainer/postCreateCommand.sh",
-  "workspaceFolder": "/home/vscode/idpbuilder"
+  "workspaceFolder": "/home/vscode/idpbuilder",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/idpbuilder,type=bind"
 }
