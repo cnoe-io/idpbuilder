@@ -19855,6 +19855,11 @@ spec:
       containers:
       - args:
         - /usr/local/bin/argocd-server
+        - '{{if .UsePathRouting}}'
+        - --insecure
+        - --basehref
+        - /argocd
+        - '{{end}}'
         env:
         - name: ARGOCD_SERVER_INSECURE
           valueFrom:

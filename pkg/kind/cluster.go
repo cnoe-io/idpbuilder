@@ -26,7 +26,7 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
-	cfg               util.TemplateConfig
+	cfg               util.CorePackageTemplateConfig
 }
 
 type PortMapping struct {
@@ -43,12 +43,16 @@ type IProvider interface {
 	ExportKubeConfig(string, string, bool) error
 }
 
-//go:embed resources/kind.yaml
+type TemplateConfig struct {
+	KubernetesVersion string
+	ExtraPortsMapping []PortMapping
+	IngressProtocol   string
+	Port              string
+}
+
+//go:embed resources/*
 var configFS embed.FS
 
-func SplitFunc(input, sep string) []string {
-	return strings.Split(input, sep)
-}
 func (c *Cluster) getConfig() ([]byte, error) {
 
 	var rawConfigTempl []byte
@@ -57,7 +61,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	if c.kindConfigPath != "" {
 		rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
 	} else {
-		rawConfigTempl, err = fs.ReadFile(configFS, "resources/kind.yaml")
+		rawConfigTempl, err = fs.ReadFile(configFS, "resources/kind.yaml.tmpl")
 	}
 
 	if err != nil {
@@ -82,13 +86,10 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	}
 
 	var retBuff []byte
-	if retBuff, err = util.ApplyTemplate(rawConfigTempl, struct {
-		KubernetesVersion string
-		ExtraPortsMapping []PortMapping
-		Port              string
-	}{
+	if retBuff, err = util.ApplyTemplate(rawConfigTempl, TemplateConfig{
 		KubernetesVersion: c.kubeVersion,
 		ExtraPortsMapping: portMappingPairs,
+		IngressProtocol:   c.cfg.Protocol,
 		Port:              c.cfg.Port,
 	}); err != nil {
 		return []byte{}, err
@@ -97,7 +98,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.TemplateConfig) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig) (*Cluster, error) {
 	provider := cluster.NewProvider(cluster.ProviderWithDocker())
 
 	return &Cluster{

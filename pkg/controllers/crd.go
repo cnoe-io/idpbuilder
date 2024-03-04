@@ -19,8 +19,8 @@ import (
 //go:embed resources/*.yaml
 var crdFS embed.FS
 
-func getK8sResources(scheme *runtime.Scheme, template interface{}) ([]client.Object, error) {
-	rawResources, err := util.ConvertFSToBytes(crdFS, "resources", template)
+func getK8sResources(scheme *runtime.Scheme, templateData any) ([]client.Object, error) {
+	rawResources, err := util.ConvertFSToBytes(crdFS, "resources", templateData)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +87,8 @@ func EnsureCRD(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Cl
 	return nil
 }
 
-func EnsureCRDs(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Client, template interface{}) error {
-	installObjs, err := getK8sResources(scheme, template)
+func EnsureCRDs(ctx context.Context, scheme *runtime.Scheme, kubeClient client.Client, templateData any) error {
+	installObjs, err := getK8sResources(scheme, templateData)
 	if err != nil {
 		return err
 	}

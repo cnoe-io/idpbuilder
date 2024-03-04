@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -149,6 +150,7 @@ func TestReconcileCustomPkg(t *testing.T) {
 			t.Fatalf("reconciling custom packages %v", err)
 		}
 	}
+	time.Sleep(1 * time.Second)
 
 	// verify repo.
 	c := mgr.GetClient()

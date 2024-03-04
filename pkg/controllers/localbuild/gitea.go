@@ -16,7 +16,7 @@ const (
 	giteaNamespace   = "gitea"
 	giteaAdminSecret = "gitea-admin-secret"
 	// this is the URL accessible outside cluster. resolves to localhost
-	giteaIngressURL = "https://gitea.cnoe.localtest.me:%s"
+	giteaIngressURL = "%s://gitea.cnoe.localtest.me:%s"
 	// this is the URL accessible within cluster for ArgoCD to fetch resources.
 	// resolves to cluster ip
 	giteaSvcURL = "http://my-gitea-http.gitea.svc.cluster.local:3000"
@@ -47,7 +47,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 	if result, err := gitea.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
-	resource.Status.Gitea.ExternalURL = fmt.Sprintf(giteaIngressURL, r.Config.Port)
+	resource.Status.Gitea.ExternalURL = fmt.Sprintf(giteaIngressURL, r.Config.Protocol, r.Config.Port)
 	resource.Status.Gitea.InternalURL = giteaSvcURL
 	resource.Status.Gitea.AdminUserSecretName = giteaAdminSecret
 	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace

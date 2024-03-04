@@ -31,7 +31,7 @@ type Reconciler struct {
 	client.Client
 	Recorder record.EventRecorder
 	Scheme   *runtime.Scheme
-	Config   util.TemplateConfig
+	Config   util.CorePackageTemplateConfig
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

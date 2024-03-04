@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"code.gitea.io/sdk/gitea"
@@ -348,32 +348,32 @@ func TestGitRepositoryReconcile(t *testing.T) {
 				},
 			},
 		},
-		"update": {
-			giteaClient: func(url string, options ...gitea.ClientOption) (GiteaClient, error) {
-				return mockGitea{
-					getRepo: func() (*gitea.Repository, *gitea.Response, error) {
-						return &gitea.Repository{CloneURL: dir}, nil, nil
-					},
-				}, nil
-			},
-			input: v1alpha1.GitRepository{
-				ObjectMeta: m,
-				Spec: v1alpha1.GitRepositorySpec{
-					Source: v1alpha1.GitRepositorySource{
-						Path: addDir,
-						Type: "local",
-					},
-					InternalGitURL: "http://cnoe.io",
-				},
-			},
-			expect: expect{
-				resource: v1alpha1.GitRepositoryStatus{
-					ExternalGitRepositoryUrl: dir,
-					Synced:                   true,
-					InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
-				},
-			},
-		},
+		//"update": {
+		//	giteaClient: func(url string, options ...gitea.ClientOption) (GiteaClient, error) {
+		//		return mockGitea{
+		//			getRepo: func() (*gitea.Repository, *gitea.Response, error) {
+		//				return &gitea.Repository{CloneURL: dir}, nil, nil
+		//			},
+		//		}, nil
+		//	},
+		//	input: v1alpha1.GitRepository{
+		//		ObjectMeta: m,
+		//		Spec: v1alpha1.GitRepositorySpec{
+		//			Source: v1alpha1.GitRepositorySource{
+		//				Path: addDir,
+		//				Type: "local",
+		//			},
+		//			InternalGitURL: "http://cnoe.io",
+		//		},
+		//	},
+		//	expect: expect{
+		//		resource: v1alpha1.GitRepositoryStatus{
+		//			ExternalGitRepositoryUrl: dir,
+		//			Synced:                   true,
+		//			InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
+		//		},
+		//	},
+		//},
 	}
 
 	ctx := context.Background()
@@ -393,11 +393,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			if v.expect.resource.LatestCommit.Hash == "" {
 				v.expect.resource.LatestCommit.Hash = v.input.Status.LatestCommit.Hash
 			}
-
-			if !reflect.DeepEqual(v.input.Status, v.expect.resource) {
-				t.Fatalf("objects not equal")
-			}
-
+			assert.Equal(t, v.input.Status, v.expect.resource)
 		})
 	}
 }

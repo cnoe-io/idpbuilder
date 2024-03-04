@@ -39,12 +39,12 @@ type EmbeddedInstallation struct {
 	resourceFS embed.FS
 }
 
-func (e *EmbeddedInstallation) rawInstallResources(template interface{}) ([][]byte, error) {
-	return util.ConvertFSToBytes(e.resourceFS, e.resourcePath, template)
+func (e *EmbeddedInstallation) rawInstallResources(templateData any) ([][]byte, error) {
+	return util.ConvertFSToBytes(e.resourceFS, e.resourcePath, templateData)
 }
 
-func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme, template interface{}) ([]client.Object, error) {
-	rawResources, err := e.rawInstallResources(template)
+func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme, templateData any) ([]client.Object, error) {
+	rawResources, err := e.rawInstallResources(templateData)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace 
 	}
 }
 
-func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.TemplateConfig) (ctrl.Result, error) {
+func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.CorePackageTemplateConfig) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
 	nsClient := client.NewNamespacedClient(cli, e.namespace)

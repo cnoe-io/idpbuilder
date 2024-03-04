@@ -37,7 +37,7 @@ type LocalbuildReconciler struct {
 	CancelFunc     context.CancelFunc
 	ExitOnSync     bool
 	shouldShutdown bool
-	Config         util.TemplateConfig
+	Config         util.CorePackageTemplateConfig
 }
 
 type subReconciler func(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error)

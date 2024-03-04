@@ -7,3 +7,4 @@ patches:
   - path: dex-server.yaml
   - path: notifications-controller.yaml
   - path: argocd-cm.yaml
+  - path: argocd-server.yaml
