@@ -14,9 +14,6 @@ sudo mv ./kubectl /usr/local/bin/kubectl
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/kind
 
-# Make sure go path is owned by vscode
-sudo chown -R vscode:vscode /home/vscode/go
-
 # setup autocomplete for kubectl and alias k
 mkdir $HOME/.kube
 echo "source <(kubectl completion bash)" >> $HOME/.bashrc
