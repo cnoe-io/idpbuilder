@@ -566,7 +566,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: {{ .Host }}
+    - host: {{ .IngressHost }}
       http:
         paths:
           - backend:
@@ -588,7 +588,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: gitea.{{ .Host }}
+    - host: gitea.{{ .IngressHost }}
       http:
         paths:
           - path: /

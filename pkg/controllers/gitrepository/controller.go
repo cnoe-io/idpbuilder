@@ -184,10 +184,10 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		// if we cannot clone with gitea's configured url, then we fallback to using the url provided in spec.
 		logger.V(1).Info("failed cloning with returned clone URL. Falling back to default url.", "err", err)
 
-		cloneOptions.URL = fmt.Sprintf("%s://%s:%s/%s.git", r.Config.Protocol, repo.Spec.GitURL, r.Config.Port, giteaRepo.FullName)
+		cloneOptions.URL = fmt.Sprintf("%s/%s.git", repo.Spec.GitURL, giteaRepo.FullName)
 		c, retErr := git.PlainClone(tempDir, false, cloneOptions)
 		if retErr != nil {
-			return fmt.Errorf("cloning repo fall back url: %w", err)
+			return fmt.Errorf("cloning repo with fall back url: %w", retErr)
 		}
 		clonedRepo = c
 	}

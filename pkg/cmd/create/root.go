@@ -28,6 +28,7 @@ var (
 	noExit            bool
 	protocol          string
 	host              string
+	ingressHost       string
 	port              string
 	pathRouting       bool
 )
@@ -47,6 +48,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
 	CreateCmd.PersistentFlags().StringVar(&host, "host", "cnoe.localtest.me", "Host name to access resources in this cluster.")
+	CreateCmd.PersistentFlags().StringVar(&ingressHost, "ingress-host-name", "", "Host name used by ingresses. Useful when you have another proxy infront of idpbuilder.")
 	CreateCmd.PersistentFlags().StringVar(&protocol, "protocol", "https", "Protocol to use to access web UIs. http or https.")
 	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", "Port number under which idpBuilder tools are accessible.")
 	CreateCmd.PersistentFlags().BoolVar(&pathRouting, "use-path-routing", false, "When set to true, web UIs are exposed under single domain name.")
@@ -66,6 +68,9 @@ func create(cmd *cobra.Command, args []string) error {
 
 	protocol = strings.ToLower(protocol)
 	host = strings.ToLower(host)
+	if ingressHost == "" {
+		ingressHost = host
+	}
 
 	err := validate()
 	if err != nil {
@@ -91,6 +96,7 @@ func create(cmd *cobra.Command, args []string) error {
 		util.CorePackageTemplateConfig{
 			Protocol:       protocol,
 			Host:           host,
+			IngressHost:    ingressHost,
 			Port:           port,
 			UsePathRouting: pathRouting,
 		},
