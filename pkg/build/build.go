@@ -126,6 +126,8 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	}
 
 	setupLog.Info("Adding CRDs to the cluster")
+	// Wait for API Server to come up
+	time.Sleep(15)
 	if err := b.ReconcileCRDs(ctx, kubeClient); err != nil {
 		return err
 	}
