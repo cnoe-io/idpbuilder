@@ -9,7 +9,7 @@ metadata:
     backstage.io/kubernetes-namespace: default
     argocd/app-name: ${{values.name | dump}}
   links:
-    - url: https://gitea.cnoe.localtest.me:8443
+    - url: https://cnoe.localtest.me:8443/gitea
       title: Repo URL
       icon: github
 spec:

@@ -8,5 +8,8 @@
   },
   "postCreateCommand": ".devcontainer/postCreateCommand.sh",
   "workspaceFolder": "/home/vscode/idpbuilder",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/idpbuilder,type=bind"
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/idpbuilder,type=bind",
+  "hostRequirements": {
+    "cpus": 4
+  }
 }

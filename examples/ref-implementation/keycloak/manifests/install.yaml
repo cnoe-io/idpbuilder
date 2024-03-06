@@ -26,6 +26,8 @@ metadata:
     app: keycloak
   name: keycloak
   namespace: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   replicas: 1
   selector:
@@ -52,7 +54,7 @@ spec:
               name: http
           readinessProbe:
             httpGet:
-              path: /realms/master
+              path: /keycloak/realms/master
               port: 8080
           volumeMounts:
             - mountPath: /opt/keycloak/conf
@@ -69,7 +71,7 @@ data:
     # Database
     # The database vendor.
     db=postgres
-
+    
     # The username of the database user.
     db-username=keycloak
     db-url-host=postgresql.keycloak.svc.cluster.local
@@ -78,10 +80,15 @@ data:
     proxy=edge
     
     # hostname configuration
-    hostname=keycloak.cnoe.localtest.me
+    hostname=cnoe.localtest.me
     hostname-port=8443
+    http-relative-path=keycloak
+    
     # the admin url requires its own configuration to reflect correct url
-    hostname-admin=keycloak.cnoe.localtest.me:8443
+    hostname-admin=cnoe.localtest.me:8443
+    
+    hostname-debug=true
+    
     # this should only be allowed in development. NEVER in production.
     hostname-strict=false
     hostname-strict-backchannel=false

@@ -1,5 +1,6 @@
-# the only purpose of this is to resolve `keycloak.cnoe.localtest.me` to a cluster IP
-# normally, `keycloak.cnoe.localtest.me` resolves to 127.0.0.1 and thus oidc endpoint configurations cannot be obtained.
+# the only purpose of this is to resolve external DNS entries such as `redesigned-bassoon-r4jjwpvv99vhx9gp-8080.app.github.dev` to a cluster IP
+# normally, `redesigned-bassoon-r4jjwpvv99vhx9gp-8080.app.github.dev` resolves to 127.0.0.1 and thus oidc endpoint configurations cannot be obtained.
+# in addition, we need to ensure traffic do not go out of cluster when not necessary.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,10 +14,9 @@ data:
            lameduck 5s
         }
         ready
-        rewrite name keycloak.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
-        rewrite name gitea.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
-        rewrite name argocd.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
-        rewrite name argo.cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
+    
+        rewrite name cnoe.localtest.me ingress-nginx-controller.ingress-nginx.svc.cluster.local
+    
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
            fallthrough in-addr.arpa ip6.arpa

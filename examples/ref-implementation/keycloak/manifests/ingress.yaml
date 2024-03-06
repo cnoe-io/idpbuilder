@@ -1,18 +1,28 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: keycloak-ingress
+  name: keycloak-ingress-localhost
   namespace: keycloak
   annotations:
     argocd.argoproj.io/sync-wave: "100"
 spec:
   ingressClassName: "nginx"
   rules:
-    - host: keycloak.cnoe.localtest.me
+    - host: localhost
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: /keycloak
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: keycloak
+                port:
+                  name: http
+    - host: cnoe.localtest.me
+      http:
+        paths:
+          - path: /keycloak
+            pathType: ImplementationSpecific
             backend:
               service:
                 name: keycloak
