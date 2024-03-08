@@ -264,7 +264,7 @@ spec:
                 name: gitea-credentials
             - secretRef:
                 name: argocd-credentials
-          image: public.ecr.aws/cnoe-io/backstage:rc1
+          image: ghcr.io/cnoe-io/backstage-app:plugin-scaffolder-actions
           name: backstage
           ports:
             - containerPort: 7007
