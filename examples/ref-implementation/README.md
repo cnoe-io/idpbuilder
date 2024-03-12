@@ -28,7 +28,7 @@ and be configured with the new host and port. you can use the [replace.sh](repla
 Run the following command from the root of this repository.
 
 ```bash
-idpbuilder create --package-dir examples/ref-implementation
+idpbuilder create --use-path-routing --package-dir examples/ref-implementation
 ```
 
 This will take ~6 minutes for everything to come up. To track the progress, you can go to the [ArgoCD UI](https://cnoe.localtest.me:8443/argocd/applications).
