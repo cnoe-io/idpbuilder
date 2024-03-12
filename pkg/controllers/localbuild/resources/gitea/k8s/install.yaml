@@ -576,6 +576,16 @@ spec:
                   number: 3000
             path: /gitea(/|$)(.*)
             pathType: ImplementationSpecific
+    - host: localhost
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /gitea(/|$)(.*)
+            pathType: ImplementationSpecific
 {{ else if ( ne .Host "cnoe.localtest.me") }}
 ---
 apiVersion: networking.k8s.io/v1

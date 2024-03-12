@@ -100,7 +100,7 @@ spec:
       input:
         description: This is an example app
         # Hard coded value for this demo purposes only.
-        repoUrl: gitea.cnoe.localtest.me:8443?repo=${{parameters.name}}
+        repoUrl: cnoe.localtest.me:8443/gitea?repo=${{parameters.name}}
         defaultBranch: main
     - id: create-argocd-app
       name: Create ArgoCD App

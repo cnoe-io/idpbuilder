@@ -70,7 +70,7 @@ data:
   app-config.yaml: |
     app:
       title: CNOE Backstage
-      baseUrl: ${BACKSTAGE_FRONTEND_URL}
+      baseUrl: https://cnoe.localtest.me:8443
     organization:
       name: CNOE
     backend:
@@ -80,7 +80,7 @@ data:
       # auth:
       #   keys:
       #     - secret: ${BACKEND_SECRET}
-      baseUrl: ${BACKSTAGE_FRONTEND_URL}
+      baseUrl: https://cnoe.localtest.me:8443
       listen:
         port: 7007
         # Uncomment the following host directive to bind to specific interfaces
@@ -90,7 +90,7 @@ data:
         # Content-Security-Policy directives follow the Helmet format: https://helmetjs.github.io/#reference
         # Default Helmet Content-Security-Policy values can be removed by setting the key to false
       cors:
-        origin: ${BACKSTAGE_FRONTEND_URL}
+        origin: https://cnoe.localtest.me:8443
         methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
         credentials: true
       database:
@@ -106,12 +106,12 @@ data:
 
     integrations:
       gitea:
-        - baseUrl: https://gitea.cnoe.localtest.me:8443
-          host: gitea.cnoe.localtest.me:8443
+        - baseUrl: https://cnoe.localtest.me:8443/gitea
+          host: cnoe.localtest.me:8443
           username: ${GITEA_USERNAME}
           password: ${GITEA_PASSWORD}
-        - baseUrl: https://gitea.cnoe.localtest.me
-          host: gitea.cnoe.localtest.me
+        - baseUrl: https://cnoe.localtest.me/gitea
+          host: cnoe.localtest.me
           username: ${GITEA_USERNAME}
           password: ${GITEA_PASSWORD}
     #  github:
@@ -166,7 +166,7 @@ data:
       locations:
         # Examples from a public GitHub repository.
         - type: url
-          target: https://gitea.cnoe.localtest.me:8443/giteaAdmin/idpbuilder-localdev-backstage-templates-entities/raw/branch/main/catalog-info.yaml
+          target: https://cnoe.localtest.me/gitea/giteaAdmin/idpbuilder-localdev-backstage-templates-entities/raw/branch/main/catalog-info.yaml
         ## Uncomment these lines to add an example org
         # - type: url
         #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/acme-corp.yaml
@@ -184,7 +184,7 @@ data:
         - type: 'config'
           instances:
             - name: in-cluster
-              url: https://argocd.cnoe.localtest.me:8443
+              url: https://cnoe.localtest.me:8443/argocd
               username: admin
               password: ${ARGOCD_ADMIN_PASSWORD}
     argoWorkflows:
@@ -234,6 +234,8 @@ kind: Deployment
 metadata:
   name: backstage
   namespace: backstage
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 spec:
   replicas: 1
   selector:
@@ -362,14 +364,14 @@ spec:
     template:
       engineVersion: v2
       data:
-        BACKSTAGE_FRONTEND_URL: https://backstage.cnoe.localtest.me:8443
+        BACKSTAGE_FRONTEND_URL: https://cnoe.localtest.me:8443/backstage
         POSTGRES_HOST: postgresql.backstage.svc.cluster.local
         POSTGRES_PORT: '5432'
         POSTGRES_DB: backstage
         POSTGRES_USER: backstage
         POSTGRES_PASSWORD: "{{.POSTGRES_PASSWORD}}"
-        ARGO_WORKFLOWS_URL: https://argo.cnoe.localtest.me:8443
-        KEYCLOAK_NAME_METADATA: https://keycloak.cnoe.localtest.me:8443/realms/cnoe/.well-known/openid-configuration
+        ARGO_WORKFLOWS_URL: https://cnoe.localtest.me:8443/argo-workflows
+        KEYCLOAK_NAME_METADATA: https://cnoe.localtest.me:8443/keycloak/realms/cnoe/.well-known/openid-configuration
         KEYCLOAK_CLIENT_SECRET: "{{.BACKSTAGE_CLIENT_SECRET}}"
         ARGOCD_AUTH_TOKEN: "argocd.token={{.ARGOCD_SESSION_TOKEN}}"
         ARGO_CD_URL: 'https://argocd-server.argocd.svc.cluster.local/api/v1/'
@@ -422,7 +424,17 @@ metadata:
 spec:
   ingressClassName: "nginx"
   rules:
-    - host: backstage.cnoe.localtest.me
+    - host: localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backstage
+                port:
+                  name: http
+    - host: cnoe.localtest.me
       http:
         paths:
           - path: /

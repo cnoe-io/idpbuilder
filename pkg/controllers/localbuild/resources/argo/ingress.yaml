@@ -22,6 +22,16 @@ spec:
                 name: argocd-server
                 port:
                   name: http
+    - host: localhost
+      http:
+        paths:
+          - path: /argocd(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  name: http
 
 {{- else -}}
 ---

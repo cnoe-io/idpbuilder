@@ -13,6 +13,9 @@ spec:
               path: /
               port: 2746
               scheme: HTTP
+          env:
+            - name: BASE_HREF
+              value: "/argo-workflows/"
           args:
             - server
             - --configmap=workflow-controller-configmap

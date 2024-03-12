@@ -18,15 +18,20 @@ Ensure you have the following tools installed on your computer.
 
 ## Installation
 
+**_NOTE:_**
+- If you'd like to run this in your web browser through Codespaces, please follow [the instructions here](./codespaces.md) to install instead. 
+
+- _This example assumes that you run the reference implementation with the default port configguration of 8443 for the idpBuilder.
+If you happen to configure a different host or port for the idpBuilder, the manifests in the reference example need to be updated
+and be configured with the new host and port. you can use the [replace.sh](replace.sh) to change the port as desired prior to applying the manifest as instructed in the command above._
+
 Run the following command from the root of this repository.
 
 ```bash
-idpbuilder create --package-dir examples/ref-implementation
+idpbuilder create --use-path-routing --package-dir examples/ref-implementation
 ```
 
-This will take ~6 minutes for everything to come up. To track the progress, you can go to the [ArgoCD UI](https://argocd.cnoe.localtest.me:8443/applications).
-
-**_NOTE:_**: _This example assumes that you run the reference implementation with the default port configguration of 8443 for the idpBuilder. If you happen to configure a different port for the idpBuilder, the manifests in the reference example need to be updated and be configured with the new port. you can use the [replace-port.sh](replace-port.sh) to change the port as desired prior to applying the manifest as instructed in the command above._
+This will take ~6 minutes for everything to come up. To track the progress, you can go to the [ArgoCD UI](https://cnoe.localtest.me:8443/argocd/applications).
 
 ### What was installed?
 
@@ -49,15 +54,15 @@ The only package that cannot be removed this way is Keycloak because other packa
 
 
 #### Accessing UIs
-- Argo CD: https://argocd.cnoe.localtest.me:8443
-- Argo Workflows: https://argo.cnoe.localtest.me:8443
-- Backstage: https://backstage.cnoe.localtest.me:8443
-- Gitea: https://gitea.cnoe.localtest.me:8443
-- Keycloak: https://keycloak.cnoe.localtest.me:8443/admin/master/console/
+- Argo CD: https://cnoe.localtest.me:8443/argocd
+- Argo Workflows: https://cnoe.localtest.me:8443/argo
+- Backstage: https://cnoe.localtest.me:8443/
+- Gitea: https://cnoe.localtest.me:8443/gitea
+- Keycloak: https://cnoe.localtest.me:8443/keycloak/admin/master/console/
 
 # Using it
 
-For this example, we will walk through a few demonstrations. Once applications are ready, go to the [backstage URL](https://backstage.cnoe.localtest.me:8443).
+For this example, we will walk through a few demonstrations. Once applications are ready, go to the [backstage URL](https://cnoe.localtest.me:8443).
 
 Click on the Sign-In button, you will be asked to log into the Keycloak instance. There are two users set up in this 
 configuration, and their password can be retrieved with the following command:
@@ -73,7 +78,7 @@ Both users use the same password retrieved above.
 
 If you want to create a new user or change existing users:
 
-1. Go to the [Keycloak UI](https://keycloak.cnoe.localtest.me:8443/admin/master/console/). 
+1. Go to the [Keycloak UI](https://cnoe.localtest.me:8443/keycloak/admin/master/console/). 
 Login with the username `cnoe-admin`. Password is the `KEYCLOAK_ADMIN_PASSWORD` field from the command above. 
 2. Select `cnoe` from the realms drop down menu.
 3. Select users tab.
@@ -100,9 +105,9 @@ You can click on the ArgoCD Application name to see more details.
 
 ### What just happened?
 
-1. Backstage created [a git repository](https://gitea.cnoe.localtest.me:8443/giteaAdmin/demo), then pushed templated contents to it.
-2. Backstage created [an ArgoCD Application](https://argocd.cnoe.localtest.me:8443/applications/argocd/demo?) and pointed it to the git repository.
-3. Backstage registered the application as [a component](https://gitea.cnoe.localtest.me:8443/giteaAdmin/demo/src/branch/main/catalog-info.yaml) in Backstage.
+1. Backstage created [a git repository](https://cnoe.localtest.me:8443/gitea/giteaAdmin/demo), then pushed templated contents to it.
+2. Backstage created [an ArgoCD Application](https://cnoe.localtest.me:8443/argocd/applications/argocd/demo?) and pointed it to the git repository.
+3. Backstage registered the application as [a component](https://cnoe.localtest.me:8443/gitea/giteaAdmin/demo/src/branch/main/catalog-info.yaml) in Backstage.
 4. ArgoCD deployed the manifests stored in the repo to the cluster.
 5. Backstage retrieved application health from ArgoCD API, then displayed it.
 

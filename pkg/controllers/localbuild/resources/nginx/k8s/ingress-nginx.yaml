@@ -324,6 +324,7 @@ apiVersion: v1
 data:
   allow-snippet-annotations: "true"
   proxy-buffer-size: 32k
+  use-forwarded-headers: "true"
 kind: ConfigMap
 metadata:
   labels:
