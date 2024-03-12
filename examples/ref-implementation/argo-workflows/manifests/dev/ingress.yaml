@@ -12,7 +12,7 @@ spec:
     - host: localhost
       http:
         paths:
-          - path: /argo(/|$)(.*)
+          - path: /argo-workflows(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -22,7 +22,7 @@ spec:
     - host: cnoe.localtest.me
       http:
         paths:
-          - path: /argo(/|$)(.*)
+          - path: /argo-workflows(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:

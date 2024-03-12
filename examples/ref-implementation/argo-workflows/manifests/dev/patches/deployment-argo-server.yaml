@@ -15,7 +15,7 @@ spec:
               scheme: HTTP
           env:
             - name: BASE_HREF
-              value: "/argo/"
+              value: "/argo-workflows/"
           args:
             - server
             - --configmap=workflow-controller-configmap

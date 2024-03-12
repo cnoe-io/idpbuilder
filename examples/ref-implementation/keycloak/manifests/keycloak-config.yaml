@@ -145,7 +145,7 @@ data:
       "rootUrl": "",
       "baseUrl": "",
       "redirectUris": [
-        "https://cnoe.localtest.me:8443/argo/oauth2/callback"
+        "https://cnoe.localtest.me:8443/argo-workflows/oauth2/callback"
       ],
       "webOrigins": [
         "/*"

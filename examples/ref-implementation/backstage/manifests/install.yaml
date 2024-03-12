@@ -370,7 +370,7 @@ spec:
         POSTGRES_DB: backstage
         POSTGRES_USER: backstage
         POSTGRES_PASSWORD: "{{.POSTGRES_PASSWORD}}"
-        ARGO_WORKFLOWS_URL: https://cnoe.localtest.me:8443/argo
+        ARGO_WORKFLOWS_URL: https://cnoe.localtest.me:8443/argo-workflows
         KEYCLOAK_NAME_METADATA: https://cnoe.localtest.me:8443/keycloak/realms/cnoe/.well-known/openid-configuration
         KEYCLOAK_CLIENT_SECRET: "{{.BACKSTAGE_CLIENT_SECRET}}"
         ARGOCD_AUTH_TOKEN: "argocd.token={{.ARGOCD_SESSION_TOKEN}}"
