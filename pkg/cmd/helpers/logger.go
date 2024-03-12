@@ -21,9 +21,13 @@ func SetLogger() error {
 	if err != nil {
 		return err
 	}
+
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: l}))
+	kslogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: getKlogLevel(l)}))
 	logger := logr.FromSlogHandler(slogger.Handler())
-	klog.SetLogger(logger)
+	klogger := logr.FromSlogHandler(kslogger.Handler())
+
+	klog.SetLogger(klogger)
 	ctrl.SetLogger(logger)
 	return nil
 }
@@ -41,4 +45,12 @@ func getSlogLevel(s string) (slog.Level, error) {
 	default:
 		return slog.LevelDebug, fmt.Errorf("%s is not a valid log level", s)
 	}
+}
+
+// For end users, klog messages are mostly useless. We set it to error level unless debug logging is enabled.
+func getKlogLevel(l slog.Level) slog.Level {
+	if l < slog.LevelInfo {
+		return l
+	}
+	return slog.LevelError
 }

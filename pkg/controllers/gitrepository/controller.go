@@ -103,7 +103,7 @@ func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{Requeue: false}, nil
 	}
 
-	logger.Info("reconciling GitRepository", "name", req.Name, "namespace", req.Namespace)
+	logger.V(1).Info("reconciling GitRepository", "name", req.Name, "namespace", req.Namespace)
 	result, err := r.reconcileGitRepo(ctx, &gitRepo)
 	if err != nil {
 		r.Recorder.Event(&gitRepo, "Warning", "reconcile error", err.Error())
@@ -130,7 +130,7 @@ func (r *RepositoryReconciler) postProcessReconcile(ctx context.Context, req ctr
 
 func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alpha1.GitRepository) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("reconciling", "name", repo.Name, "dir", repo.Spec.Source)
+	logger.V(1).Info("reconciling", "name", repo.Name, "dir", repo.Spec.Source)
 	repo.Status.Synced = false
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

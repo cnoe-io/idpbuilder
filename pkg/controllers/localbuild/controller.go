@@ -43,12 +43,12 @@ type LocalbuildReconciler struct {
 type subReconciler func(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error)
 
 func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
-	log.Info("Reconciling", "resource", req.NamespacedName)
+	logger := log.FromContext(ctx)
+	logger.V(1).Info("Reconciling", "resource", req.NamespacedName)
 
 	var localBuild v1alpha1.Localbuild
 	if err := r.Get(ctx, req.NamespacedName, &localBuild); err != nil {
-		log.Error(err, "unable to fetch Resource")
+		logger.Error(err, "unable to fetch Resource")
 		// we'll ignore not-found errors, since they can't be fixed by an immediate
 		// requeue (we'll need to wait for a new notification), and we can get them
 		// on deleted requests.
@@ -94,7 +94,7 @@ func (r *LocalbuildReconciler) postProcessReconcile(ctx context.Context, req ctr
 }
 
 func (r *LocalbuildReconciler) ReconcileProjectNamespace(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	nsResource := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -102,16 +102,16 @@ func (r *LocalbuildReconciler) ReconcileProjectNamespace(ctx context.Context, re
 		},
 	}
 
-	log.Info("Create or update namespace", "resource", nsResource)
+	logger.V(1).Info("Create or update namespace", "resource", nsResource)
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, nsResource, func() error {
 		if err := controllerutil.SetControllerReference(resource, nsResource, r.Scheme); err != nil {
-			log.Error(err, "Setting controller ref on namespace resource")
+			logger.Error(err, "Setting controller ref on namespace resource")
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		log.Error(err, "Create or update namespace resource")
+		logger.Error(err, "Create or update namespace resource")
 	}
 	return ctrl.Result{}, err
 }
@@ -157,7 +157,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName string, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	logger.Info("Ensuring embedded ArgoCD Application", "name", appName)
+	logger.V(1).Info("Ensuring embedded ArgoCD Application", "name", appName)
 	repo, err := r.reconcileGitRepo(ctx, resource, "embedded", appName, appName, "")
 
 	if err != nil {

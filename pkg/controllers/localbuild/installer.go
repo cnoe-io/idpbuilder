@@ -61,7 +61,7 @@ func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace 
 }
 
 func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.CorePackageTemplateConfig) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
 	nsClient := client.NewNamespacedClient(cli, e.namespace)
 	installObjs, err := e.installResources(sc, cfg)
@@ -78,7 +78,7 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 		}
 	}
 
-	log.Info(fmt.Sprintf("Installing/Reconciling %s resources", e.name))
+	logger.V(1).Info(fmt.Sprintf("Installing/Reconciling %s resources", e.name))
 	for _, obj := range installObjs {
 		if gvk, ok := e.monitoredResources[obj.GetName()]; ok {
 			if obj.GetObjectKind().GroupVersionKind() == gvk {
@@ -88,7 +88,7 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 					if gotObj, ok := gvkObj.(client.Object); ok {
 						if err := cli.Get(ctx, types.NamespacedName{Namespace: e.namespace, Name: obj.GetName()}, gotObj); err != nil {
 							if err = controllerutil.SetControllerReference(resource, obj, sc); err != nil {
-								log.Error(err, "Setting controller reference for deployment", obj.GetName(), obj)
+								logger.Error(err, "Setting controller reference for deployment", obj.GetName(), obj)
 								return ctrl.Result{}, err
 							}
 						}
@@ -140,18 +140,18 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 						switch t := gotObj.(type) {
 						case *appsv1.Deployment:
 							if t.Status.AvailableReplicas >= 1 {
-								log.Info(t.GetName(), "deployment", t.Status.AvailableReplicas)
+								logger.V(1).Info(t.GetName(), "deployment", t.Status.AvailableReplicas)
 								return
 							}
 						case *appsv1.StatefulSet:
 							if t.Status.AvailableReplicas >= 1 {
-								log.Info(t.GetName(), "statefulset", t.Status.AvailableReplicas)
+								logger.V(1).Info(t.GetName(), "statefulset", t.Status.AvailableReplicas)
 								return
 							}
 						}
 					}
 
-					log.Info(fmt.Sprintf("Waiting for %s %s to become ready", gvk.Kind, obj.GetName()))
+					logger.Info(fmt.Sprintf("Waiting for %s %s to become ready", gvk.Kind, obj.GetName()))
 					time.Sleep(30 * time.Second)
 				}
 			}(obj, gvk)
@@ -166,13 +166,13 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 	select {
 	case <-timeout:
 		err := errors.New("Timeout")
-		log.Error(err, fmt.Sprintf("Didn't reconcile %s on time", e.name))
+		logger.Error(err, fmt.Sprintf("Didn't reconcile %s on time", e.name))
 		return ctrl.Result{}, err
 	case err, errOccurred := <-errCh:
 		if !errOccurred {
-			log.Info(fmt.Sprintf("%s is ready!", e.name))
+			logger.V(1).Info(fmt.Sprintf("%s is ready!", e.name))
 		} else {
-			log.Error(err, fmt.Sprintf("failed to reconcile the %s resources", e.name))
+			logger.Error(err, fmt.Sprintf("failed to reconcile the %s resources", e.name))
 			return ctrl.Result{}, err
 		}
 	}

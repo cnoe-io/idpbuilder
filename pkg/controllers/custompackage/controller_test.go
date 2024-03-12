@@ -151,7 +151,6 @@ func TestReconcileCustomPkg(t *testing.T) {
 		}
 	}
 	time.Sleep(1 * time.Second)
-
 	// verify repo.
 	c := mgr.GetClient()
 	repo := v1alpha1.GitRepository{
