@@ -37,7 +37,7 @@ version=${version##*/}
 curl -L -o ./idpbuilder.tar.gz "https://github.com/cnoe-io/idpbuilder/releases/download/${version}/idpbuilder-$(uname | awk '{print tolower($0)}')-$(uname -m | sed 's/x86_64/amd64/').tar.gz"
 tar xzf idpbuilder.tar.gz
 
-./idpbuilder  version
+./idpbuilder version
 # example output
 # idpbuilder 0.3.0 go1.21.5 linux/amd64
 ```
@@ -94,7 +94,7 @@ You can specify the kubernetes version by using the `--kube-version` flag. Suppo
 If you need to expose more ports between the docker container and the kubernetes host, you can use the `--extra-ports` flag. For example:
 
 ```
-./idpbuilder create --extra-ports 22:32222`
+./idpbuilder create --extra-ports 22:32222
 ```
 
 If you want to specify your own kind configuration file, use the `--kind-config` flag.
