@@ -8,7 +8,7 @@ Ensure you have the following tools installed on your computer.
 
 **Required**
 
-- [idpbuilder](https://github.com/cnoe-io/idpbuilder/releases/latest): version `0.0.2` or later
+- [idpbuilder](https://github.com/cnoe-io/idpbuilder/releases/latest): version `0.3.0` or later
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl): version `1.27` or later
 - Your computer should have at least 6 GB RAM allocated to Docker. If you are on Docker Desktop, see [this guide](https://docs.docker.com/desktop/settings/mac/).
 
