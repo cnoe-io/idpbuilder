@@ -53,6 +53,8 @@ Once idpbuilder finishes bootstrapping, you should have port 8080 forward in the
 You may get a 404 page after clicking the port 8080 forwarded address. This is completely normal because Backstage may not be ready yet. 
 Give it a few more minutes and it should redirect you to a Backstage page.
 
+### Accessing UIs
+
 If you'd like to track progress of deployment, go to `/argocd` path and login with your ArgoCD credentials. 
 For example run this command to get the URL for Argo CD:
 ```bash

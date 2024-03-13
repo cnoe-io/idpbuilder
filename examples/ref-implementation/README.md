@@ -8,7 +8,7 @@ Ensure you have the following tools installed on your computer.
 
 **Required**
 
-- [idpbuilder](https://github.com/cnoe-io/idpbuilder/releases/latest): version `0.0.2` or later
+- [idpbuilder](https://github.com/cnoe-io/idpbuilder/releases/latest): version `0.3.0` or later
 - [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl): version `1.27` or later
 - Your computer should have at least 6 GB RAM allocated to Docker. If you are on Docker Desktop, see [this guide](https://docs.docker.com/desktop/settings/mac/).
 
@@ -55,7 +55,7 @@ The only package that cannot be removed this way is Keycloak because other packa
 
 #### Accessing UIs
 - Argo CD: https://cnoe.localtest.me:8443/argocd
-- Argo Workflows: https://cnoe.localtest.me:8443/argo
+- Argo Workflows: https://cnoe.localtest.me:8443/argo-workflows
 - Backstage: https://cnoe.localtest.me:8443/
 - Gitea: https://cnoe.localtest.me:8443/gitea
 - Keycloak: https://cnoe.localtest.me:8443/keycloak/admin/master/console/
