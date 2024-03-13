@@ -197,9 +197,9 @@ metadata:
   namespace: backstage
 stringData:
   k8s-config.yaml: "type: 'config'\nclusters:\n  - url: https://kubernetes.default.svc.cluster.local\n
-    \   name: local\n    authProvider: 'serviceAccount'\n    skipTLSVerify: true\n
+    \   name: local\n    authProvider: 'serviceAccount'\n    skipTLSVerify: false\n
     \   skipMetricsLookup: true\n    serviceAccountToken: \n      $file: /var/run/secrets/kubernetes.io/serviceaccount/token\n
-    \   caData: \n      $file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n"
+    \   caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt\n"
 ---
 apiVersion: v1
 kind: Service
@@ -263,6 +263,7 @@ spec:
             - secretRef:
                 name: argocd-credentials
           image: ghcr.io/cnoe-io/backstage-app:plugin-scaffolder-actions
+          imagePullPolicy: Always
           name: backstage
           ports:
             - containerPort: 7007
