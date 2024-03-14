@@ -10,7 +10,7 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://googlecloudplatform.github.io/spark-on-k8s-operator
+    - repoURL: https://kubeflow.github.io/spark-operator
       targetRevision: 1.1.27
       helm:
         releaseName: spark-operator
