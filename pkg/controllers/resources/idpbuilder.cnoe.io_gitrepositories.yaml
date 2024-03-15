@@ -37,6 +37,20 @@ spec:
             type: object
           spec:
             properties:
+              customization:
+                description: PackageCustomization defines how packages are customized
+                properties:
+                  filePath:
+                    description: FilePath is the absolute file path to a YAML file
+                      that contains Kubernetes manifests.
+                    type: string
+                  name:
+                    description: Name is the name of the package to be customized.
+                      e.g. argocd
+                    type: string
+                required:
+                - name
+                type: object
               gitURL:
                 description: GitURL is the base URL of Git server used for API calls.
                 pattern: ^https?:\/\/.+$
@@ -62,8 +76,6 @@ spec:
                   embeddedAppName:
                     enum:
                     - argocd
-                    - backstage
-                    - crossplane
                     - gitea
                     - nginx
                     type: string
