@@ -218,7 +218,7 @@ spec:
             - |
               #! /bin/bash
   
-              set -e -o pipefail
+              set -x -e -o pipefail
               
               apt update && apt install curl jq -y
               
@@ -245,31 +245,37 @@ spec:
               
               echo "creating cnoe realm and groups"
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/realm-payload.json \
                 http://keycloak.keycloak.svc.cluster.local:8080/admin/realms
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/client-scope-groups-payload.json \
                 http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/client-scopes
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/group-admin-payload.json \
                 http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/groups
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/group-base-user-payload.json \
                 http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/groups
               
               # Create scope mapper
                 echo 'adding group claim to tokens'
-              CLIENT_SCOPE_GROUPS_ID=$(curl -sS -H "Content-Type: application/json" -H "Authorization: bearer ${KEYCLOAK_TOKEN}" -X GET  http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/client-scopes | jq -e -r  '.[] | select(.name == "groups") | .id')
+              #CLIENT_SCOPE_GROUPS_ID=$(curl -sS -H "Content-Type: application/json" -H "Authorization: bearer ${KEYCLOAK_TOKEN}" -X GET  http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/client-scopes | jq -e -r  '.[] | select(.name == "groups") | .id')
+              CLIENT_SCOPE_GROUPS_ID=$(curl -H "Content-Type: application/json" -H "Authorization: bearer ${KEYCLOAK_TOKEN}" -X GET  http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/client-scopes | jq -e -r  '.[] | select(.name == "groups") | .id')
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/group-mapper-payload.json \
                 http://keycloak.keycloak.svc.cluster.local:8080/admin/realms/cnoe/client-scopes/${CLIENT_SCOPE_GROUPS_ID}/protocol-mappers/models
