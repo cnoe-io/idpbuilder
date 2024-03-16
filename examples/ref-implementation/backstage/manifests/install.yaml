@@ -265,7 +265,6 @@ spec:
             - secretRef:
                 name: argocd-credentials
           image: ghcr.io/cnoe-io/backstage-app:plugin-scaffolder-actions
-          imagePullPolicy: Always
           name: backstage
           ports:
             - containerPort: 7007

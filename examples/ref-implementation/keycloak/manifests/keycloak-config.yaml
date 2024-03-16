@@ -217,7 +217,6 @@ spec:
           args:
             - |
               #! /bin/bash
-  
               set -ex -o pipefail
               
               apt -qq update && apt -qq install curl jq -y
@@ -247,22 +246,26 @@ spec:
               
               echo "creating cnoe realm and groups"
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/realm-payload.json \
                 ${KYECLOAK_URL}/admin/realms
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/client-scope-groups-payload.json \
                 ${KYECLOAK_URL}/admin/realms/cnoe/client-scopes
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/group-admin-payload.json \
                 ${KYECLOAK_URL}/admin/realms/cnoe/groups
               
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/group-base-user-payload.json \
                 ${KYECLOAK_URL}/admin/realms/cnoe/groups
@@ -270,8 +273,8 @@ spec:
               # Create scope mapper
                 echo 'adding group claim to tokens'
               CLIENT_SCOPE_GROUPS_ID=$(curl -sS -H "Content-Type: application/json" -H "Authorization: bearer ${KEYCLOAK_TOKEN}" -X GET  ${KYECLOAK_URL}/admin/realms/cnoe/client-scopes | jq -e -r  '.[] | select(.name == "groups") | .id')
-              
-              curl -sS -H "Content-Type: application/json" \
+              #curl -sS -H "Content-Type: application/json" \
+              curl -H "Content-Type: application/json" \
                 -H "Authorization: bearer ${KEYCLOAK_TOKEN}" \
                 -X POST --data @/var/config/group-mapper-payload.json \
                 ${KYECLOAK_URL}/admin/realms/cnoe/client-scopes/${CLIENT_SCOPE_GROUPS_ID}/protocol-mappers/models
