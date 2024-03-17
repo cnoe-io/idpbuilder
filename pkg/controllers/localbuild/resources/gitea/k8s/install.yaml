@@ -288,6 +288,22 @@ stringData:
 
     echo '==== END GITEA CONFIGURATION ===='
 ---
+# Source: gitea/templates/gitea/pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: gitea-shared-storage
+  namespace: gitea
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 5Gi
+---
 # Source: gitea/templates/gitea/http-svc.yaml
 apiVersion: v1
 kind: Service
@@ -551,7 +567,8 @@ spec:
         - name: temp
           emptyDir: {}
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: gitea-shared-storage
 {{- if .UsePathRouting }}
 ---
 apiVersion: networking.k8s.io/v1
