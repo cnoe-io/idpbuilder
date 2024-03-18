@@ -44,6 +44,10 @@ spec:
           env:
             - name: KEYCLOAK_ADMIN
               value: cnoe-admin
+            - name: KEYCLOAK_LOGLEVEL
+              value: ALL
+            - name: QUARKUS_TRANSACTION_MANAGER_ENABLE_RECOVERY
+              value: 'true'
           envFrom:
             - secretRef:
                 name: keycloak-config
@@ -73,8 +77,7 @@ data:
     db=postgres
     
     # The username of the database user.
-    db-username=keycloak
-    db-url-host=postgresql.keycloak.svc.cluster.local
+    db-url=jdbc:postgresql://postgresql.keycloak.svc.cluster.local:5432/postgres
 
     # The proxy address forwarding mode if the server is behind a reverse proxy.
     proxy=edge
@@ -147,3 +150,15 @@ spec:
             requests:
               cpu: 100m
               memory: 300Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: "500Mi"
+

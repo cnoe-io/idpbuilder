@@ -6,7 +6,8 @@ postgresql-ha:
   enabled: false
 
 persistence:
-  enabled: false
+  enabled: true
+  size: 5Gi
 
 test:
   enabled: false
