@@ -333,6 +333,17 @@ spec:
             requests:
               cpu: 100m
               memory: 300Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: "500Mi"
 ---
 apiVersion: generators.external-secrets.io/v1alpha1
 kind: Password
