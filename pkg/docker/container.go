@@ -41,10 +41,9 @@ func GetContainerByName(ctx context.Context, name string, dockerClient client.AP
 				gotContainer = &container
 				break
 			}
-
-			if gotContainer != nil {
-				break
-			}
+		}
+		if gotContainer != nil {
+			break
 		}
 	}
 	return gotContainer, nil
