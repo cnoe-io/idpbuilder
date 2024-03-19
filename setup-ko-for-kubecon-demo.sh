@@ -6,4 +6,5 @@ docker tag cgr.dev/chainguard/static:latest ko.local/chainguard/static:latest
 
 "defaultBaseImage: ko.local/chainguard/static" > .ko.yaml
 
-export KO_DOCKER_REPO=gitea.cnoe.localtest.me:8443/giteaadmin/ && kustomize build config/overlays/local | ko resolve --local --insecure-registry -f - | kubectl apply -f -
+#export KO_DOCKER_REPO=gitea.cnoe.localtest.me:8443/giteaadmin/ && kustomize build config/overlays/local | ko resolve --local --insecure-registry -f - | kubectl apply -f -
+export KO_DOCKER_REPO=gitea.cnoe.localtest.me:8443/giteaadmin/ && kustomize build config/overlays/local | ko resolve --local --insecure-registry -f - | yq .
