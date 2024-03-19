@@ -205,7 +205,7 @@ spec:
             name: config-job
       containers:
         - name: kubectl
-          image: docker.io/library/ubuntu:22.04
+          image: ghcr.io/cnoe-io/tools-image:latest
           volumeMounts:
             - name: keycloak-config
               readOnly: true
@@ -219,9 +219,7 @@ spec:
               #! /bin/bash
   
               set -ex -o pipefail
-              
-              apt -qq update && apt -qq install curl jq -y
-              
+
               ADMIN_PASSWORD=$(cat /var/secrets/KEYCLOAK_ADMIN_PASSWORD)
               USER1_PASSWORD=$(cat /var/secrets/USER_PASSWORD)
 
@@ -238,13 +236,11 @@ spec:
               
               curl --fail-with-body -H "Authorization: bearer ${KEYCLOAK_TOKEN}"  "${KYECLOAK_URL}/admin/realms/cnoe"  &> /dev/null
               if [ $? -eq 0 ]; then
+                echo "Realm already exists!"
                 exit 0
               fi
               set -e
-              
-              curl -sS -LO "https://dl.k8s.io/release/v1.28.3//bin/linux/amd64/kubectl"
-              chmod +x kubectl
-              
+
               echo "creating cnoe realm and groups"
               
               curl -sS -H "Content-Type: application/json" \
@@ -344,7 +340,10 @@ spec:
                 -X GET ${KYECLOAK_URL}/admin/realms/cnoe/clients/${CLIENT_ID} | jq -e -r '.secret')
               
               ARGOCD_PASSWORD=$(./kubectl -n argocd get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode }}')
-              
+
+              echo "Getting ArgoCD Session Token"
+              #curl -k -sS http://argocd-server.argocd.svc.cluster.local:443/api/v1/session -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASSWORD}\"}" | jq .
+
               ARGOCD_SESSION_TOKEN=$(curl -k -sS http://argocd-server.argocd.svc.cluster.local:443/api/v1/session -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASSWORD}\"}" | jq -r .token)
               
               echo \
