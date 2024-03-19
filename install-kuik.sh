@@ -6,3 +6,4 @@ helm upgrade --install \
      --repo https://charts.enix.io/ \
      --set controllers.webhook.ignorePullPolicyAlways=false \
      --set registry.persistence.enabled=true
+     --set registry.persistence.size=10Gi
