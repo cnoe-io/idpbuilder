@@ -7,4 +7,4 @@ kube-image-keeper kube-image-keeper \
 --set controllers.webhook.ignorePullPolicyAlways=false \
 --set registry.persistence.enabled=true \
 --set registry.persistence.size=10Gi \
---set controllers.webhook.ignoredNamespaces=controller-demo-sysstem
+--set controllers.webhook.ignoredNamespaces={controller-demo-system}
