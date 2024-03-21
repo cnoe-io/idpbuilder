@@ -14,7 +14,6 @@ BASE_DIRECTORY="."
 
 # Find all .yaml files recursively starting from the base directory
 # and perform an in-place search and replace from 8443 to the new port
-find "$BASE_DIRECTORY" -type f -name "*.yaml" -exec sed -i '' "s/8443/${NEW_PORT}/g" {} +
-
+find "$BASE_DIRECTORY" -type f -name "*.yaml" -print0 | xargs -0 sed -i '' -e "s/8443/${NEW_PORT}/g"
 echo "Replacement complete. All occurrences of 8443 have been changed to ${NEW_PORT}."
 
