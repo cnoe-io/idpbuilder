@@ -5,3 +5,4 @@ kubectl delete namespace gitea
 kubectl delete namespace ingress-nginx
 kubectl delete namespace nginx
 kubectl delete namespace idpbuilder-localdev
+kubectl delete namespace idpbuilder-secondlocaldev

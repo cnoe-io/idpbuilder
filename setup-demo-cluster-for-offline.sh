@@ -18,5 +18,5 @@ read  -n 1 -p "Check argocd for installation success and then press any key to c
 ./force-delete-ref-impl-argocd.sh
 ./delete-base-namespaces.sh
 ./delete-ref-impl-namespaces.sh
-./delete-secret-stores.sh
+#./delete-secret-stores.sh
 echo "You should now disconnect your network and try to run ./idpbuilder create"
