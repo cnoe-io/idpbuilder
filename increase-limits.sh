@@ -1,5 +1,5 @@
 #!/bin/bash
-sudo sysctl fs.inotify.max_user_instances=1280
+sudo sysctl fs.inotify.max_user_instances=2560
 sudo sysctl fs.inotify.max_user_watches=655360
 
 # more agressive settings
