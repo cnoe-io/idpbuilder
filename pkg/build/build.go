@@ -25,30 +25,35 @@ var (
 )
 
 type Build struct {
-	name              string
-	cfg               util.CorePackageTemplateConfig
-	kindConfigPath    string
-	kubeConfigPath    string
-	kubeVersion       string
-	extraPortsMapping string
-	customPackageDirs []string
-	exitOnSync        bool
-	scheme            *runtime.Scheme
-	CancelFunc        context.CancelFunc
+	name                 string
+	cfg                  util.CorePackageTemplateConfig
+	kindConfigPath       string
+	kubeConfigPath       string
+	kubeVersion          string
+	extraPortsMapping    string
+	customPackageDirs    []string
+	packageCustomization map[string]v1alpha1.PackageCustomization
+	exitOnSync           bool
+	scheme               *runtime.Scheme
+	CancelFunc           context.CancelFunc
 }
 
-func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig, customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc) *Build {
+func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig,
+	customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc,
+	packageCustomization map[string]v1alpha1.PackageCustomization) *Build {
+
 	return &Build{
-		name:              name,
-		kindConfigPath:    kindConfigPath,
-		kubeConfigPath:    kubeConfigPath,
-		kubeVersion:       kubeVersion,
-		extraPortsMapping: extraPortsMapping,
-		customPackageDirs: customPackageDirs,
-		exitOnSync:        exitOnSync,
-		scheme:            scheme,
-		cfg:               cfg,
-		CancelFunc:        ctxCancel,
+		name:                 name,
+		kindConfigPath:       kindConfigPath,
+		kubeConfigPath:       kubeConfigPath,
+		kubeVersion:          kubeVersion,
+		extraPortsMapping:    extraPortsMapping,
+		customPackageDirs:    customPackageDirs,
+		packageCustomization: packageCustomization,
+		exitOnSync:           exitOnSync,
+		scheme:               scheme,
+		cfg:                  cfg,
+		CancelFunc:           ctxCancel,
 	}
 }
 
@@ -169,11 +174,13 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					Enabled: true,
 				},
 				EmbeddedArgoApplications: v1alpha1.EmbeddedArgoApplicationsPackageConfigSpec{
-					Enabled: true,
+					Enabled:              true,
+					PackageCustomization: b.packageCustomization,
 				},
 				CustomPackageDirs: b.customPackageDirs,
 			},
 		}
+
 		return nil
 	})
 	if err != nil {
