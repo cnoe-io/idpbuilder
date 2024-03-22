@@ -99,7 +99,11 @@ func (c *Cluster) getConfig() ([]byte, error) {
 }
 
 func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig) (*Cluster, error) {
-	provider := cluster.NewProvider(cluster.ProviderWithDocker())
+	detectOpt, err := cluster.DetectNodeProvider()
+	if err != nil {
+		return nil, err
+	}
+	provider := cluster.NewProvider(detectOpt)
 
 	return &Cluster{
 		provider:          provider,
