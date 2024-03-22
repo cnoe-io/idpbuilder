@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s/provider"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -20,7 +22,7 @@ import (
 )
 
 type Cluster struct {
-	provider          IProvider
+	provider          provider.Provider
 	name              string
 	kubeVersion       string
 	kubeConfigPath    string
@@ -99,7 +101,10 @@ func (c *Cluster) getConfig() ([]byte, error) {
 }
 
 func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig) (*Cluster, error) {
-	provider := cluster.NewProvider(cluster.ProviderWithDocker())
+	provider, err := k8s.CreateProvider(provider.KindProvider, provider.Config{Name: name})
+	if err != nil {
+		return nil, err
+	}
 
 	return &Cluster{
 		provider:          provider,
@@ -113,7 +118,7 @@ func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMap
 }
 
 func (c *Cluster) Exists() (bool, error) {
-	providerClusters, err := c.provider.List()
+	providerClusters, err := c.provider.ListClusters()
 	if err != nil {
 		return false, err
 	}
@@ -174,7 +179,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	if clusterExitsts {
 		if recreate {
 			fmt.Printf("Existing cluster %s found. Deleting.\n", c.name)
-			c.provider.Delete(c.name, "")
+			c.provider.Delete(c.name)
 		} else {
 			// check if user is requesting a different port
 			// for the idpBuilder
@@ -208,9 +213,8 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	fmt.Print("\n#########################   config end    ############################\n")
 
 	fmt.Printf("Creating kind cluster %s\n", c.name)
-	if err = c.provider.Create(
-		c.name,
-		cluster.CreateWithRawConfig(rawConfig),
+	if err = c.provider.Provision(
+		provider.Config{Name: c.name},
 	); err != nil {
 		return err
 	}
