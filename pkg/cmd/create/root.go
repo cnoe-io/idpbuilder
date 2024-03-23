@@ -10,7 +10,7 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
-	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	k8s "github.com/cnoe-io/idpbuilder/pkg/k8s/clientutils"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"

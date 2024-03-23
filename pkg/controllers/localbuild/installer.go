@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	k8s "github.com/cnoe-io/idpbuilder/pkg/k8s/clientutils"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
