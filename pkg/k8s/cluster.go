@@ -1,20 +1,16 @@
 package k8s
 
 import (
+	"fmt"
+
 	"github.com/cnoe-io/idpbuilder/pkg/k8s/provider"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s/providers/kind"
 )
 
-func CreateProvider(providerType provider.ProviderType, config provider.Config) (provider.Provider, error) {
-	var prvdr provider.Provider
+func GetProvider(providerType provider.ProviderType, config *provider.Config) (provider.Provider, error) {
 	switch providerType {
 	case provider.KindProvider:
-		prvdr = &kind.Cluster{}
+		return kind.NewProvider()
 	}
-
-	if err := prvdr.Provision(config); err != nil {
-		return nil, err
-	}
-
-	return prvdr, nil
+	return nil, fmt.Errorf("invalid provider type")
 }
