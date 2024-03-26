@@ -35,4 +35,14 @@ service:
     externalTrafficPolicy: Local
 
 ingress:
+  # NOTE: The ingress is generated in a later step for path based routing feature See: hack/argo-cd/generate-manifests.sh
   enabled: false
+
+image:
+  registry: "ghcr.io"
+  repository: jessesanford/gitea
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.21.7-cnoe-patches"
+  # Adds -rootless suffix to image name
+  rootless: true
+

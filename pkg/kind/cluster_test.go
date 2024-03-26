@@ -45,7 +45,12 @@ nodes:
   - containerPort: 443
     hostPort: 8443
     protocol: TCP
-  `
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.cnoe.localtest.me:8443"]
+    endpoint = ["https://gitea.cnoe.localtest.me"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.cnoe.localtest.me".tls]
+    insecure_skip_verify = true`
 	assert.YAMLEq(t, expectConfig, string(cfg))
 }
 
@@ -82,7 +87,13 @@ nodes:
     protocol: TCP
   - containerPort: 32222
     hostPort: 22
-    protocol: TCP`
+    protocol: TCP
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.cnoe.localtest.me:8443"]
+    endpoint = ["https://gitea.cnoe.localtest.me"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.cnoe.localtest.me".tls]
+    insecure_skip_verify = true`
 
 	assert.YAMLEq(t, expectConfig, string(cfg))
 }
