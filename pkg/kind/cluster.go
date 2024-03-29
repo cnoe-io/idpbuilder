@@ -7,20 +7,23 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"strconv"
 	"strings"
 
-	"github.com/cnoe-io/idpbuilder/pkg/docker"
+	"github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
 	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
 )
 
+var (
+	setupLog = ctrl.Log.WithName("setup")
+)
+
 type Cluster struct {
 	provider          IProvider
+	runtime           runtime.IRuntime
 	name              string
 	kubeVersion       string
 	kubeConfigPath    string
@@ -100,13 +103,28 @@ func (c *Cluster) getConfig() ([]byte, error) {
 
 func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig) (*Cluster, error) {
 	detectOpt, err := cluster.DetectNodeProvider()
+
 	if err != nil {
 		return nil, err
 	}
 	provider := cluster.NewProvider(detectOpt)
 
+	var rt runtime.IRuntime
+	if runtime.IsDockerAvailable() {
+		setupLog.Info("Detected runtim: Docker")
+		if rt, err = runtime.NewDockerRuntime(); err != nil {
+			return nil, err
+		}
+	} else if runtime.IsFinchAvailable() {
+		println("Detected runtime: Finch")
+		rt, _ = runtime.NewFinchRuntime()
+	} else {
+		return nil, errors.New("no runtime found")
+	}
+
 	return &Cluster{
 		provider:          provider,
+		runtime:           rt,
 		name:              name,
 		kindConfigPath:    kindConfigPath,
 		kubeVersion:       kubeVersion,
@@ -130,8 +148,7 @@ func (c *Cluster) Exists() (bool, error) {
 	return false, nil
 }
 
-func (c *Cluster) RunsOnRightPort(cli client.APIClient, ctx context.Context) (bool, error) {
-
+func (c *Cluster) RunsOnRightPort(ctx context.Context) (bool, error) {
 	allNodes, err := c.provider.ListNodes(c.name)
 	if err != nil {
 		return false, err
@@ -152,21 +169,8 @@ func (c *Cluster) RunsOnRightPort(cli client.APIClient, ctx context.Context) (bo
 		return false, nil
 	}
 
-	container, err := docker.GetContainerByName(ctx, cpNodeName, cli, types.ContainerListOptions{})
-	if err != nil {
-		return false, err
-	}
+	return c.runtime.ContainerWithPort(ctx, cpNodeName, c.cfg.Port)
 
-	if container == nil {
-		return false, nil
-	}
-
-	userPort, err := toUint16(c.cfg.Port)
-	if err != nil {
-		return false, err
-	}
-
-	return docker.IsUsingPort(container, userPort), nil
 }
 
 func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
@@ -177,17 +181,10 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 
 	if clusterExitsts {
 		if recreate {
-			fmt.Printf("Existing cluster %s found. Deleting.\n", c.name)
+			setupLog.Info("Existing cluster %s found. Deleting.\n", c.name)
 			c.provider.Delete(c.name, "")
 		} else {
-			// check if user is requesting a different port
-			// for the idpBuilder
-			cli, err := docker.GetDockerClient()
-			if err != nil {
-				return err
-			}
-
-			rightPort, err := c.RunsOnRightPort(cli, ctx)
+			rightPort, err := c.RunsOnRightPort(ctx)
 			if err != nil {
 				return err
 			}
@@ -197,7 +194,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 			}
 
 			// reuse if there is no port conflict
-			fmt.Printf("Cluster %s already exists\n", c.name)
+			setupLog.Info("Cluster %s already exists\n", c.name)
 			return nil
 		}
 	}
@@ -211,7 +208,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	fmt.Printf("%s", rawConfig)
 	fmt.Print("\n#########################   config end    ############################\n")
 
-	fmt.Printf("Creating kind cluster %s\n", c.name)
+	setupLog.Info("Creating kind cluster %s\n", c.name)
 	if err = c.provider.Create(
 		c.name,
 		cluster.CreateWithRawConfig(rawConfig),
@@ -219,26 +216,11 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 		return err
 	}
 
-	fmt.Printf("Done creating cluster %s\n", c.name)
+	setupLog.Info("Done creating cluster %s\n", c.name)
 
 	return nil
 }
 
 func (c *Cluster) ExportKubeConfig(name string, internal bool) error {
 	return c.provider.ExportKubeConfig(name, c.kubeConfigPath, internal)
-}
-
-func toUint16(portString string) (uint16, error) {
-	// Convert port string to uint16
-	port, err := strconv.ParseUint(portString, 10, 16)
-	if err != nil {
-		return 0, err
-	}
-
-	// Port validation
-	if port > 65535 {
-		return 0, errors.New("Invalid port number")
-	}
-
-	return uint16(port), nil
 }
