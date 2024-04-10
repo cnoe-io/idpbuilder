@@ -47,6 +47,10 @@ spec:
               rules:
                 - applyServerSideEncryptionByDefault:
                     sseAlgorithm: AES256
+            tagging:
+              tagSet:
+                - key: cnoe
+                  value: "1"
       patches:
         - type: PatchSet
           patchSetName: common-fields
