@@ -36,8 +36,11 @@ func NewFinchRuntime() (IRuntime, error) {
 	}, nil
 }
 
+func (p *FinchRuntime) Name() string {
+	return "Finch"
+}
+
 func (f *FinchRuntime) ContainerWithPort(ctx context.Context, name string, port string) (bool, error) {
-	println("checking the container for port", name, port)
 	// add arguments to inspect the container
 	f.cmd.Args = append([]string{"finch"}, "container", "inspect", name)
 

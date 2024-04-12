@@ -8,7 +8,20 @@ import (
 	"sigs.k8s.io/kind/pkg/exec"
 )
 
-func IsDockerAvailable() bool {
+func DetectRuntime() (rt IRuntime, err error) {
+	if isDockerAvailable() {
+		if rt, err = NewDockerRuntime(); err != nil {
+			return nil, err
+		}
+	} else if isFinchAvailable() {
+		rt, _ = NewFinchRuntime()
+	} else {
+		return nil, errors.New("no runtime found")
+	}
+	return rt, nil
+}
+
+func isDockerAvailable() bool {
 	cmd := exec.Command("docker", "-v")
 	lines, err := exec.OutputLines(cmd)
 	if err != nil || len(lines) != 1 {
@@ -17,11 +30,10 @@ func IsDockerAvailable() bool {
 	return strings.HasPrefix(lines[0], "Docker version")
 }
 
-func IsFinchAvailable() bool {
+func isFinchAvailable() bool {
 	cmd := exec.Command("nerdctl", "-v")
 	lines, err := exec.OutputLines(cmd)
 	if err != nil || len(lines) != 1 {
-		// check finch
 		cmd = exec.Command("finch", "-v")
 		lines, err = exec.OutputLines(cmd)
 		if err != nil || len(lines) != 1 {

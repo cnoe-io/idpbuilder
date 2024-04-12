@@ -25,6 +25,10 @@ func NewDockerRuntime() (IRuntime, error) {
 	}, nil
 }
 
+func (p *DockerRuntime) Name() string {
+	return "Docker"
+}
+
 func (p *DockerRuntime) GetContainerByName(ctx context.Context, name string) (*types.Container, error) {
 	gotContainers, err := p.client.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {

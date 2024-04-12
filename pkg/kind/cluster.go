@@ -3,7 +3,6 @@ package kind
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -11,14 +10,14 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
 	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
 )
 
 var (
-	setupLog = ctrl.Log.WithName("setup")
+	setupLog = log.Log.WithName("setup")
 )
 
 type Cluster struct {
@@ -109,18 +108,11 @@ func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMap
 	}
 	provider := cluster.NewProvider(detectOpt)
 
-	var rt runtime.IRuntime
-	if runtime.IsDockerAvailable() {
-		setupLog.Info("Detected runtim: Docker")
-		if rt, err = runtime.NewDockerRuntime(); err != nil {
-			return nil, err
-		}
-	} else if runtime.IsFinchAvailable() {
-		println("Detected runtime: Finch")
-		rt, _ = runtime.NewFinchRuntime()
-	} else {
-		return nil, errors.New("no runtime found")
+	rt, err := runtime.DetectRuntime()
+	if err != nil {
+		return nil, err
 	}
+	setupLog.Info("Runtime detected", "provider", rt.Name())
 
 	return &Cluster{
 		provider:          provider,
@@ -181,7 +173,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 
 	if clusterExitsts {
 		if recreate {
-			setupLog.Info("Existing cluster %s found. Deleting.\n", c.name)
+			setupLog.Info("Existing cluster found. Deleting.", "cluster", c.name)
 			c.provider.Delete(c.name, "")
 		} else {
 			rightPort, err := c.RunsOnRightPort(ctx)
@@ -194,7 +186,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 			}
 
 			// reuse if there is no port conflict
-			setupLog.Info("Cluster %s already exists\n", c.name)
+			setupLog.Info("Cluster already exists", "cluster", c.name)
 			return nil
 		}
 	}
@@ -208,7 +200,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	fmt.Printf("%s", rawConfig)
 	fmt.Print("\n#########################   config end    ############################\n")
 
-	setupLog.Info("Creating kind cluster %s\n", c.name)
+	setupLog.Info("Creating kind cluster", "cluster", c.name)
 	if err = c.provider.Create(
 		c.name,
 		cluster.CreateWithRawConfig(rawConfig),
@@ -216,7 +208,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 		return err
 	}
 
-	setupLog.Info("Done creating cluster %s\n", c.name)
+	setupLog.Info("Done creating cluster", "cluster", c.name)
 
 	return nil
 }
