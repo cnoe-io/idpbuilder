@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/create"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/export"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/version"
 	"github.com/spf13/cobra"
@@ -19,6 +20,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&helpers.LogLevel, "log-level", "l", "info", helpers.LogLevelMsg)
 	rootCmd.AddCommand(create.CreateCmd)
+	rootCmd.AddCommand(export.ExportCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 }
 
