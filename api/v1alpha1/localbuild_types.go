@@ -13,9 +13,10 @@ const (
 	// CliStartTimeAnnotation indicates when the CLI was invoked.
 	CliStartTimeAnnotation = "cnoe.io/cli-start-time"
 	FieldManager           = "idpbuilder"
-	// If ExportLabelKey is set to ExportLabelValue on a kubernetes secret, secret key and values can be used by the export command.
-	ExportLabelKey   = "cnoe.io/exportable"
-	ExportLabelValue = "true"
+	// If GetSecretLabelKey is set to GetSecretLabelValue on a kubernetes secret, secret key and values can be used by the get command.
+	CLISecretLabelKey   = "cnoe.io/cli-secret"
+	CLISecretLabelValue = "true"
+	PackageNameLabelKey = "cnoe.io/package-name"
 )
 
 // ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
