@@ -17,7 +17,7 @@ var packages []string
 
 func init() {
 	GetCmd.AddCommand(SecretsCmd)
-	GetCmd.PersistentFlags().StringSliceVarP(&packages, "package", "p", []string{}, "name of package")
+	GetCmd.PersistentFlags().StringSliceVarP(&packages, "packages", "p", []string{}, "names of packages.")
 }
 
 func exportE(cmd *cobra.Command, args []string) error {

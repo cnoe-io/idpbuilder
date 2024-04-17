@@ -144,7 +144,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		}
 	}
 
-	return renderTemplate("templates/secrets.tmpl", outWriter, secretsToPrint)
+	return renderTemplate(secretTemplatePath, outWriter, secretsToPrint)
 }
 
 func renderTemplate(templatePath string, outWriter io.Writer, data []any) error {
