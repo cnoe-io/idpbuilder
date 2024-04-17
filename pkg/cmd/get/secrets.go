@@ -54,7 +54,8 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 	defer ctxCancel()
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
-	b := build.NewBuild("", "", kubeConfigPath, "", "", util.CorePackageTemplateConfig{}, []string{}, false, k8s.GetScheme(), ctxCancel)
+	b := build.NewBuild("", "", kubeConfigPath, "", "",
+		util.CorePackageTemplateConfig{}, []string{}, false, k8s.GetScheme(), ctxCancel, nil)
 
 	kubeConfig, err := b.GetKubeConfig()
 	if err != nil {
