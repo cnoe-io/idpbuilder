@@ -280,10 +280,6 @@ func (r *RepositoryReconciler) shouldProcess(repo v1alpha1.GitRepository) bool {
 	if repo.Spec.Source.Type == "local" && !filepath.IsAbs(repo.Spec.Source.Path) {
 		return false
 	}
-	// embedded fs does not change
-	if repo.Spec.Source.Type == "embedded" && repo.Status.Synced {
-		return false
-	}
 	return true
 }
 

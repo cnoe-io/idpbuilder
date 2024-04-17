@@ -18862,6 +18862,8 @@ kind: ConfigMap
 metadata:
   labels:
     Test: Data
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
   name: argocd-cm
 ---
 apiVersion: v1
