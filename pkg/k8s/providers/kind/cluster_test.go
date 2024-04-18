@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/cnoe-io/idpbuilder/pkg/k8s/provider"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -90,7 +91,7 @@ nodes:
 // Mock provider for testing
 type mockProvider struct {
 	mock.Mock
-	IProvider
+	provider.Provider
 }
 
 func (m *mockProvider) ListNodes(name string) ([]nodes.Node, error) {
