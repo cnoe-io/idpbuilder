@@ -35,21 +35,12 @@ type EmbeddedInstallation struct {
 
 	// name and gvk pair for resources that need to be monitored
 	monitoredResources map[string]schema.GroupVersionKind
-
-	resourceFS embed.FS
-}
-
-func (e *EmbeddedInstallation) rawInstallResources(templateData any) ([][]byte, error) {
-	return util.ConvertFSToBytes(e.resourceFS, e.resourcePath, templateData)
+	customization      v1alpha1.PackageCustomization
+	resourceFS         embed.FS
 }
 
 func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme, templateData any) ([]client.Object, error) {
-	rawResources, err := e.rawInstallResources(templateData)
-	if err != nil {
-		return nil, err
-	}
-
-	return k8s.ConvertRawResourcesToObjects(scheme, rawResources)
+	return k8s.BuildCustomizedObjects(e.customization.FilePath, e.resourcePath, e.resourceFS, scheme, templateData)
 }
 
 func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace {

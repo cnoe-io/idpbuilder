@@ -12,7 +12,7 @@ func TestGetRawInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	resources, err := e.rawInstallResources(
+	resources, err := util.ConvertFSToBytes(e.resourceFS, e.resourcePath,
 		util.CorePackageTemplateConfig{
 			Protocol:       "",
 			Host:           "",

@@ -6,7 +6,8 @@ import (
 	"fmt"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -25,8 +26,8 @@ const (
 //go:embed resources/gitea/k8s/*
 var installGiteaFS embed.FS
 
-func RawGiteaInstallResources(tmpl interface{}) ([][]byte, error) {
-	return util.ConvertFSToBytes(installGiteaFS, "resources/gitea/k8s", tmpl)
+func RawGiteaInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
+	return k8s.BuildCustomizedManifests(config.FilePath, "resources/gitea/k8s", installGiteaFS, scheme, templateData)
 }
 
 func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {

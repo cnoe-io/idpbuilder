@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
@@ -19,18 +19,19 @@ import (
 
 var (
 	// Flags
-	recreateCluster   bool
-	buildName         string
-	kubeVersion       string
-	extraPortsMapping string
-	kindConfigPath    string
-	extraPackagesDirs []string
-	noExit            bool
-	protocol          string
-	host              string
-	ingressHost       string
-	port              string
-	pathRouting       bool
+	recreateCluster           bool
+	buildName                 string
+	kubeVersion               string
+	extraPortsMapping         string
+	kindConfigPath            string
+	extraPackagesDirs         []string
+	packageCustomizationFiles []string
+	noExit                    bool
+	protocol                  string
+	host                      string
+	ingressHost               string
+	port                      string
+	pathRouting               bool
 )
 
 var CreateCmd = &cobra.Command{
@@ -42,17 +43,22 @@ var CreateCmd = &cobra.Command{
 }
 
 func init() {
+	// cluster related flags
 	CreateCmd.PersistentFlags().BoolVar(&recreateCluster, "recreate", false, "Delete cluster first if it already exists.")
 	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.27.3", "Version of the kind kubernetes cluster to create.")
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
+
+	// in-cluster resources related flags
 	CreateCmd.PersistentFlags().StringVar(&host, "host", "cnoe.localtest.me", "Host name to access resources in this cluster.")
 	CreateCmd.PersistentFlags().StringVar(&ingressHost, "ingress-host-name", "", "Host name used by ingresses. Useful when you have another proxy infront of idpbuilder.")
 	CreateCmd.PersistentFlags().StringVar(&protocol, "protocol", "https", "Protocol to use to access web UIs. http or https.")
 	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", "Port number under which idpBuilder tools are accessible.")
 	CreateCmd.PersistentFlags().BoolVar(&pathRouting, "use-path-routing", false, "When set to true, web UIs are exposed under single domain name.")
 	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "Paths to custom packages")
+	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, "Name of the package and the path to file to customize the package with. e.g. argocd:/tmp/argocd.yaml")
+	// idpbuilder related flags
 	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")
 }
 
@@ -79,11 +85,20 @@ func create(cmd *cobra.Command, args []string) error {
 
 	var absDirPaths []string
 	if len(extraPackagesDirs) > 0 {
-		p, err := getPackageAbsDirs(extraPackagesDirs)
+		p, err := helpers.GetAbsFilePaths(extraPackagesDirs, true)
 		if err != nil {
 			return err
 		}
 		absDirPaths = p
+	}
+
+	o := make(map[string]v1alpha1.PackageCustomization)
+	for i := range packageCustomizationFiles {
+		c, pErr := getPackageCustomFile(packageCustomizationFiles[i])
+		if pErr != nil {
+			return pErr
+		}
+		o[c.Name] = c
 	}
 
 	exitOnSync := true
@@ -100,7 +115,7 @@ func create(cmd *cobra.Command, args []string) error {
 			Port:           port,
 			UsePathRouting: pathRouting,
 		},
-		absDirPaths, exitOnSync, k8s.GetScheme(), ctxCancel,
+		absDirPaths, exitOnSync, k8s.GetScheme(), ctxCancel, o,
 	)
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
@@ -123,26 +138,41 @@ func validate() error {
 	if err != nil {
 		return fmt.Errorf("invalid url: %w", err)
 	}
+
+	for i := range packageCustomizationFiles {
+		_, pErr := getPackageCustomFile(packageCustomizationFiles[i])
+		if pErr != nil {
+			return pErr
+		}
+	}
 	return nil
 }
 
-func getPackageAbsDirs(paths []string) ([]string, error) {
-	out := make([]string, len(paths), len(paths))
-	for i := range paths {
-		path := paths[i]
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate path %s : %w", path, err)
-		}
-		f, err := os.Stat(absPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate path %s : %w", absPath, err)
-		}
-		if !f.IsDir() {
-			return nil, fmt.Errorf("given path is not a directory. %s", absPath)
-		}
-		out[i] = absPath
+func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
+	// the format should be `<package-name>:<path-to-file>`
+	s := strings.Split(input, ":")
+	if len(s) != 2 {
+		return v1alpha1.PackageCustomization{}, fmt.Errorf("ensure %s is formated as <package-name>:<path-to-file>", input)
 	}
 
-	return out, nil
+	paths, err := helpers.GetAbsFilePaths([]string{s[1]}, false)
+	if err != nil {
+		return v1alpha1.PackageCustomization{}, err
+	}
+
+	err = helpers.ValidateKubernetesYamlFile(paths[0])
+	if err != nil {
+		return v1alpha1.PackageCustomization{}, err
+	}
+
+	corePkgs := map[string]struct{}{"argocd": {}, "gitea": {}, "nginx": {}}
+	name := s[0]
+	_, ok := corePkgs[name]
+	if !ok {
+		return v1alpha1.PackageCustomization{}, fmt.Errorf("customization for %s not supported", name)
+	}
+	return v1alpha1.PackageCustomization{
+		Name:     name,
+		FilePath: paths[0],
+	}, nil
 }

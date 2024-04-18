@@ -397,7 +397,13 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 		} else {
 			repo.Spec.Source.Path = absPath
 		}
-
+		f, ok := resource.Spec.PackageConfigs.EmbeddedArgoApplications.PackageCustomization[embeddedName]
+		if ok {
+			repo.Spec.Customization = v1alpha1.PackageCustomization{
+				Name:     embeddedName,
+				FilePath: f.FilePath,
+			}
+		}
 		return nil
 	})
 
@@ -409,14 +415,14 @@ func getCustomPackageName(fileName, appName string) string {
 	return fmt.Sprintf("%s-%s", strings.ToLower(s[0]), appName)
 }
 
-func GetEmbeddedRawInstallResources(name string, template interface{}) ([][]byte, error) {
+func GetEmbeddedRawInstallResources(name string, templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
 	switch name {
 	case "argocd":
-		return RawArgocdInstallResources(template)
+		return RawArgocdInstallResources(templateData, config, scheme)
 	case "gitea":
-		return RawGiteaInstallResources(template)
+		return RawGiteaInstallResources(templateData, config, scheme)
 	case "nginx":
-		return RawNginxInstallResources(template)
+		return RawNginxInstallResources(templateData, config, scheme)
 	default:
 		return nil, fmt.Errorf("unsupported embedded app name %s", name)
 	}

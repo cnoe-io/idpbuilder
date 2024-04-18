@@ -5,6 +5,8 @@ import (
 )
 
 type GitRepositorySpec struct {
+	// +kubebuilder:validation:Optional
+	Customization PackageCustomization `json:"customization,omitempty"`
 	// GitURL is the base URL of Git server used for API calls.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
@@ -18,7 +20,7 @@ type GitRepositorySpec struct {
 }
 
 type GitRepositorySource struct {
-	// +kubebuilder:validation:Enum:=argocd;backstage;crossplane;gitea;nginx
+	// +kubebuilder:validation:Enum:=argocd;gitea;nginx
 	// +kubebuilder:validation:Optional
 	EmbeddedAppName string `json:"embeddedAppName,omitempty"`
 	// Path is the absolute path to directory that contains Kustomize structure or raw manifests.

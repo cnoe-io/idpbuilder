@@ -93,7 +93,7 @@ func CreateIfNotExists(dir string, perm os.FileMode) error {
 	return nil
 }
 
-func ApplyTemplate(in []byte, tmpl interface{}) ([]byte, error) {
+func ApplyTemplate(in []byte, templateData any) ([]byte, error) {
 	t, err := template.New("template").Parse(string(in))
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func ApplyTemplate(in []byte, tmpl interface{}) ([]byte, error) {
 
 	// Execute the template with the file content and write the output to the destination file
 	ret := bytes.Buffer{}
-	err = t.Execute(&ret, tmpl)
+	err = t.Execute(&ret, templateData)
 	if err != nil {
 		return nil, err
 	}

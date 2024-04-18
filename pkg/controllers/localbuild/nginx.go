@@ -5,7 +5,8 @@ import (
 	"embed"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -17,8 +18,8 @@ const (
 //go:embed resources/nginx/k8s/*
 var installNginxFS embed.FS
 
-func RawNginxInstallResources(tmpl interface{}) ([][]byte, error) {
-	return util.ConvertFSToBytes(installNginxFS, "resources/nginx/k8s", tmpl)
+func RawNginxInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
+	return k8s.BuildCustomizedManifests(config.FilePath, "resources/nginx/k8s", installNginxFS, scheme, templateData)
 }
 
 func (r *LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {

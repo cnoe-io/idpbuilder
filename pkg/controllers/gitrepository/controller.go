@@ -192,7 +192,7 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		clonedRepo = c
 	}
 
-	err = writeRepoContents(repo, tempDir, r.Config)
+	err = r.writeRepoContents(repo, tempDir)
 	if err != nil {
 		return err
 	}
@@ -280,19 +280,18 @@ func (r *RepositoryReconciler) shouldProcess(repo v1alpha1.GitRepository) bool {
 	if repo.Spec.Source.Type == "local" && !filepath.IsAbs(repo.Spec.Source.Path) {
 		return false
 	}
-	// embedded fs does not change
-	if repo.Spec.Source.Type == "embedded" && repo.Status.Synced {
-		return false
-	}
 	return true
 }
 
-func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, template interface{}) error {
+func (r *RepositoryReconciler) writeRepoContents(repo *v1alpha1.GitRepository, dstPath string) error {
 	if repo.Spec.Source.EmbeddedAppName != "" {
-		resources, err := localbuild.GetEmbeddedRawInstallResources(repo.Spec.Source.EmbeddedAppName, template)
+		resources, err := localbuild.GetEmbeddedRawInstallResources(
+			repo.Spec.Source.EmbeddedAppName, r.Config,
+			v1alpha1.PackageCustomization{Name: repo.Spec.Customization.Name, FilePath: repo.Spec.Customization.FilePath}, r.Scheme)
 		if err != nil {
 			return fmt.Errorf("getting embedded resource; %w", err)
 		}
+
 		for i := range resources {
 			filePath := filepath.Join(dstPath, fmt.Sprintf("resource%d.yaml", i))
 			err = os.WriteFile(filePath, resources[i], 0644)

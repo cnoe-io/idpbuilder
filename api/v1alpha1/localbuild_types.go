@@ -30,6 +30,8 @@ type ArgoPackageConfigSpec struct {
 type EmbeddedArgoApplicationsPackageConfigSpec struct {
 	// Enabled controls whether to install the embedded argo applications and the associated GitServer
 	Enabled bool `json:"enabled,omitempty"`
+	// +kubebuilder:validation:Optional
+	PackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
 type PackageConfigsSpec struct {
@@ -40,6 +42,14 @@ type PackageConfigsSpec struct {
 
 type LocalbuildSpec struct {
 	PackageConfigs PackageConfigsSpec `json:"packageConfigs,omitempty"`
+}
+
+// PackageCustomization defines how packages are customized
+type PackageCustomization struct {
+	// Name is the name of the package to be customized. e.g. argocd
+	Name string `json:"name,omitempty'"`
+	// FilePath is the absolute file path to a YAML file that contains Kubernetes manifests.
+	FilePath string `json:"filePath,omitempty"`
 }
 
 type LocalbuildStatus struct {
