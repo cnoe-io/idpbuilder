@@ -22,4 +22,3 @@ sed -i '3d' ${INSTALL_YAML}
 sed -i 's/namespace: default/namespace: gitea/g' ${INSTALL_YAML}
 
 cat ${GITEA_DIR}/ingress.yaml.tmpl >> ${INSTALL_YAML}
-cat ${GITEA_DIR}/gitea-creds.yaml >> ${INSTALL_YAML}

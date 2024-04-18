@@ -37,6 +37,9 @@ type EmbeddedInstallation struct {
 	monitoredResources map[string]schema.GroupVersionKind
 	customization      v1alpha1.PackageCustomization
 	resourceFS         embed.FS
+
+	// resources that need to be created without using static manifests or gitops
+	unmanagedResources []client.Object
 }
 
 func (e *EmbeddedInstallation) installResources(scheme *runtime.Scheme, templateData any) ([]client.Object, error) {
@@ -65,6 +68,13 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 	if err = cli.Get(ctx, types.NamespacedName{Name: e.namespace}, newNS); err != nil {
 		// We got an error so try creating the NS
 		if err = cli.Create(ctx, newNS); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	for i := range e.unmanagedResources {
+		err = k8s.EnsureObject(ctx, nsClient, e.unmanagedResources[i], e.namespace)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
 	}

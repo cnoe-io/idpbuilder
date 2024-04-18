@@ -7,9 +7,13 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -30,6 +34,27 @@ func RawGiteaInstallResources(templateData any, config v1alpha1.PackageCustomiza
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/gitea/k8s", installGiteaFS, scheme, templateData)
 }
 
+func newGiteAdminSecret() (corev1.Secret, error) {
+	pass, err := util.GeneratePassword()
+	if err != nil {
+		return corev1.Secret{}, err
+	}
+	return corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      giteaAdminSecret,
+			Namespace: giteaNamespace,
+		},
+		StringData: map[string]string{
+			"username": "giteaAdmin",
+			"password": pass,
+		},
+	}, nil
+}
+
 func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
 	gitea := EmbeddedInstallation{
 		name:         "Gitea",
@@ -44,6 +69,13 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 			},
 		},
 	}
+
+	giteCreds, err := newGiteAdminSecret()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
+	}
+
+	gitea.unmanagedResources = []client.Object{&giteCreds}
 
 	if result, err := gitea.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
