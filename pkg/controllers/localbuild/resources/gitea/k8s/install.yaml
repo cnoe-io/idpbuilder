@@ -646,12 +646,3 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: gitea-admin-secret
-type: Opaque
-stringData:
-  username: giteaAdmin
-  password: giteaPassword
