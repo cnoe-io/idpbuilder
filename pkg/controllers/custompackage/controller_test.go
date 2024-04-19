@@ -171,8 +171,11 @@ func TestReconcileCustomPkg(t *testing.T) {
 				Type: "local",
 				Path: p,
 			},
-			GitURL:         "https://cnoe.io",
-			InternalGitURL: "http://internal.cnoe.io",
+			Provider: v1alpha1.Provider{
+				Name:           v1alpha1.GitProviderGitea,
+				GitURL:         "https://cnoe.io",
+				InternalGitURL: "http://internal.cnoe.io",
+			},
 		},
 	}
 	ok := reflect.DeepEqual(repo.Spec, expectedRepo.Spec)

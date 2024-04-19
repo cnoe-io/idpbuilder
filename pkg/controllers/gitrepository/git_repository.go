@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"code.gitea.io/sdk/gitea"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/google/go-github/v61/github"
 )
 
 type GiteaClient interface {
@@ -16,4 +18,30 @@ type GiteaClient interface {
 	GetRepo(owner, reponame string) (*gitea.Repository, *gitea.Response, error)
 	SetBasicAuth(username, password string)
 	SetContext(ctx context.Context)
+}
+
+type gitHubClient interface {
+	getRepo(ctx context.Context, owner, repo string) (*github.Repository, error)
+	createRepo(ctx context.Context, owner, repo string) (*github.Repository, error)
+}
+
+type repoInfo struct {
+	name                     string
+	cloneUrl                 string
+	internalGitRepositoryUrl string
+	fullName                 string
+}
+
+type gitProviderCredentials struct {
+	username    string
+	password    string
+	accessToken string
+}
+
+type gitProvider interface {
+	createRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error)
+	getProviderCredentials(ctx context.Context, repo *v1alpha1.GitRepository) (gitProviderCredentials, error)
+	getRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error)
+	setProviderCredentials(ctx context.Context, repo *v1alpha1.GitRepository, creds gitProviderCredentials) error
+	updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials) error
 }
