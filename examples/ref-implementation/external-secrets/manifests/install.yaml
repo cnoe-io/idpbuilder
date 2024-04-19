@@ -6,7 +6,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: external-secrets-cert-controller
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets-cert-controller
@@ -19,7 +19,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: external-secrets
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets
@@ -32,7 +32,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: external-secrets-webhook
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets-webhook
@@ -45,7 +45,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: external-secrets-webhook
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets-webhook
@@ -192,7 +192,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/clusterexternalsecret.yaml
@@ -723,7 +723,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/clustersecretstore.yaml
@@ -3734,7 +3734,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/ecrauthorizationtoken.yaml
@@ -3862,7 +3862,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/externalsecret.yaml
@@ -4570,7 +4570,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/fake.yaml
@@ -4631,7 +4631,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/gcraccesstoken.yaml
@@ -4739,7 +4739,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/password.yaml
@@ -4817,7 +4817,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/pushsecret.yaml
@@ -5139,7 +5139,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/secretstore.yaml
@@ -8150,7 +8150,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/crds/vaultdynamicsecret.yaml
@@ -8609,7 +8609,7 @@ spec:
       clientConfig:
         service:
           name: external-secrets-webhook
-          namespace: "default"
+          namespace: "external-secrets"
           path: /convert
 ---
 # Source: external-secrets/templates/cert-controller-rbac.yaml
@@ -8910,7 +8910,7 @@ roleRef:
   name: external-secrets-cert-controller
 subjects:
   - name: external-secrets-cert-controller
-    namespace: "default"
+    namespace: "external-secrets"
     kind: ServiceAccount
 ---
 # Source: external-secrets/templates/rbac.yaml
@@ -8930,7 +8930,7 @@ roleRef:
   name: external-secrets-controller
 subjects:
   - name: external-secrets
-    namespace: "default"
+    namespace: "external-secrets"
     kind: ServiceAccount
 ---
 # Source: external-secrets/templates/rbac.yaml
@@ -8938,7 +8938,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: external-secrets-leaderelection
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets
@@ -8977,7 +8977,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: external-secrets-leaderelection
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets
@@ -8991,14 +8991,14 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: external-secrets
-    namespace: "default"
+    namespace: "external-secrets"
 ---
 # Source: external-secrets/templates/webhook-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: external-secrets-webhook
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets-webhook
@@ -9022,7 +9022,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: external-secrets-cert-controller
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets-cert-controller
@@ -9066,9 +9066,9 @@ spec:
           - certcontroller
           - --crd-requeue-interval=5m
           - --service-name=external-secrets-webhook
-          - --service-namespace=default
+          - --service-namespace=external-secrets
           - --secret-name=external-secrets-webhook
-          - --secret-namespace=default
+          - --secret-namespace=external-secrets
           - --metrics-addr=:8080
           - --healthz-addr=:8081
           
@@ -9088,7 +9088,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: external-secrets
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets
@@ -9141,7 +9141,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: external-secrets-webhook
-  namespace: "default"
+  namespace: "external-secrets"
   labels:
     helm.sh/chart: external-secrets-0.9.11
     app.kubernetes.io/name: external-secrets-webhook
@@ -9184,7 +9184,7 @@ spec:
           args:
           - webhook
           - --port=10250
-          - --dns-name=external-secrets-webhook.default.svc
+          - --dns-name=external-secrets-webhook.external-secrets.svc
           - --cert-dir=/tmp/certs
           - --check-interval=5m
           - --metrics-addr=:8080
@@ -9228,7 +9228,7 @@ webhooks:
     scope:       "Namespaced"
   clientConfig:
     service:
-      namespace: "default"
+      namespace: "external-secrets"
       name: external-secrets-webhook
       path: /validate-external-secrets-io-v1beta1-secretstore
   admissionReviewVersions: ["v1", "v1beta1"]
@@ -9244,7 +9244,7 @@ webhooks:
     scope:       "Cluster"
   clientConfig:
     service:
-      namespace: "default"
+      namespace: "external-secrets"
       name: external-secrets-webhook
       path: /validate-external-secrets-io-v1beta1-clustersecretstore
   admissionReviewVersions: ["v1", "v1beta1"]
@@ -9268,7 +9268,7 @@ webhooks:
     scope:       "Namespaced"
   clientConfig:
     service:
-      namespace: "default"
+      namespace: "external-secrets"
       name: external-secrets-webhook
       path: /validate-external-secrets-io-v1beta1-externalsecret
   admissionReviewVersions: ["v1", "v1beta1"]
