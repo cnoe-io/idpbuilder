@@ -68,8 +68,7 @@ Click on the Sign-In button, you will be asked to log into the Keycloak instance
 configuration, and their password can be retrieved with the following command:
 
 ```bash
-kubectl -n keycloak get secret keycloak-config \
-  -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
+idpbuilder get secrets
 ```
 
 Use the username **`user1`** and the password value given by `USER_PASSWORD` field to login to the backstage instance.

@@ -9,4 +9,4 @@ echo "# This file is auto-generated with 'examples/ref-impelmentation/external-s
 
 helm repo add external-secrets --force-update https://charts.external-secrets.io
 helm repo update
-helm template external-secrets external-secrets/external-secrets -f values.yaml --version ${CHART_VERSION} >> ${INSTALL_YAML}
+helm template --namespace external-secrets external-secrets external-secrets/external-secrets -f values.yaml --version ${CHART_VERSION} >> ${INSTALL_YAML}
