@@ -67,10 +67,13 @@ spec:
                     - gitea
                     - github
                     type: string
+                  organizationName:
+                    type: string
                 required:
                 - gitURL
                 - internalGitURL
                 - name
+                - organizationName
                 type: object
               secretRef:
                 description: SecretRef is the reference to secret that contain Git

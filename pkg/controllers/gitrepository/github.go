@@ -19,42 +19,39 @@ const (
 )
 
 type ghClient struct {
-	client *github.Client
+	c *github.Client
 }
 
-func (g *ghClient) getRepo(ctx context.Context, owner, repo string) (*github.Repository, error) {
-	r, resp, err := g.client.Repositories.Get(ctx, owner, repo)
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, notFoundError{}
-	}
-	return r, err
+func (g *ghClient) getRepo(ctx context.Context, owner, repo string) (*github.Repository, *github.Response, error) {
+	return g.c.Repositories.Get(ctx, owner, repo)
 }
 
-func (g *ghClient) createRepo(ctx context.Context, owner, repo string) (*github.Repository, error) {
-	r := github.Repository{
-		Name:    &repo,
-		Private: github.Bool(false),
-	}
-	rp, _, err := g.client.Repositories.Create(ctx, owner, &r)
-	if err != nil {
-		return nil, err
-	}
-	return rp, nil
+func (g *ghClient) createRepo(ctx context.Context, owner string, req *github.Repository) (*github.Repository, *github.Response, error) {
+	return g.c.Repositories.Create(ctx, owner, req)
+}
+
+func (g *ghClient) setToken(token string) error {
+	g.c = g.c.WithAuthToken(token)
+	return nil
 }
 
 type gitHubProvider struct {
 	client.Client
 	Scheme       *runtime.Scheme
-	gitHubClient gitHubClient
+	gitHubClient gitHubClientI
 	config       util.CorePackageTemplateConfig
 }
 
 func (g *gitHubProvider) createRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error) {
-
-	r, err := g.gitHubClient.createRepo(ctx, getOrganizationName(*repo), getRepositoryName(*repo))
+	req := github.Repository{
+		Name:    github.String(getRepositoryName(*repo)),
+		Private: github.Bool(true),
+	}
+	r, _, err := g.gitHubClient.createRepo(ctx, getOrganizationName(*repo), &req)
 	if err != nil {
 		return repoInfo{}, fmt.Errorf("creating repo: %w", err)
 	}
+
 	return repoInfo{
 		name:                     *r.Name,
 		cloneUrl:                 *r.CloneURL,
@@ -64,11 +61,15 @@ func (g *gitHubProvider) createRepository(ctx context.Context, repo *v1alpha1.Gi
 }
 
 func (g *gitHubProvider) getRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error) {
-
-	r, err := g.gitHubClient.createRepo(ctx, getOrganizationName(*repo), getRepositoryName(*repo))
+	r, resp, err := g.gitHubClient.getRepo(ctx, getOrganizationName(*repo), getRepositoryName(*repo))
 	if err != nil {
-		return repoInfo{}, fmt.Errorf("creating repo: %w", err)
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return repoInfo{}, notFoundError{}
+		} else {
+			return repoInfo{}, fmt.Errorf("getting repo: %w", err)
+		}
 	}
+
 	return repoInfo{
 		name:                     *r.Name,
 		cloneUrl:                 *r.CloneURL,
@@ -98,10 +99,15 @@ func (g *gitHubProvider) getProviderCredentials(ctx context.Context, repo *v1alp
 }
 
 func (g *gitHubProvider) setProviderCredentials(ctx context.Context, repo *v1alpha1.GitRepository, creds gitProviderCredentials) error {
-	g.gitHubClient = &ghClient{client: github.NewClient(nil).WithAuthToken(creds.accessToken)}
-	return nil
+	return g.gitHubClient.setToken(creds.accessToken)
 }
 
 func (g *gitHubProvider) updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials) error {
 	return updateRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config)
+}
+
+func newGitHubClient(httpClient *http.Client) gitHubClientI {
+	return &ghClient{
+		c: github.NewClient(httpClient),
+	}
 }

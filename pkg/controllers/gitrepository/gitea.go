@@ -143,5 +143,5 @@ func NewGiteaClient(url string, options ...gitea.ClientOption) (GiteaClient, err
 }
 
 func getInternalGiteaRepositoryURL(namespace, name, baseUrl string) string {
-	return fmt.Sprintf("%s/giteaAdmin/%s-%s.git", baseUrl, namespace, name)
+	return fmt.Sprintf("%s/%s/%s-%s.git", baseUrl, v1alpha1.GiteaAdminUserName, namespace, name)
 }

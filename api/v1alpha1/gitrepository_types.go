@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	GitProviderGitea  = "gitea"
-	GitProviderGitHub = "github"
+	GitProviderGitea   = "gitea"
+	GitProviderGitHub  = "github"
+	GiteaAdminUserName = "giteaAdmin"
 )
 
 type GitRepositorySpec struct {
@@ -42,7 +43,8 @@ type Provider struct {
 	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
 	GitURL string `json:"gitURL"`
 	// InternalGitURL is the base URL of Git server accessible within the cluster only.
-	InternalGitURL string `json:"internalGitURL"`
+	InternalGitURL   string `json:"internalGitURL"`
+	OrganizationName string `json:"organizationName"`
 }
 
 type SecretReference struct {

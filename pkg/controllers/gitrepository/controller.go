@@ -62,7 +62,7 @@ func getRepositoryName(repo v1alpha1.GitRepository) string {
 }
 
 func getOrganizationName(repo v1alpha1.GitRepository) string {
-	return "giteaAdmin"
+	return repo.Spec.Provider.OrganizationName
 }
 
 func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
@@ -84,9 +84,10 @@ func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClien
 		}, nil
 	case v1alpha1.GitProviderGitHub:
 		return &gitHubProvider{
-			Client: kubeClient,
-			Scheme: scheme,
-			config: tmplConfig,
+			Client:       kubeClient,
+			Scheme:       scheme,
+			config:       tmplConfig,
+			gitHubClient: newGitHubClient(nil),
 		}, nil
 	}
 	return nil, fmt.Errorf("invalid git provider %s ", repo.Spec.Provider.Name)

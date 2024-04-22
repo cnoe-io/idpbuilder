@@ -207,9 +207,10 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 				Path: absPath,
 			},
 			Provider: v1alpha1.Provider{
-				Name:           v1alpha1.GitProviderGitea,
-				GitURL:         resource.Spec.GitServerURL,
-				InternalGitURL: resource.Spec.InternalGitServeURL,
+				Name:             v1alpha1.GitProviderGitea,
+				GitURL:           resource.Spec.GitServerURL,
+				InternalGitURL:   resource.Spec.InternalGitServeURL,
+				OrganizationName: v1alpha1.GiteaAdminUserName,
 			},
 			SecretRef: resource.Spec.GitServerAuthSecretRef,
 		}

@@ -20,9 +20,10 @@ type GiteaClient interface {
 	SetContext(ctx context.Context)
 }
 
-type gitHubClient interface {
-	getRepo(ctx context.Context, owner, repo string) (*github.Repository, error)
-	createRepo(ctx context.Context, owner, repo string) (*github.Repository, error)
+type gitHubClientI interface {
+	getRepo(ctx context.Context, owner, repo string) (*github.Repository, *github.Response, error)
+	createRepo(ctx context.Context, owner string, req *github.Repository) (*github.Repository, *github.Response, error)
+	setToken(token string) error
 }
 
 type repoInfo struct {
