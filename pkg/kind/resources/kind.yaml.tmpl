@@ -9,7 +9,6 @@ nodes:
     kind: InitConfiguration
     nodeRegistration:
       kubeletExtraArgs:
-        system-reserved: memory=4Gi
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: {{ if (eq .IngressProtocol "http")  -}} 80 {{- else -}} 443 {{- end }}
