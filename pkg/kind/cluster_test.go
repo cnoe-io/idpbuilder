@@ -39,7 +39,6 @@ nodes:
     kind: InitConfiguration
     nodeRegistration:
       kubeletExtraArgs:
-        system-reserved: memory=4Gi
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 443
@@ -74,7 +73,6 @@ nodes:
     kind: InitConfiguration
     nodeRegistration:
       kubeletExtraArgs:
-        system-reserved: memory=4Gi
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 443
