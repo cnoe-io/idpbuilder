@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: terraform-argo-workflows-templates
+  namespace: argocd
+  labels:
+    env: dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/cnoe-io/backstage-terraform-integrations
+    targetRevision: main
+    path: argo-workflows-templates/dev
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: argo
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      selfHeal: true
