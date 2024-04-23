@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	gitclient "github.com/go-git/go-git/v5/plumbing/transport/client"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +35,15 @@ const (
 	requeueTime           = time.Second * 30
 	gitCommitAuthorName   = "git-reconciler"
 	gitCommitAuthorEmail  = "idpbuilder-agent@cnoe.io"
+
+	gitTCPTimeout = 5 * time.Second
+	// timeout value for a git operation through http. clone, push, etc.
+	gitHTTPTimeout = 30 * time.Second
 )
+
+func init() {
+	configureGitClient()
+}
 
 type GiteaClientFunc func(url string, options ...gitea.ClientOption) (GiteaClient, error)
 
@@ -179,13 +189,13 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		NoCheckout:      true,
 		InsecureSkipTLS: true,
 	}
-	clonedRepo, err := git.PlainClone(tempDir, false, cloneOptions)
+	clonedRepo, err := git.PlainCloneContext(ctx, tempDir, false, cloneOptions)
 	if err != nil {
 		// if we cannot clone with gitea's configured url, then we fallback to using the url provided in spec.
 		logger.V(1).Info("failed cloning with returned clone URL. Falling back to default url.", "err", err)
 
 		cloneOptions.URL = fmt.Sprintf("%s/%s.git", repo.Spec.GitURL, giteaRepo.FullName)
-		c, retErr := git.PlainClone(tempDir, false, cloneOptions)
+		c, retErr := git.PlainCloneContext(ctx, tempDir, false, cloneOptions)
 		if retErr != nil {
 			return fmt.Errorf("cloning repo with fall back url: %w", retErr)
 		}
@@ -251,7 +261,7 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 func reconcileRepo(giteaClient GiteaClient, repo *v1alpha1.GitRepository) (*gitea.Repository, error) {
 	resp, repoResp, err := giteaClient.GetRepo(getOrganizationName(*repo), getRepositoryName(*repo))
 	if err != nil {
-		if repoResp.StatusCode == 404 {
+		if repoResp != nil && repoResp.StatusCode == http.StatusNotFound {
 			createResp, _, CErr := giteaClient.CreateRepo(gitea.CreateRepoOption{
 				Name:        getRepositoryName(*repo),
 				Description: fmt.Sprintf("created by Git Repository controller for %s in %s namespace", repo.Name, repo.Namespace),
@@ -311,4 +321,20 @@ func (r *RepositoryReconciler) writeRepoContents(repo *v1alpha1.GitRepository, d
 
 func getRepositoryURL(namespace, name, baseUrl string) string {
 	return fmt.Sprintf("%s/giteaAdmin/%s-%s.git", baseUrl, namespace, name)
+}
+
+func configureGitClient() {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+
+	tr.DialContext = (&net.Dialer{
+		Timeout:   gitTCPTimeout,
+		KeepAlive: 30 * time.Second, // from http.DefaultTransport
+	}).DialContext
+
+	customClient := &http.Client{
+		Transport: tr,
+		Timeout:   gitHTTPTimeout,
+	}
+	gitclient.InstallProtocol("https", githttp.NewClient(customClient))
+	gitclient.InstallProtocol("http", githttp.NewClient(customClient))
 }
