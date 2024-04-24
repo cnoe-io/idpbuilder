@@ -15,6 +15,7 @@ spec:
     metadata:
       labels:
         app: nginx
+        entity-id: ${{values.name}}
     spec:
       containers:
         - name: nginx
