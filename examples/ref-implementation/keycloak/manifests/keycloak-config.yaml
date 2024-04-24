@@ -345,7 +345,7 @@ spec:
               
               ARGOCD_PASSWORD=$(./kubectl -n argocd get secret argocd-initial-admin-secret -o go-template='{{.data.password | base64decode }}')
               
-              ARGOCD_SESSION_TOKEN=$(curl -k -sS http://argocd-server.argocd.svc.cluster.local:443/api/v1/session -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASSWORD}\"}" | jq -r .token)
+              ARGOCD_SESSION_TOKEN=$(curl -k -sS http://argocd-server.argocd.svc.cluster.local:443/api/v1/session -H 'Content-Type: application/json' -d "{\"username\":\"admin\",\"password\":\"${ARGOCD_PASSWORD}\"}" | jq -r .token)
               
               echo \
               "apiVersion: v1
