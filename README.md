@@ -25,7 +25,7 @@ This can be useful in several ways:
 * Use within CI to perform integration testing.
 * Use as a local development environment for IDP engineers.
 
-## Core Components and versions
+## Core components and versions
 The idpbuilder ships with a number of core components that are embedded in the binary. Here is the list and the version of those components:
 
 | Name     | Version |
