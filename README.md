@@ -25,6 +25,15 @@ This can be useful in several ways:
 * Use within CI to perform integration testing.
 * Use as a local development environment for IDP engineers.
 
+## Core Components and versions
+The idpbuilder ships with a number of core components that are embedded in the binary. Here is the list and the version of those components:
+
+| Name     | Version |
+| -------- | ------- |
+| Argo CD  | v2.10.7 |
+| Gitea    | v9.5.1  |
+| Nginx    | v1.8.1  |
+
 ## Quickstart
 
 ### Download and install the idpbuilder

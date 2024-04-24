@@ -68,3 +68,7 @@ All ArgoCD applications should be synced and healthy. You can check them in the 
 ```
 kubectl get application -n argocd
 ```
+
+### Preparing a Pull Request
+
+This repository requires a [Developer Certificate of Origin (DCO)](https://developercertificate.org/) signature. When preparing to send in a pull request, please make sure your commit is signed. You can achieve this by doing a `git commit --sign` or `git commit -s` when making the commit.
