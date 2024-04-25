@@ -205,7 +205,6 @@ Once core packages are installed, it creates the other embedded applications: Ba
 1. Create `GitRepository` CRs for the apps.
 2. Create ArgoCD applications for the apps. Point them to the Gitea repositories.
 
-
 #### RepositoryReconciler
 
 `RepositoryReconciler` creates Gitea repositories.
@@ -266,8 +265,17 @@ This script runs kustomize to modify the basic installation manifests provided b
 1. Prevent notification and dex pods from running. This is done to keep the number of pods running low by default.
 2. Use the annotation tracking instead of the default label tracking. Annotation tracking allows you to avoid [problems caused by the label tracking method](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_tracking/). In addition, this configuration is required when using Crossplane.  
 
-
 ## Extending the IDP builder
 
-We are actively working to include more patterns and examples of extending idpbuilder to get started easily.
+### Terraform Integrations
 
+IDP builder is now extensible to launch custom terraform patterns using package extensions. Please use the below command to deploy an IDP reference implementation with an Argo application for terraform integrations with few sample patterns we have built:
+
+```bash
+idpbuilder create \
+  --use-path-routing \
+  --package-dir examples/ref-implementation \
+  --package-dir examples/terraform-integrations
+```
+
+Please check on our [Backstage Terraform Integrations](https://github.com/cnoe-io/backstage-terraform-integrations/tree/main) repo to complete the integration with backstage terraform templates end to end. Stay tuned for integrations different IaC options.
