@@ -11,4 +11,4 @@ idpbuilder create \
   --package-dir examples/terraform-integrations
 ```
 
-As you see above, this add-on to `idpbuilder` has a dependency to the [reference implementation](../ref-implementation/). This stack add-on goes together with the work done under [backstage-terraform-integrations](https://github.com/cnoe-io/backstage-terraform-integrations/). Once the add-on is enabled, the user will need to follow the setup discussed in the [backstage-terraform-integrations](https://github.com/cnoe-io/backstage-terraform-integrations/) repo for the remainder of the configuration, and terraform integrations should work.```
+As you see above, this add-on to `idpbuilder` has a dependency to the [reference implementation](../ref-implementation/). This stack add-on goes together with the work done under [backstage-terraform-integrations](https://github.com/cnoe-io/backstage-terraform-integrations/). Once the add-on is enabled, the user will need to follow the setup discussed in the [backstage-terraform-integrations](https://github.com/cnoe-io/backstage-terraform-integrations/) repo for the remainder of the configuration, and terraform integrations should work.
