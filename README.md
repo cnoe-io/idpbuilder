@@ -25,6 +25,17 @@ This can be useful in several ways:
 * Use within CI to perform integration testing.
 * Use as a local development environment for IDP engineers.
 
+## Prerequisites
+
+A container engine is needed locally such as:
+
+- [Docker desktop](https://www.docker.com/get-started/)
+- [Podman desktop](https://podman-desktop.io/)
+
+**Warning**: idpbuilder can only create a cluster using podman installed as [rootful](https://docs.podman.io/en/latest/markdown/podman-machine-set.1.html#rootful). The rootless mode will raise an error `Error: running kind with rootless provider requires setting systemd property "Delegate=yes", see https://kind.sigs.k8s.io/docs/user/rootless/`.
+
+**Note**: Set the `DOCKER_HOST` env var properly for `podman` to let idpbuilder to talk with the engine (e.g  export DOCKER_HOST="unix:///var/run/docker.sock")
+
 ## Quickstart
 
 ### Download and install the idpbuilder
