@@ -1,6 +1,6 @@
 # Terraform Integrations for Backstage
 
-IDP builder is now experimentally extensible to launch custom terraform patterns using package extensions. This is an experimental effort allowing the users of the `idpBuilder` to run terraform modules using the tooling in place.
+`idpBuilder` is now experimentally extensible to launch custom terraform patterns using package extensions. This is an experimental effort allowing the users of the `idpBuilder` to run terraform modules using the tooling in place.
 
 Please use the below command to deploy an IDP reference implementation with an Argo application for terraform integrations with few sample patterns we have built:
 
