@@ -59,6 +59,7 @@ The most basic command which creates a Kubernetes Cluster (Kind cluster) with th
     | Gitea    | v9.5.1  |
     | Nginx    | v1.8.1  |
 
+  The default manifests for the core packages are available [here](pkg/controllers/localbuild/resources).
   See the [contribution doc](./CONTRIBUTING.md) for more information on how core packages are installed and configured.
 
 </details>
@@ -74,6 +75,29 @@ You can obtain credentials for them by running the following command:
 ```bash
 ./idpbuilder get secrets
 ```
+
+<details>
+  <summary> The "get secrets" command </summary>
+
+  The `get secrets` command retrieves the following:
+  - ArgoCD initial admin password.
+  - Gitea admin user credentials.
+  -  Any secrets labeled with `cnoe.io/cli-secret=true`.
+
+  You can think of the command as executing the following kubectl commands:
+
+  ```bash
+  kubectl -n argocd get secret argocd-initial-admin-secret
+  kubectl get secrets -n gitea gitea-admin-secret
+  kubectl get secrets -A -l cnoe.io/cli-secret=true
+  ```
+  In addition, secrets labeled with `cnoe.io/package-name` can be specified with the `-p` flag. For example, for Gitea:
+
+  ```bash
+  ./idpbuilder get secrets -p gitea
+  ```
+
+</details>
 
 ###  Example commands
 

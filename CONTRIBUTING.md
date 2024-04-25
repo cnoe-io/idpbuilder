@@ -61,20 +61,10 @@ Credentials for core packages can be obtained with:
 idpbuilder get secrets
 ```
 
-The `get secrets` command retrieves the following:
-- ArgoCD initial admin password.
-- Gitea admin user credentials.
-- Any secrets labeled with `cnoe.io/cli-secret=true`.
-
-You can think of the command as executing the following kubectl commands:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret
-kubectl get secrets -n gitea gitea-admin-secret
-kubectl get secrets -A -l cnoe.io/cli-secret=true
-```
+As described in the main readme file, the above command is equivalent to running:
 
 All ArgoCD applications should be synced and healthy. You can check them in the UI or 
+
 ```
 kubectl get application -n argocd
 ```
