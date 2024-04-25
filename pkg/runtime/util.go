@@ -2,46 +2,23 @@ package runtime
 
 import (
 	"errors"
+	"os"
 	"strconv"
-	"strings"
-
-	"sigs.k8s.io/kind/pkg/exec"
 )
 
 func DetectRuntime() (rt IRuntime, err error) {
-	if isDockerAvailable() {
-		if rt, err = NewDockerRuntime(); err != nil {
-			return nil, err
-		}
-	} else if isFinchAvailable() {
-		rt, _ = NewFinchRuntime()
-	} else {
-		return nil, errors.New("no runtime found")
-	}
-	return rt, nil
-}
+	var notFoundErr = errors.New("runtime not found")
 
-func isDockerAvailable() bool {
-	cmd := exec.Command("docker", "-v")
-	lines, err := exec.OutputLines(cmd)
-	if err != nil || len(lines) != 1 {
-		return false
+	switch p := os.Getenv("KIND_EXPERIMENTAL_PROVIDER"); p {
+	case "", "docker":
+		return NewDockerRuntime("docker")
+	case "podman":
+		return NewDockerRuntime("podman")
+	case "finch":
+		return NewFinchRuntime()
+	default:
+		return nil, notFoundErr
 	}
-	return strings.HasPrefix(lines[0], "Docker version")
-}
-
-func isFinchAvailable() bool {
-	cmd := exec.Command("nerdctl", "-v")
-	lines, err := exec.OutputLines(cmd)
-	if err != nil || len(lines) != 1 {
-		cmd = exec.Command("finch", "-v")
-		lines, err = exec.OutputLines(cmd)
-		if err != nil || len(lines) != 1 {
-			return false
-		}
-		return strings.HasPrefix(lines[0], "finch version")
-	}
-	return strings.HasPrefix(lines[0], "nerdctl version")
 }
 
 func toUint16(portString string) (uint16, error) {

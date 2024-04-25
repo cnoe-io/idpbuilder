@@ -10,9 +10,10 @@ import (
 
 type DockerRuntime struct {
 	client *dockerClient.Client
+	name   string
 }
 
-func NewDockerRuntime() (IRuntime, error) {
+func NewDockerRuntime(name string) (IRuntime, error) {
 	client, err := dockerClient.NewClientWithOpts(
 		dockerClient.WithAPIVersionNegotiation(),
 	)
@@ -22,11 +23,12 @@ func NewDockerRuntime() (IRuntime, error) {
 
 	return &DockerRuntime{
 		client: client,
+		name:   name,
 	}, nil
 }
 
 func (p *DockerRuntime) Name() string {
-	return "Docker"
+	return p.name
 }
 
 func (p *DockerRuntime) GetContainerByName(ctx context.Context, name string) (*types.Container, error) {

@@ -37,7 +37,7 @@ func NewFinchRuntime() (IRuntime, error) {
 }
 
 func (p *FinchRuntime) Name() string {
-	return "Finch"
+	return "finch"
 }
 
 func (f *FinchRuntime) ContainerWithPort(ctx context.Context, name string, port string) (bool, error) {
