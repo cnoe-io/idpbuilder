@@ -40,6 +40,5 @@ body:
       label: Additional Information. Logs.
       description: Use [Markdown syntax](https://help.github.com/articles/github-flavored-markdown) if needed.
       placeholder: Add information here.
-      render: shell
     validations:
       required: false
