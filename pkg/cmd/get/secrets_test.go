@@ -56,7 +56,7 @@ func TestPrintPackageSecrets(t *testing.T) {
 			listLabelSelector: []labels.Selector{selector("abc")},
 			getKeys: []client.ObjectKey{
 				{Name: "argocd-initial-admin-secret", Namespace: "argocd"},
-				{Name: "gitea-admin-secret", Namespace: "gitea"},
+				{Name: "gitea-credential", Namespace: "gitea"},
 			},
 		},
 		{
@@ -64,7 +64,7 @@ func TestPrintPackageSecrets(t *testing.T) {
 			packages: []string{"argocd", "gitea"},
 			getKeys: []client.ObjectKey{
 				{Name: "argocd-initial-admin-secret", Namespace: "argocd"},
-				{Name: "gitea-admin-secret", Namespace: "gitea"},
+				{Name: "gitea-credential", Namespace: "gitea"},
 			},
 		},
 		{
@@ -110,7 +110,7 @@ func TestPrintAllPackageSecrets(t *testing.T) {
 			listLabelSelector: []labels.Selector{labels.NewSelector().Add(*r)},
 			getKeys: []client.ObjectKey{
 				{Name: "argocd-initial-admin-secret", Namespace: "argocd"},
-				{Name: "gitea-admin-secret", Namespace: "gitea"},
+				{Name: "gitea-credential", Namespace: "gitea"},
 			},
 		},
 	}

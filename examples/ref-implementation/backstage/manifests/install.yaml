@@ -420,11 +420,11 @@ spec:
   data:
     - secretKey: GITEA_USERNAME
       remoteRef:
-        key: gitea-admin-secret
+        key: gitea-credential
         property: username
     - secretKey: GITEA_PASSWORD
       remoteRef:
-        key: gitea-admin-secret
+        key: gitea-credential
         property: password
 ---
 apiVersion: networking.k8s.io/v1

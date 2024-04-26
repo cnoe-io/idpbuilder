@@ -62,6 +62,11 @@ idpbuilder get secrets
 ```
 
 As described in the main readme file, the above command is equivalent to running:
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret
+kubectl get secrets -n gitea gitea-admin-secret
+kubectl get secrets -A -l cnoe.io/cli-secret=true
+```
 
 All ArgoCD applications should be synced and healthy. You can check them in the UI or 
 

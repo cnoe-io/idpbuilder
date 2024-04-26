@@ -14,7 +14,7 @@ test:
 
 gitea:
   admin:
-    existingSecret: gitea-admin-secret
+    existingSecret: gitea-credential
   config:
     database:
       DB_TYPE: sqlite3
