@@ -24,7 +24,10 @@ import (
 )
 
 const (
-	secretTemplatePath = "templates/secrets.tmpl"
+	secretTemplatePath           = "templates/secrets.tmpl"
+	argoCDAdminUsername          = "admin"
+	argoCDInitialAdminSecretName = "argocd-initial-admin-secret"
+	giteaAdminSecretName         = "gitea-credential"
 )
 
 //go:embed templates
@@ -39,8 +42,8 @@ var SecretsCmd = &cobra.Command{
 
 // well known secrets that are part of the core packages
 var corePkgSecrets = map[string][]string{
-	"argocd": []string{"argocd-initial-admin-secret"},
-	"gitea":  []string{"gitea-credential"},
+	"argocd": []string{argoCDInitialAdminSecretName},
+	"gitea":  []string{giteaAdminSecretName},
 }
 
 type TemplateData struct {
@@ -80,7 +83,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 
 	for k, v := range corePkgSecrets {
 		for i := range v {
-			secret, sErr := getSecretByName(ctx, kubeClient, k, v[i])
+			secret, sErr := getCorePackageSecret(ctx, kubeClient, k, v[i])
 			if sErr != nil {
 				if errors.IsNotFound(sErr) {
 					continue
@@ -116,7 +119,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		secretNames, ok := corePkgSecrets[p]
 		if ok {
 			for j := range secretNames {
-				secret, sErr := getSecretByName(ctx, kubeClient, p, secretNames[j])
+				secret, sErr := getCorePackageSecret(ctx, kubeClient, p, secretNames[j])
 				if sErr != nil {
 					if errors.IsNotFound(sErr) {
 						continue
@@ -196,4 +199,16 @@ func getSecretsByCNOELabel(ctx context.Context, kubeClient client.Client, l labe
 func getSecretByName(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
 	s := v1.Secret{}
 	return s, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &s)
+}
+
+func getCorePackageSecret(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
+	s, err := getSecretByName(ctx, kubeClient, ns, name)
+	if err != nil {
+		return v1.Secret{}, err
+	}
+
+	if name == argoCDInitialAdminSecretName && s.Data != nil {
+		s.Data["username"] = []byte(argoCDAdminUsername)
+	}
+	return s, nil
 }
