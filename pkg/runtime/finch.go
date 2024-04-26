@@ -1,11 +1,14 @@
 package runtime
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
+
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type Conainer struct {
@@ -41,19 +44,25 @@ func (p *FinchRuntime) Name() string {
 }
 
 func (f *FinchRuntime) ContainerWithPort(ctx context.Context, name string, port string) (bool, error) {
+	logger := log.FromContext(ctx)
 	// add arguments to inspect the container
 	f.cmd.Args = append([]string{"finch"}, "container", "inspect", name)
 
+	var stdout, stderr bytes.Buffer
+	f.cmd.Stdout = &stdout
+	f.cmd.Stderr = &stderr
+
 	// Execute the command
-	output, err := f.cmd.Output()
+	logger.V(1).Info("inspect existing cluster for the configuration", "container", name, "port", port)
+	err := f.cmd.Run()
 	if err != nil {
 		return false, err
 	}
 
 	var containers []Conainer
-	err = json.Unmarshal(output, &containers)
+	err = json.Unmarshal(stdout.Bytes(), &containers)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("%v: %s", err, stderr.String())
 	}
 
 	if len(containers) > 1 {
@@ -68,11 +77,13 @@ func (f *FinchRuntime) ContainerWithPort(ctx context.Context, name string, port 
 		for _, bindings := range container.NetworkSettings.Ports {
 			for _, binding := range bindings {
 				if binding.HostPort == port {
+					logger.V(1).Info("existing cluster matches the configuration", "container", name, "port", port)
 					return true, nil
 				}
 			}
 		}
 	}
 
+	logger.V(1).Info("existing cluster does not match the configuration", "container", name, "port", port)
 	return false, nil
 }

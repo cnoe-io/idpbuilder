@@ -7,8 +7,6 @@ import (
 )
 
 func DetectRuntime() (rt IRuntime, err error) {
-	var notFoundErr = errors.New("runtime not found")
-
 	switch p := os.Getenv("KIND_EXPERIMENTAL_PROVIDER"); p {
 	case "", "docker":
 		return NewDockerRuntime("docker")
@@ -17,7 +15,7 @@ func DetectRuntime() (rt IRuntime, err error) {
 	case "finch":
 		return NewFinchRuntime()
 	default:
-		return nil, notFoundErr
+		return nil, errors.New("runtime unknown or not supported")
 	}
 }
 
