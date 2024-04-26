@@ -40,7 +40,7 @@ var SecretsCmd = &cobra.Command{
 // well known secrets that are part of the core packages
 var corePkgSecrets = map[string][]string{
 	"argocd": []string{"argocd-initial-admin-secret"},
-	"gitea":  []string{"gitea-admin-secret"},
+	"gitea":  []string{"gitea-credential"},
 }
 
 type TemplateData struct {

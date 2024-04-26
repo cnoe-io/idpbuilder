@@ -479,12 +479,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   key:  username
-                  name: gitea-admin-secret
+                  name: gitea-credential
             - name: GITEA_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key:  password
-                  name: gitea-admin-secret
+                  name: gitea-credential
           volumeMounts:
             - name: init
               mountPath: /usr/sbin

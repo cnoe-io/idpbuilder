@@ -62,6 +62,9 @@ idpbuilder get secrets
 ```
 
 As described in the main readme file, the above command is equivalent to running:
+```bash
+kubectl get secrets -n gitea gitea-credential -o go-template='{{ range $key, $value := .data }}{{ printf "%s: %s\n" $key ($value | base64decode) }}{{ end }}'
+```
 
 All ArgoCD applications should be synced and healthy. You can check them in the UI or 
 

@@ -19,7 +19,7 @@ import (
 const (
 	// hardcoded values from what we have in the yaml installation file.
 	giteaNamespace   = "gitea"
-	giteaAdminSecret = "gitea-admin-secret"
+	giteaAdminSecret = "gitea-credential"
 	// this is the URL accessible outside cluster. resolves to localhost
 	giteaIngressURL = "%s://gitea.cnoe.localtest.me:%s"
 	// this is the URL accessible within cluster for ArgoCD to fetch resources.
