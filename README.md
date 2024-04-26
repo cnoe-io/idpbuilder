@@ -13,6 +13,18 @@ This can be useful in several ways:
 * Use within CI to perform integration testing.
 * Use as a local development environment for IDP engineers.
 
+## Prerequisites
+
+A container engine is needed locally such as:
+
+| Name                                                  | Supported | Remark                                                                                                                              |
+|-------------------------------------------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------|
+| [Docker desktop](https://www.docker.com/get-started/) | Yes       |                                                                                                                                     |
+| [Podman desktop](https://podman-desktop.io/)          | No        | idpbuilder can create a cluster using podman [rootful](https://docs.podman.io/en/latest/markdown/podman-machine-set.1.html#rootful) | 
+
+
+**Note**: Set the `DOCKER_HOST` env var property using `podman` to let idpbuilder to talk with the engine (e.g  export DOCKER_HOST="unix:///var/run/docker.sock")
+
 ## Quickstart
 
 If you are interested in running idpbuilder in Codespaces through your browser, check out the [Codespaces](#running-in-codespaces) section.
