@@ -5,6 +5,7 @@ import (
 	"io"
 	"testing"
 
+	runtime "github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -96,6 +97,16 @@ func (m *mockProvider) ListNodes(name string) ([]nodes.Node, error) {
 	return args.Get(0).([]nodes.Node), args.Error(1)
 }
 
+type mockRuntime struct {
+	mock.Mock
+	runtime.IRuntime
+}
+
+func (m *mockRuntime) ContainerWithPort(ctx context.Context, name string, port string) (bool, error) {
+	args := m.Called(ctx, name, port)
+	return args.Get(0).(bool), args.Error(1)
+}
+
 // Mock Docker client for testing
 type DockerClientMock struct {
 	client.APIClient
@@ -164,36 +175,20 @@ func TestRunsOnWrongPort(t *testing.T) {
 		},
 	}
 
-	// Test when everything works fine
-	container1 := types.Container{
-		Names: []string{"/test-cluster"},
-		Ports: []types.Port{
-			{
-				PublicPort: uint16(8080),
-			},
-		},
-	}
-	// Mock Docker client
-	mockDockerClient1 := &DockerClientMock{}
-	mockDockerClient1.On("ContainerList", mock.Anything, mock.Anything).Return([]types.Container{container1}, nil)
+	// Mock runtime
+	mockRuntime1 := &mockRuntime{}
+	mockRuntime1.On("ContainerWithPort", context.Background(), "test-cluster", "8080").Return(true, nil)
+	cluster.runtime = mockRuntime1
 
-	result, err := cluster.RunsOnRightPort(mockDockerClient1, context.Background())
+	result, err := cluster.RunsOnRightPort(context.Background())
 	assert.NoError(t, err)
 	assert.True(t, result)
 
-	// Test when there's an error from the provider
-	container2 := types.Container{
-		Names: []string{"/test-cluster"},
-		Ports: []types.Port{
-			{
-				PublicPort: uint16(9090),
-			},
-		},
-	}
 	// Mock Docker client
-	mockDockerClient2 := &DockerClientMock{}
-	mockDockerClient2.On("ContainerList", mock.Anything, mock.Anything).Return([]types.Container{container2}, nil)
-	result, err = cluster.RunsOnRightPort(mockDockerClient2, context.Background())
+	mockRuntime2 := &mockRuntime{}
+	mockRuntime2.On("ContainerWithPort", context.Background(), "test-cluster", "8080").Return(false, nil)
+	cluster.runtime = mockRuntime2
+	result, err = cluster.RunsOnRightPort(context.Background())
 
 	assert.NoError(t, err)
 	assert.False(t, result)
