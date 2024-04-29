@@ -13,11 +13,15 @@ var GetCmd = &cobra.Command{
 	RunE:  exportE,
 }
 
-var packages []string
+var (
+	packages     []string
+	outputFormat string
+)
 
 func init() {
 	GetCmd.AddCommand(SecretsCmd)
 	GetCmd.PersistentFlags().StringSliceVarP(&packages, "packages", "p", []string{}, "names of packages.")
+	GetCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format. json or yaml.")
 }
 
 func exportE(cmd *cobra.Command, args []string) error {

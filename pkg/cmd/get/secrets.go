@@ -3,6 +3,7 @@ package get
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -47,9 +49,9 @@ var corePkgSecrets = map[string][]string{
 }
 
 type TemplateData struct {
-	Name      string
-	Namespace string
-	Data      map[string]string
+	Name      string            `json:"name"`
+	Namespace string            `json:"namespace"`
+	Data      map[string]string `json:"data"`
 }
 
 func getSecretsE(cmd *cobra.Command, args []string) error {
@@ -71,13 +73,13 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(packages) == 0 {
-		return printAllPackageSecrets(ctx, os.Stdout, kubeClient)
+		return printAllPackageSecrets(ctx, os.Stdout, kubeClient, outputFormat)
 	}
 
-	return printPackageSecrets(ctx, os.Stdout, kubeClient)
+	return printPackageSecrets(ctx, os.Stdout, kubeClient, outputFormat)
 }
 
-func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client) error {
+func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
 	secretsToPrint := make([]any, 0, 2)
 
@@ -107,10 +109,10 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 		fmt.Println("no secrets found")
 		return nil
 	}
-	return renderTemplate(secretTemplatePath, outWriter, secretsToPrint)
+	return printOutput(secretTemplatePath, outWriter, secretsToPrint, format)
 }
 
-func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client) error {
+func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
 	secretsToPrint := make([]any, 0, 2)
 
@@ -148,7 +150,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		}
 	}
 
-	return renderTemplate(secretTemplatePath, outWriter, secretsToPrint)
+	return printOutput(secretTemplatePath, outWriter, secretsToPrint, format)
 }
 
 func renderTemplate(templatePath string, outWriter io.Writer, data []any) error {
@@ -168,6 +170,30 @@ func renderTemplate(templatePath string, outWriter io.Writer, data []any) error 
 		}
 	}
 	return nil
+}
+
+func printOutput(templatePath string, outWriter io.Writer, data []any, format string) error {
+	switch format {
+	case "json":
+		b, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return err
+		}
+		b = append(b, []byte("\n")...)
+		_, err = outWriter.Write(b)
+		return err
+	case "yaml":
+		b, err := yaml.Marshal(data)
+		if err != nil {
+			return err
+		}
+		_, err = outWriter.Write(b)
+		return err
+	case "":
+		return renderTemplate(templatePath, outWriter, data)
+	default:
+		return fmt.Errorf("output format %s is not supported", format)
+	}
 }
 
 func secretToTemplateData(s v1.Secret) TemplateData {
