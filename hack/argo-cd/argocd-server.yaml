@@ -24,3 +24,5 @@ spec:
           - /argocd
           - "{{end}}"
           name: argocd-server
+          image:
+            pullPolicy: IfNotPresent
