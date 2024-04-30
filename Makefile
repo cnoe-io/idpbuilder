@@ -63,8 +63,4 @@ $(ENVTEST): $(LOCALBIN)
 
 .PHONY: embedded-resources
 embedded-resources: 
-	for dir in hack/*; do \
-        if [ -d "$$dir" ]; then \
-            $$dir/generate-manifests.sh; \
-        fi; \
-    done
+	./hack/embedded-resources.sh
