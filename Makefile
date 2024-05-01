@@ -8,7 +8,7 @@ LD_FLAGS=-ldflags " \
 OUT_FILE ?= idpbuilder
 
 .PHONY: build
-build: manifests generate fmt vet
+build: manifests generate fmt vet embedded-resources
 	go build $(LD_FLAGS) -o $(OUT_FILE) main.go
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -60,3 +60,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: embedded-resources
+embedded-resources: 
+	./hack/embedded-resources.sh
