@@ -38,7 +38,7 @@ func (g *ghClient) setToken(token string) error {
 type gitHubProvider struct {
 	client.Client
 	Scheme       *runtime.Scheme
-	gitHubClient gitHubClientI
+	gitHubClient gitHubClient
 	config       util.CorePackageTemplateConfig
 }
 
@@ -106,7 +106,7 @@ func (g *gitHubProvider) updateRepoContent(ctx context.Context, repo *v1alpha1.G
 	return updateRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config)
 }
 
-func newGitHubClient(httpClient *http.Client) gitHubClientI {
+func newGitHubClient(httpClient *http.Client) gitHubClient {
 	return &ghClient{
 		c: github.NewClient(httpClient),
 	}

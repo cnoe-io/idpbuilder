@@ -31,6 +31,10 @@ const (
 	defaultArgoCDProjectName string = "default"
 )
 
+var (
+	defaultRequeueTime = time.Second * 30
+)
+
 type LocalbuildReconciler struct {
 	client.Client
 	Scheme         *runtime.Scheme
@@ -151,7 +155,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 	}
 	r.shouldShutdown = shutdown
 
-	return ctrl.Result{RequeueAfter: time.Second * 15}, nil
+	return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 }
 
 func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName string, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
