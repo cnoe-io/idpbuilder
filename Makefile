@@ -64,3 +64,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: embedded-resources
 embedded-resources: 
 	./hack/embedded-resources.sh
+
+.PHONY: e2e
+e2e: build
+	go test -v -p 1 --tags=e2e ./tests/e2e/...
