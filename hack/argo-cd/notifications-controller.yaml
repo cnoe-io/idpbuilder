@@ -4,3 +4,8 @@ metadata:
   name: argocd-notifications-controller
 spec:
   replicas: 0
+  template:
+    spec:
+      containers:
+        - name: argocd-notifications-controller
+          imagePullPolicy: IfNotPresent

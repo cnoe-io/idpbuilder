@@ -8,3 +8,7 @@ patches:
   - path: notifications-controller.yaml
   - path: argocd-cm.yaml
   - path: argocd-server.yaml
+  - path: argocd-application-controller.yaml
+  - path: argocd-applicationset-controller.yaml
+  - path: argocd-repo-server.yaml
+  - path: argocd-redis.yaml

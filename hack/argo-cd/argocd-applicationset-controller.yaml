@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: applicationset-controller
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/part-of: argocd
+  name: argocd-applicationset-controller
+spec:
+  template:
+    spec:
+      containers:
+      - name: argocd-applicationset-controller
+        imagePullPolicy: IfNotPresent

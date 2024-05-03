@@ -36,3 +36,6 @@ service:
 
 ingress:
   enabled: false
+
+image:
+  pullPolicy: "IfNotPresent"
