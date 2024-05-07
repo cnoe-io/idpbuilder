@@ -1,4 +1,4 @@
-# Who is using CNOE?
+# Who is using IDP Builder?
 
 The CNOE working group operates as a community-driven initiative, anchored by principles of openness and collaboration. Participants span diverse personas and utilize CNOE for a wide range of use cases. Many users actively seek to learn from and engage with fellow community members, fostering a culture of shared knowledge and experience.
 
@@ -6,7 +6,7 @@ The following is a self-reported list of users to help identify adoption and poi
 
 ## Add yourself
 
-If you are using CNOE please consider adding yourself as a user by opening a pull request to this file.
+If you are using IDP Builder please consider adding yourself as a user by opening a pull request to this file.
 
 ## Adopters (Alphabetical)
 
