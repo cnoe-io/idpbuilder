@@ -4,3 +4,4 @@ bin/*
 cover.out
 __debug*
 .vscode
+.idea

@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  name: gitops-terraform-controller
+  namespace: argocd
+  labels:
+    env: dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://flux-iac.github.io/tofu-controller'
+    targetRevision: v0.15.0
+    helm:
+      releaseName: tf-controller
+      values: |
+        allowCrossNamespaceRefs: true
+        watchAllNamespaces: true
+        awsPackage:
+          install: true
+          repository: ghcr.io/flux-iac/aws-primitive-modules
+    chart: tf-controller
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: flux-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

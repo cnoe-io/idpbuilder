@@ -1,6 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
   name: terraform-argo-workflows-templates
   namespace: argocd
   labels:
