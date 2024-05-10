@@ -3,7 +3,7 @@ kind: Application
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: flux-controller
+  name: fluxcd
   namespace: argocd
   labels:
     env: dev
