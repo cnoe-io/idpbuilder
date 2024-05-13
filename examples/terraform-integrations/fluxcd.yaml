@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fluxcd
+  namespace: argocd
+  labels:
+    env: dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://fluxcd-community.github.io/helm-charts'
+    targetRevision: 2.12.4
+    helm:
+      releaseName: flux2
+      values: |
+        helmController:
+          create: false
+        imageAutomationController:
+          create: false
+        imageReflectionController: 
+          create: false
+        kustomizeController: 
+          create: false
+        notificationController:
+          create: false
+    chart: flux2
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: flux-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
