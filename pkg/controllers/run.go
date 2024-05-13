@@ -31,8 +31,8 @@ func RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error,
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("gitrepository-controller"),
-		GiteaClientFunc: gitrepository.NewGiteaClient,
 		Config:          cfg,
+		GitProviderFunc: gitrepository.GetGitProvider,
 	}).SetupWithManager(mgr, nil)
 	if err != nil {
 		logger.Error(err, "unable to create repo controller")

@@ -4,19 +4,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	GitProviderGitea   = "gitea"
+	GitProviderGitHub  = "github"
+	GiteaAdminUserName = "giteaAdmin"
+)
+
 type GitRepositorySpec struct {
 	// +kubebuilder:validation:Optional
 	Customization PackageCustomization `json:"customization,omitempty"`
-	// GitURL is the base URL of Git server used for API calls.
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
-	GitURL string `json:"gitURL"`
-	// InternalGitURL is the base URL of Git server accessible within the cluster only.
-	InternalGitURL string `json:"internalGitURL"`
 	// SecretRef is the reference to secret that contain Git server credentials
 	// +kubebuilder:validation:Optional
 	SecretRef SecretReference     `json:"secretRef"`
 	Source    GitRepositorySource `json:"source,omitempty"`
+	Provider  Provider            `json:"provider"`
 }
 
 type GitRepositorySource struct {
@@ -31,6 +32,19 @@ type GitRepositorySource struct {
 	// +kubebuilder:validation:Enum:=local;embedded
 	// +kubebuilder:default:=embedded
 	Type string `json:"type"`
+}
+
+type Provider struct {
+	// +kubebuilder:validation:Enum:=gitea;github
+	// +kubebuilder:validation:Required
+	Name string `json:"name"`
+	// GitURL is the base URL of Git server used for API calls.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^https?:\/\/.+$`
+	GitURL string `json:"gitURL"`
+	// InternalGitURL is the base URL of Git server accessible within the cluster only.
+	InternalGitURL   string `json:"internalGitURL"`
+	OrganizationName string `json:"organizationName"`
 }
 
 type SecretReference struct {
