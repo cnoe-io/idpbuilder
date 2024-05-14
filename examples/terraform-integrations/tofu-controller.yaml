@@ -11,7 +11,7 @@ spec:
   project: default
   source:
     repoURL: 'https://flux-iac.github.io/tofu-controller'
-    targetRevision: v0.15.0
+    targetRevision: v0.15.1
     helm:
       releaseName: tf-controller
       values: |
@@ -30,3 +30,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
