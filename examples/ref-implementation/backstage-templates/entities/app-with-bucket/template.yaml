@@ -49,8 +49,12 @@ spec:
                 region:
                   type: string
                 providerConfigName:
+                  description: Default providerConfig needs AWS creds configured
                   type: string
                   default: default
+                  enum:
+                    - default
+                    - localstack
                 tags:
                   items:
                     properties:
