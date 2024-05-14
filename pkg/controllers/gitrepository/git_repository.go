@@ -5,6 +5,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/google/go-github/v61/github"
 )
 
@@ -44,5 +45,5 @@ type gitProvider interface {
 	getProviderCredentials(ctx context.Context, repo *v1alpha1.GitRepository) (gitProviderCredentials, error)
 	getRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error)
 	setProviderCredentials(ctx context.Context, repo *v1alpha1.GitRepository, creds gitProviderCredentials) error
-	updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials) error
+	updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials, tmpDir string, repoMap *util.RepoMap) error
 }

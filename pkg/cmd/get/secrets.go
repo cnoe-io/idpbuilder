@@ -13,7 +13,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,8 +58,12 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 	defer ctxCancel()
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
-	b := build.NewBuild("", "", kubeConfigPath, "", "",
-		util.CorePackageTemplateConfig{}, []string{}, false, k8s.GetScheme(), ctxCancel, nil)
+	opts := build.NewBuildOptions{}
+	opts.KubeConfigPath = kubeConfigPath
+	opts.Scheme = k8s.GetScheme()
+	opts.CancelFunc = ctxCancel
+
+	b := build.NewBuild(opts)
 
 	kubeConfig, err := b.GetKubeConfig()
 	if err != nil {

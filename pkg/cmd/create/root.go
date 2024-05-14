@@ -84,12 +84,15 @@ func create(cmd *cobra.Command, args []string) error {
 	}
 
 	var absDirPaths []string
+	var remotePaths []string
+
 	if len(extraPackagesDirs) > 0 {
-		p, err := helpers.GetAbsFilePaths(extraPackagesDirs, true)
-		if err != nil {
-			return err
+		r, l, pErr := helpers.ParsePackageStrings(extraPackagesDirs)
+		if pErr != nil {
+			return pErr
 		}
-		absDirPaths = p
+		absDirPaths = l
+		remotePaths = r
 	}
 
 	o := make(map[string]v1alpha1.PackageCustomization)
@@ -106,17 +109,31 @@ func create(cmd *cobra.Command, args []string) error {
 		exitOnSync = !noExit
 	}
 
-	b := build.NewBuild(
-		buildName, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping,
-		util.CorePackageTemplateConfig{
+	opts := build.NewBuildOptions{
+		Name:              buildName,
+		KubeVersion:       kubeVersion,
+		KubeConfigPath:    kubeConfigPath,
+		KindConfigPath:    kindConfigPath,
+		ExtraPortsMapping: extraPortsMapping,
+
+		TemplateData: util.CorePackageTemplateConfig{
 			Protocol:       protocol,
 			Host:           host,
 			IngressHost:    ingressHost,
 			Port:           port,
 			UsePathRouting: pathRouting,
 		},
-		absDirPaths, exitOnSync, k8s.GetScheme(), ctxCancel, o,
-	)
+
+		CustomPackageDirs:    absDirPaths,
+		CustomPackageUrls:    remotePaths,
+		ExitOnSync:           exitOnSync,
+		PackageCustomization: o,
+
+		Scheme:     k8s.GetScheme(),
+		CancelFunc: ctxCancel,
+	}
+
+	b := build.NewBuild(opts)
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err
@@ -153,7 +170,9 @@ func validate() error {
 			return pErr
 		}
 	}
-	return nil
+
+	_, _, err = helpers.ParsePackageStrings(extraPackagesDirs)
+	return err
 }
 
 func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {

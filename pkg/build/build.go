@@ -3,9 +3,11 @@ package build
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
@@ -32,28 +34,42 @@ type Build struct {
 	kubeVersion          string
 	extraPortsMapping    string
 	customPackageDirs    []string
+	customPackageUrls    []string
 	packageCustomization map[string]v1alpha1.PackageCustomization
 	exitOnSync           bool
 	scheme               *runtime.Scheme
 	CancelFunc           context.CancelFunc
 }
 
-func NewBuild(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig,
-	customPackageDirs []string, exitOnSync bool, scheme *runtime.Scheme, ctxCancel context.CancelFunc,
-	packageCustomization map[string]v1alpha1.PackageCustomization) *Build {
+type NewBuildOptions struct {
+	Name                 string
+	TemplateData         util.CorePackageTemplateConfig
+	KindConfigPath       string
+	KubeConfigPath       string
+	KubeVersion          string
+	ExtraPortsMapping    string
+	CustomPackageDirs    []string
+	CustomPackageUrls    []string
+	PackageCustomization map[string]v1alpha1.PackageCustomization
+	ExitOnSync           bool
+	Scheme               *runtime.Scheme
+	CancelFunc           context.CancelFunc
+}
 
+func NewBuild(opts NewBuildOptions) *Build {
 	return &Build{
-		name:                 name,
-		kindConfigPath:       kindConfigPath,
-		kubeConfigPath:       kubeConfigPath,
-		kubeVersion:          kubeVersion,
-		extraPortsMapping:    extraPortsMapping,
-		customPackageDirs:    customPackageDirs,
-		packageCustomization: packageCustomization,
-		exitOnSync:           exitOnSync,
-		scheme:               scheme,
-		cfg:                  cfg,
-		CancelFunc:           ctxCancel,
+		name:                 opts.Name,
+		kindConfigPath:       opts.KindConfigPath,
+		kubeConfigPath:       opts.KubeConfigPath,
+		kubeVersion:          opts.KubeVersion,
+		extraPortsMapping:    opts.ExtraPortsMapping,
+		customPackageDirs:    opts.CustomPackageDirs,
+		customPackageUrls:    opts.CustomPackageUrls,
+		packageCustomization: opts.PackageCustomization,
+		exitOnSync:           opts.ExitOnSync,
+		scheme:               opts.Scheme,
+		cfg:                  opts.TemplateData,
+		CancelFunc:           opts.CancelFunc,
 	}
 }
 
@@ -106,8 +122,8 @@ func (b *Build) ReconcileCRDs(ctx context.Context, kubeClient client.Client) err
 	return nil
 }
 
-func (b *Build) RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error) error {
-	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync, b.cfg)
+func (b *Build) RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, tmpDir string) error {
+	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync, b.cfg, tmpDir)
 }
 
 func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
@@ -148,8 +164,15 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
+	dir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s-", globals.ProjectName, b.name))
+	if err != nil {
+		setupLog.Error(err, "creating temp dir")
+		return err
+	}
+	defer os.RemoveAll(dir)
+
 	setupLog.V(1).Info("Running controllers")
-	if err := b.RunControllers(ctx, mgr, managerExit); err != nil {
+	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {
 		setupLog.Error(err, "Error running controllers")
 		return err
 	}
@@ -178,6 +201,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					PackageCustomization: b.packageCustomization,
 				},
 				CustomPackageDirs: b.customPackageDirs,
+				CustomPackageUrls: b.customPackageUrls,
 			},
 		}
 

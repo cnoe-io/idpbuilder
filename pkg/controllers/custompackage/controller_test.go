@@ -156,7 +156,7 @@ func TestReconcileCustomPkg(t *testing.T) {
 	c := mgr.GetClient()
 	repo := v1alpha1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      repoName("my-app", "test/resources/customPackages/testDir/busybox"),
+			Name:      localRepoName("my-app", "test/resources/customPackages/testDir/busybox"),
 			Namespace: "test",
 		},
 	}
@@ -197,8 +197,8 @@ func TestReconcileCustomPkg(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed getting my-app %v", err)
 	}
-	if strings.HasPrefix(localApp.Spec.Source.RepoURL, "cnoe://") {
-		t.Fatalf("cnoe:// prefix should be removed")
+	if strings.HasPrefix(localApp.Spec.Source.RepoURL, v1alpha1.CNOEURIScheme) {
+		t.Fatalf("%s prefix should be removed", v1alpha1.CNOEURIScheme)
 	}
 
 	for _, n := range []string{"guestbook", "guestbook2"} {
@@ -219,7 +219,7 @@ func TestReconcileCustomPkg(t *testing.T) {
 		t.Fatalf("failed getting my-app2 %v", err)
 	}
 
-	if strings.HasPrefix(localApp2.Spec.Sources[0].RepoURL, "cnoe://") {
-		t.Fatalf("cnoe:// prefix should be removed")
+	if strings.HasPrefix(localApp2.Spec.Sources[0].RepoURL, v1alpha1.CNOEURIScheme) {
+		t.Fatalf("%s prefix should be removed", v1alpha1.CNOEURIScheme)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"sigs.k8s.io/kustomize/kyaml/kio"
 )
 
@@ -34,27 +35,54 @@ func ValidateKubernetesYamlFile(absPath string) error {
 	return nil
 }
 
+func ParsePackageStrings(pkgStrings []string) ([]string, []string, error) {
+	remote := make([]string, 0, 2)
+	local := make([]string, 0, 2)
+	for i := range pkgStrings {
+		loc := pkgStrings[i]
+		_, err := util.NewKustomizeRemote(loc)
+		if err == nil {
+			remote = append(remote, loc)
+			continue
+		}
+
+		absPath, err := getAbsPath(loc, true)
+		if err == nil {
+			local = append(local, absPath)
+			continue
+		}
+		return nil, nil, err
+	}
+
+	return remote, local, nil
+}
+
+func getAbsPath(path string, isDir bool) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate path %s : %w", path, err)
+	}
+	f, err := os.Stat(absPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate path %s : %w", absPath, err)
+	}
+	if isDir && !f.IsDir() {
+		return "", fmt.Errorf("given path is not a directory. %s", absPath)
+	}
+	if !isDir && !f.Mode().IsRegular() {
+		return "", fmt.Errorf("give path is not a file. %s", absPath)
+	}
+	return absPath, nil
+}
+
 func GetAbsFilePaths(paths []string, isDir bool) ([]string, error) {
 	out := make([]string, len(paths))
 	for i := range paths {
-		path := paths[i]
-		absPath, err := filepath.Abs(path)
+		absPath, err := getAbsPath(paths[i], isDir)
 		if err != nil {
-			return nil, fmt.Errorf("failed to validate path %s : %w", path, err)
+			return nil, err
 		}
-		f, err := os.Stat(absPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate path %s : %w", absPath, err)
-		}
-		if isDir && !f.IsDir() {
-			return nil, fmt.Errorf("given path is not a directory. %s", absPath)
-		}
-		if !isDir && !f.Mode().IsRegular() {
-			return nil, fmt.Errorf("give path is not a file. %s", absPath)
-		}
-
 		out[i] = absPath
 	}
-
 	return out, nil
 }

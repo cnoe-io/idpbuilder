@@ -74,6 +74,27 @@ spec:
                   InternalGitServeURL specifies the base URL for the git server accessible within the cluster.
                   for example, http://my-gitea-http.gitea.svc.cluster.local:3000
                 type: string
+              remoteRepository:
+                description: RemoteRepositorySpec specifies information about remote
+                  repositories.
+                properties:
+                  cloneSubmodules:
+                    type: boolean
+                  path:
+                    type: string
+                  ref:
+                    description: Ref specifies the specific ref supported by git fetch
+                    type: string
+                  url:
+                    description: Url specifies the url to the repository containing
+                      the ArgoCD application file
+                    type: string
+                required:
+                - cloneSubmodules
+                - path
+                - ref
+                - url
+                type: object
               replicate:
                 default: false
                 description: Replicate specifies whether to replicate remote or local
@@ -83,6 +104,7 @@ spec:
             - gitServerAuthSecretRef
             - gitServerURL
             - internalGitServeURL
+            - remoteRepository
             - replicate
             type: object
           status:

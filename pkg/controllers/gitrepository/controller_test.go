@@ -196,17 +196,20 @@ func setupDir() (string, error) {
 
 func TestGitRepositoryContentReconcile(t *testing.T) {
 	ctx := context.Background()
-	dir, _, err := setUpLocalRepo()
-	defer os.RemoveAll(dir)
+	localRepoDir, _, err := setUpLocalRepo()
+	defer os.RemoveAll(localRepoDir)
 	if err != nil {
 		t.Fatalf("failed setting up local git repo: %v", err)
 	}
 
-	addDir, err := setupDir()
-	defer os.RemoveAll(addDir)
+	srcDir, err := setupDir()
+	defer os.RemoveAll(srcDir)
 	if err != nil {
 		t.Fatalf("failed to set up dirs: %v", err)
 	}
+
+	testCloneDir, _ := os.MkdirTemp("", "gitrepo-test")
+	defer os.RemoveAll(testCloneDir)
 
 	m := metav1.ObjectMeta{
 		Name:      "test",
@@ -216,7 +219,7 @@ func TestGitRepositoryContentReconcile(t *testing.T) {
 		ObjectMeta: m,
 		Spec: v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
-				Path: addDir,
+				Path: srcDir,
 				Type: "local",
 			},
 		},
@@ -228,38 +231,39 @@ func TestGitRepositoryContentReconcile(t *testing.T) {
 			giteaClient: mockGitea{},
 		}
 		// add file to source directory, reconcile, clone the repo and check if the added file exists
-		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: dir}, gitProviderCredentials{})
+		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: localRepoDir}, gitProviderCredentials{}, testCloneDir, util.NewRepoLock())
 		if err != nil {
 			t.Fatalf("failed adding %v", err)
 		}
-		tmpDir, _ := os.MkdirTemp("", "add")
-		defer os.RemoveAll(tmpDir)
-		repo, _ := git.PlainClone(tmpDir, false, &git.CloneOptions{
-			URL: dir,
+
+		repo, _ := git.PlainClone(testCloneDir, false, &git.CloneOptions{
+			URL: localRepoDir,
 		})
-		c, err := os.ReadFile(filepath.Join(tmpDir, "add"))
+		c, err := os.ReadFile(filepath.Join(testCloneDir, "add"))
 		if err != nil {
-			t.Fatalf("failed to read file at %s. %v", filepath.Join(tmpDir, "add"), err)
+			t.Fatalf("failed to read file at %s. %v", filepath.Join(testCloneDir, "add"), err)
 		}
 		if string(c) != addFileContent {
 			t.Fatalf("expected %s, got %s", addFileContent, c)
 		}
 
 		// remove added file, reconcile, pull, check if the file is removed
-		err = os.Remove(filepath.Join(addDir, "add"))
+		err = os.Remove(filepath.Join(srcDir, "add"))
 		if err != nil {
 			t.Fatalf("failed to remove added file %v", err)
 		}
-		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: dir}, gitProviderCredentials{})
+		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: localRepoDir}, gitProviderCredentials{}, testCloneDir, util.NewRepoLock())
 		if err != nil {
 			t.Fatalf("failed removing %v", err)
 		}
+
 		w, _ := repo.Worktree()
 		err = w.Pull(&git.PullOptions{})
 		if err != nil {
 			t.Fatalf("failed pulling changes %v", err)
 		}
-		_, err = os.Stat(filepath.Join(tmpDir, "add"))
+
+		_, err = os.Stat(filepath.Join(testCloneDir, "add"))
 		if err == nil {
 			t.Fatalf("file should not exist")
 		}
@@ -271,11 +275,14 @@ func TestGitRepositoryContentReconcile(t *testing.T) {
 
 func TestGitRepositoryContentReconcileEmbedded(t *testing.T) {
 	ctx := context.Background()
-	dir, _, err := setUpLocalRepo()
-	defer os.RemoveAll(dir)
+	localRepoDir, _, err := setUpLocalRepo()
+	defer os.RemoveAll(localRepoDir)
 	if err != nil {
 		t.Fatalf("failed setting up local git repo: %v", err)
 	}
+
+	tmpDir, _ := os.MkdirTemp("", "add")
+	defer os.RemoveAll(tmpDir)
 
 	m := metav1.ObjectMeta{
 		Name:      "test",
@@ -299,7 +306,7 @@ func TestGitRepositoryContentReconcileEmbedded(t *testing.T) {
 			Client:      &fakeClient{},
 			giteaClient: mockGitea{},
 		}
-		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: dir}, gitProviderCredentials{})
+		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: localRepoDir}, gitProviderCredentials{}, tmpDir, util.NewRepoLock())
 		if err != nil {
 			t.Fatalf("failed adding %v", err)
 		}
@@ -307,8 +314,8 @@ func TestGitRepositoryContentReconcileEmbedded(t *testing.T) {
 }
 
 func TestGitRepositoryReconcile(t *testing.T) {
-	dir, hash, err := setUpLocalRepo()
-	defer os.RemoveAll(dir)
+	localReoDir, hash, err := setUpLocalRepo()
+	defer os.RemoveAll(localReoDir)
 	if err != nil {
 		t.Fatalf("failed setting up local git repo: %v", err)
 	}
@@ -316,12 +323,18 @@ func TestGitRepositoryReconcile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get absolute path: %v", err)
 	}
+	updateDir, _, _ := setUpLocalRepo()
+	defer os.RemoveAll(updateDir)
 
 	addDir, err := setupDir()
+	fmt.Println(addDir)
 	defer os.RemoveAll(addDir)
 	if err != nil {
 		t.Fatalf("failed to set up dirs: %v", err)
 	}
+
+	tmpDir, _ := os.MkdirTemp("", "gitrepo-test")
+	defer os.RemoveAll(tmpDir)
 
 	m := metav1.ObjectMeta{
 		Name:      "test",
@@ -332,7 +345,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 		"no op": {
 			giteaClient: mockGitea{
 				getRepo: func() (*gitea.Repository, *gitea.Response, error) {
-					return &gitea.Repository{CloneURL: dir}, nil, nil
+					return &gitea.Repository{CloneURL: localReoDir}, nil, nil
 				},
 			},
 			input: v1alpha1.GitRepository{
@@ -350,7 +363,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			},
 			expect: expect{
 				resource: v1alpha1.GitRepositoryStatus{
-					ExternalGitRepositoryUrl: dir,
+					ExternalGitRepositoryUrl: localReoDir,
 					LatestCommit:             v1alpha1.Commit{Hash: hash},
 					Synced:                   true,
 					InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
@@ -360,7 +373,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 		"update": {
 			giteaClient: mockGitea{
 				getRepo: func() (*gitea.Repository, *gitea.Response, error) {
-					return &gitea.Repository{CloneURL: dir}, nil, nil
+					return &gitea.Repository{CloneURL: updateDir}, nil, nil
 				},
 			},
 			input: v1alpha1.GitRepository{
@@ -378,7 +391,7 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			},
 			expect: expect{
 				resource: v1alpha1.GitRepositoryStatus{
-					ExternalGitRepositoryUrl: dir,
+					ExternalGitRepositoryUrl: updateDir,
 					Synced:                   true,
 					InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
 				},
@@ -394,6 +407,8 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			r := RepositoryReconciler{
 				Client:          &fakeClient{},
 				GitProviderFunc: v.giteaProvider,
+				TempDir:         tmpDir,
+				RepoMap:         util.NewRepoLock(),
 			}
 			_, err := r.reconcileGitRepo(ctx, &v.input)
 			if v.expect.err == nil && err != nil {
@@ -403,7 +418,6 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			if v.expect.resource.LatestCommit.Hash == "" {
 				v.expect.resource.LatestCommit.Hash = v.input.Status.LatestCommit.Hash
 			}
-			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, v.input.Status, v.expect.resource)
 		}
 	})
@@ -411,8 +425,12 @@ func TestGitRepositoryReconcile(t *testing.T) {
 
 func TestGitRepositoryPostReconcile(t *testing.T) {
 	c := fakeClient{}
+	tmpDir, _ := os.MkdirTemp("", "repo-updates-test")
+	defer os.RemoveAll(tmpDir)
 	reconciler := RepositoryReconciler{
-		Client: &c,
+		Client:  &c,
+		TempDir: tmpDir,
+		RepoMap: util.NewRepoLock(),
 	}
 	testTime := time.Now().Format(time.RFC3339Nano)
 	repo := v1alpha1.GitRepository{

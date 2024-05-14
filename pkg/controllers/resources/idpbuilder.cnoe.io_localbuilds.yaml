@@ -52,6 +52,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  customPackageUrls:
+                    items:
+                      type: string
+                    type: array
                   embeddedArgoApplicationsPackageConfigs:
                     description: EmbeddedArgoApplicationsPackageConfigSpec Controls
                       the installation of the embedded argo applications.

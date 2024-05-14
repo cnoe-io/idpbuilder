@@ -40,6 +40,7 @@ func (g *giteaProvider) createRepository(ctx context.Context, repo *v1alpha1.Git
 		DefaultBranch: DefaultBranchName,
 		AutoInit:      true,
 	})
+
 	if err != nil {
 		return repoInfo{}, fmt.Errorf("failed to create git repository: %w", err)
 	}
@@ -97,8 +98,15 @@ func (g *giteaProvider) getRepository(ctx context.Context, repo *v1alpha1.GitRep
 	}, nil
 }
 
-func (g *giteaProvider) updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials) error {
-	return updateRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config)
+func (g *giteaProvider) updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials, tmpDir string, repoMap *util.RepoMap) error {
+	switch repo.Spec.Source.Type {
+	case v1alpha1.SourceTypeLocal, v1alpha1.SourceTypeEmbedded:
+		return reconcileLocalRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config, tmpDir, repoMap)
+	case v1alpha1.SourceTypeRemote:
+		return reconcileRemoteRepoContent(ctx, repo, repoInfo, creds, tmpDir, repoMap)
+	default:
+		return nil
+	}
 }
 
 func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config util.CorePackageTemplateConfig, scheme *runtime.Scheme) error {

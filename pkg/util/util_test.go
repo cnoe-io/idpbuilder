@@ -8,7 +8,6 @@ import (
 var specialCharMap = make(map[string]struct{})
 
 func TestGeneratePassword(t *testing.T) {
-
 	for i := range specialChars {
 		specialCharMap[string(specialChars[i])] = struct{}{}
 	}
