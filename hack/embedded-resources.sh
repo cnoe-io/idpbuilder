@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 DIRECTORIES='argo-cd gitea ingress-nginx'
 

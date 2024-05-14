@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 INSTALL_YAML="pkg/controllers/localbuild/resources/nginx/k8s/ingress-nginx.yaml"
 NGINX_DIR="./hack/ingress-nginx"

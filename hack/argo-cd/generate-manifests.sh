@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 INSTALL_YAML="pkg/controllers/localbuild/resources/argo/install.yaml"
 INGRESS_YAML="pkg/controllers/localbuild/resources/argo/ingress.yaml"

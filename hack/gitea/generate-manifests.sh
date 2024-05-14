@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 INSTALL_YAML="pkg/controllers/localbuild/resources/gitea/k8s/install.yaml"
