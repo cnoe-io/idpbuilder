@@ -4,7 +4,7 @@ metadata:
   name: busybox
   namespace: argocd
   labels:
-    abc: ded
+    abc: dead
     notused: remove-me
 spec:
   containers:

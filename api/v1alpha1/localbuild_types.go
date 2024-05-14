@@ -20,7 +20,7 @@ const (
 )
 
 // ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
-// If no fields are specified then the binary embedded resources will be used to intall ArgoCD.
+// If no fields are specified then the binary embedded resources will be used to install ArgoCD.
 type ArgoPackageConfigSpec struct {
 	// Enabled controls whether to install ArgoCD.
 	Enabled bool `json:"enabled,omitempty"`

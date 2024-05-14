@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type Conainer struct {
+type Container struct {
 	NetworkSettings NetworkSettings `json:"NetworkSettings"`
 	State           State           `json:"State"`
 }
@@ -59,7 +59,7 @@ func (f *FinchRuntime) ContainerWithPort(ctx context.Context, name string, port 
 		return false, err
 	}
 
-	var containers []Conainer
+	var containers []Container
 	err = json.Unmarshal(stdout.Bytes(), &containers)
 	if err != nil {
 		return false, fmt.Errorf("%v: %s", err, stderr.String())

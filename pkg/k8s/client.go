@@ -37,7 +37,7 @@ func EnsureObject(ctx context.Context, kubeClient client.Client, obj client.Obje
 		return err
 	}
 
-	// hacky way to restore the GVK for the object after create corrupts it. didnt dig. not sure why?
+	// hacky way to restore the GVK for the object after create corrupts it. didn't dig. not sure why?
 	obj.GetObjectKind().SetGroupVersionKind(curObj.GroupVersionKind())
 	return nil
 }

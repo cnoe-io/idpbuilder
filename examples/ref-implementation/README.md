@@ -117,7 +117,7 @@ You can click on the ArgoCD Application name to see more details.
 
 In this example, we will deploy a simple Apache Spark job through Argo Workflows.
 
-Click on the `Create...` button on the left, then select the `Basic Argo Workflow witha Spark Job` template.
+Click on the `Create...` button on the left, then select the `Basic Argo Workflow with a Spark Job` template.
 
 ![img.png](images/backstage-templates-spark.png)
 
