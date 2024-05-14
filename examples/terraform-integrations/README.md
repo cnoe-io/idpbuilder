@@ -11,7 +11,7 @@ idpbuilder create \
   --package-dir examples/terraform-integrations
 ```
 
-As you see above, this add-on to `idpbuilder` has a dependency to the [reference implementation](../ref-implementation/). Thos command primarily does the following:
+As you see above, this add-on to `idpbuilder` has a dependency to the [reference implementation](../ref-implementation/). This command primarily does the following:
 
 1. Installs `fluxcd` source respository controller as an `argo` application.
 2. Installs `tofu-controller` for managing the lifecycle of terraform deployments from your Kubernetes cluster for operations such as create, delete and update.
