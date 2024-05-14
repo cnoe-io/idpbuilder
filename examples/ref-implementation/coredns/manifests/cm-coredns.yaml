@@ -31,3 +31,9 @@ data:
         reload
         loadbalance
     }
+
+    localhost.localstack.cloud:53 {
+        errors
+        cache 30
+        forward . 10.96.100.10
+    }

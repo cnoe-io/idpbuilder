@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: localstack
+
+helmCharts:
+- name: localstack
+  valuesInline:
+    debug: true
+    extraEnvVars:
+    - name: DEFAULT_REGION
+      value: "us-east-1"
+    dnsPolicy: "Default"
+    service:
+      type: ClusterIP
+      # Coredns needs a static IP to refer to for delegation
+      clusterIP: 10.96.100.10
+      # this effectively disables the external service ports, which can be used for OpenSearch and a few other services
+      # these don't play well with the services kustomize patch at this point
+      #  see https://docs.localstack.cloud/references/external-ports/ for more details
+      externalServicePorts:
+        start: 4510
+        end: 4510
+      dnsService: true
+  releaseName: localstack
+  repo: 'https://localstack.github.io/helm-charts'
+  version: 0.6.12
+
+patches:
+- path: service-patch.yaml
