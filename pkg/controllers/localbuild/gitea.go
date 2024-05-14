@@ -49,7 +49,7 @@ func newGiteAdminSecret() (corev1.Secret, error) {
 			Namespace: giteaNamespace,
 		},
 		StringData: map[string]string{
-			"username": "giteaAdmin",
+			"username": v1alpha1.GiteaAdminUserName,
 			"password": pass,
 		},
 	}, nil

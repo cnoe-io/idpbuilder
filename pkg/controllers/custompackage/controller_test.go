@@ -13,6 +13,7 @@ import (
 
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -171,10 +172,15 @@ func TestReconcileCustomPkg(t *testing.T) {
 				Type: "local",
 				Path: p,
 			},
-			GitURL:         "https://cnoe.io",
-			InternalGitURL: "http://internal.cnoe.io",
+			Provider: v1alpha1.Provider{
+				Name:             v1alpha1.GitProviderGitea,
+				GitURL:           "https://cnoe.io",
+				InternalGitURL:   "http://internal.cnoe.io",
+				OrganizationName: v1alpha1.GiteaAdminUserName,
+			},
 		},
 	}
+	assert.Equal(t, repo.Spec, expectedRepo.Spec)
 	ok := reflect.DeepEqual(repo.Spec, expectedRepo.Spec)
 	if !ok {
 		t.Fatalf("expected spec does not match")

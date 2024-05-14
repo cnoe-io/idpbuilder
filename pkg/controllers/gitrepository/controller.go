@@ -3,6 +3,7 @@ package gitrepository
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,15 +13,12 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	gitclient "github.com/go-git/go-git/v5/plumbing/transport/client"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,12 +27,10 @@ import (
 )
 
 const (
-	DefaultBranchName     = "main"
-	giteaAdminUsernameKey = "username"
-	giteaAdminPasswordKey = "password"
-	requeueTime           = time.Second * 30
-	gitCommitAuthorName   = "git-reconciler"
-	gitCommitAuthorEmail  = "idpbuilder-agent@cnoe.io"
+	DefaultBranchName    = "main"
+	requeueTime          = time.Second * 30
+	gitCommitAuthorName  = "git-reconciler"
+	gitCommitAuthorEmail = "idpbuilder-agent@cnoe.io"
 
 	gitTCPTimeout = 5 * time.Second
 	// timeout value for a git operation through http. clone, push, etc.
@@ -45,18 +41,20 @@ func init() {
 	configureGitClient()
 }
 
-type GiteaClientFunc func(url string, options ...gitea.ClientOption) (GiteaClient, error)
-
-func NewGiteaClient(url string, options ...gitea.ClientOption) (GiteaClient, error) {
-	return gitea.NewClient(url, options...)
-}
-
 type RepositoryReconciler struct {
 	client.Client
-	GiteaClientFunc GiteaClientFunc
 	Recorder        record.EventRecorder
 	Scheme          *runtime.Scheme
 	Config          util.CorePackageTemplateConfig
+	GitProviderFunc gitProviderFunc
+}
+
+type gitProviderFunc func(context.Context, *v1alpha1.GitRepository, client.Client, *runtime.Scheme, util.CorePackageTemplateConfig) (gitProvider, error)
+
+type notFoundError struct{}
+
+func (n notFoundError) Error() string {
+	return fmt.Sprintf("repo not found")
 }
 
 func getRepositoryName(repo v1alpha1.GitRepository) string {
@@ -64,39 +62,35 @@ func getRepositoryName(repo v1alpha1.GitRepository) string {
 }
 
 func getOrganizationName(repo v1alpha1.GitRepository) string {
-	return "giteaAdmin"
+	return repo.Spec.Provider.OrganizationName
 }
 
-func (r *RepositoryReconciler) getCredentials(ctx context.Context, repo *v1alpha1.GitRepository) (string, string, error) {
-	var secret v1.Secret
-	err := r.Client.Get(ctx, types.NamespacedName{
-		Namespace: repo.Spec.SecretRef.Namespace,
-		Name:      repo.Spec.SecretRef.Name,
-	}, &secret)
-	if err != nil {
-		return "", "", err
+func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
+	switch repo.Spec.Provider.Name {
+	case v1alpha1.GitProviderGitea:
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		c := &http.Client{Transport: tr}
+		giteaClient, err := NewGiteaClient(repo.Spec.Provider.GitURL, gitea.SetHTTPClient(c))
+		if err != nil {
+			return nil, err
+		}
+		return &giteaProvider{
+			Client:      kubeClient,
+			Scheme:      scheme,
+			giteaClient: giteaClient,
+			config:      tmplConfig,
+		}, nil
+	case v1alpha1.GitProviderGitHub:
+		return &gitHubProvider{
+			Client:       kubeClient,
+			Scheme:       scheme,
+			config:       tmplConfig,
+			gitHubClient: newGitHubClient(nil),
+		}, nil
 	}
-
-	username, ok := secret.Data[giteaAdminUsernameKey]
-	if !ok {
-		return "", "", fmt.Errorf("%s key not found in secret %s in %s ns", giteaAdminUsernameKey, repo.Spec.SecretRef.Name, repo.Spec.SecretRef.Namespace)
-	}
-	password, ok := secret.Data[giteaAdminPasswordKey]
-	if !ok {
-		return "", "", fmt.Errorf("%s key not found in secret %s in %s ns", giteaAdminPasswordKey, repo.Spec.SecretRef.Name, repo.Spec.SecretRef.Namespace)
-	}
-	return string(username), string(password), nil
-}
-
-func (r *RepositoryReconciler) getBasicAuth(ctx context.Context, repo *v1alpha1.GitRepository) (githttp.BasicAuth, error) {
-	u, p, err := r.getCredentials(ctx, repo)
-	if err != nil {
-		return githttp.BasicAuth{}, err
-	}
-	return githttp.BasicAuth{
-		Username: u,
-		Password: p,
-	}, nil
+	return nil, fmt.Errorf("invalid git provider %s ", repo.Spec.Provider.Name)
 }
 
 func (r *RepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -142,40 +136,63 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 	logger := log.FromContext(ctx)
 	logger.V(1).Info("reconciling", "name", repo.Name, "dir", repo.Spec.Source)
 	repo.Status.Synced = false
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-	giteaClient, err := r.GiteaClientFunc(repo.Spec.GitURL, gitea.SetHTTPClient(client))
+
+	provider, err := r.GitProviderFunc(ctx, repo, r.Client, r.Scheme, r.Config)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get gitea client: %w", err)
+		return ctrl.Result{}, fmt.Errorf("initializing git provider: %w", err)
 	}
 
-	user, pass, err := r.getCredentials(ctx, repo)
+	creds, err := provider.getProviderCredentials(ctx, repo)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to get gitea credentials: %w", err)
+		return ctrl.Result{}, fmt.Errorf("getting git provider credentials: %w", err)
 	}
 
-	giteaClient.SetBasicAuth(user, pass)
-	giteaClient.SetContext(ctx)
-
-	giteaRepo, err := reconcileRepo(giteaClient, repo)
+	err = provider.setProviderCredentials(ctx, repo, creds)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create or update repo %w", err)
+		return ctrl.Result{}, fmt.Errorf("setting git provider credentials: %w", err)
 	}
-
-	err = r.reconcileRepoContent(ctx, repo, giteaRepo)
+	var providerRepo repoInfo
+	p, err := provider.getRepository(ctx, repo)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to reconcile repo content %w", err)
+		if errors.Is(err, notFoundError{}) {
+			p, err = provider.createRepository(ctx, repo)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("creating repository: %w", err)
+			}
+			providerRepo = p
+		} else {
+			return ctrl.Result{}, fmt.Errorf("getting repository: %w", err)
+		}
+	} else {
+		providerRepo = p
 	}
 
-	repo.Status.ExternalGitRepositoryUrl = giteaRepo.CloneURL
-	repo.Status.InternalGitRepositoryUrl = getRepositoryURL(repo.Namespace, repo.Name, repo.Spec.InternalGitURL)
+	err = provider.updateRepoContent(ctx, repo, providerRepo, creds)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("updating repository contents: %w", err)
+	}
+
+	repo.Status.ExternalGitRepositoryUrl = providerRepo.cloneUrl
+	repo.Status.InternalGitRepositoryUrl = providerRepo.internalGitRepositoryUrl
 	repo.Status.Synced = true
 	return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, nil
 }
 
-func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, giteaRepo *gitea.Repository) error {
+func (r *RepositoryReconciler) SetupWithManager(mgr ctrl.Manager, notifyChan chan event.GenericEvent) error {
+	// TODO: should use notifyChan to trigger reconcile when FS changes
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.GitRepository{}).
+		Complete(r)
+}
+
+func (r *RepositoryReconciler) shouldProcess(repo v1alpha1.GitRepository) bool {
+	if repo.Spec.Source.Type == "local" && !filepath.IsAbs(repo.Spec.Source.Path) {
+		return false
+	}
+	return true
+}
+
+func updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) error {
 	logger := log.FromContext(ctx)
 
 	tempDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s", repo.Name, repo.Namespace))
@@ -184,8 +201,14 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		return fmt.Errorf("creating temporary directory: %w", err)
 	}
 
+	auth, err := getBasicAuth(creds)
+	if err != nil {
+		return fmt.Errorf("getting basic auth: %w", err)
+	}
+
 	cloneOptions := &git.CloneOptions{
-		URL:             giteaRepo.CloneURL,
+		Auth:            &auth,
+		URL:             repoInfo.cloneUrl,
 		NoCheckout:      true,
 		InsecureSkipTLS: true,
 	}
@@ -194,7 +217,7 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		// if we cannot clone with gitea's configured url, then we fallback to using the url provided in spec.
 		logger.V(1).Info("failed cloning with returned clone URL. Falling back to default url.", "err", err)
 
-		cloneOptions.URL = fmt.Sprintf("%s/%s.git", repo.Spec.GitURL, giteaRepo.FullName)
+		cloneOptions.URL = fmt.Sprintf("%s/%s.git", repo.Spec.Provider.GitURL, repoInfo.fullName)
 		c, retErr := git.PlainCloneContext(ctx, tempDir, false, cloneOptions)
 		if retErr != nil {
 			return fmt.Errorf("cloning repo with fall back url: %w", retErr)
@@ -202,9 +225,9 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		clonedRepo = c
 	}
 
-	err = r.writeRepoContents(repo, tempDir)
+	err = writeRepoContents(repo, tempDir, tmplConfig, scheme)
 	if err != nil {
-		return err
+		return fmt.Errorf("writing repo contents: %w", err)
 	}
 
 	tree, err := clonedRepo.Worktree()
@@ -241,10 +264,6 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 		return fmt.Errorf("committing git files: %w", err)
 	}
 
-	auth, err := r.getBasicAuth(ctx, repo)
-	if err != nil {
-		return fmt.Errorf("getting basic auth: %w", err)
-	}
 	err = clonedRepo.Push(&git.PushOptions{
 		Auth:            &auth,
 		InsecureSkipTLS: true,
@@ -254,73 +273,7 @@ func (r *RepositoryReconciler) reconcileRepoContent(ctx context.Context, repo *v
 	}
 
 	repo.Status.LatestCommit.Hash = commit.String()
-
 	return nil
-}
-
-func reconcileRepo(giteaClient GiteaClient, repo *v1alpha1.GitRepository) (*gitea.Repository, error) {
-	resp, repoResp, err := giteaClient.GetRepo(getOrganizationName(*repo), getRepositoryName(*repo))
-	if err != nil {
-		if repoResp != nil && repoResp.StatusCode == http.StatusNotFound {
-			createResp, _, CErr := giteaClient.CreateRepo(gitea.CreateRepoOption{
-				Name:        getRepositoryName(*repo),
-				Description: fmt.Sprintf("created by Git Repository controller for %s in %s namespace", repo.Name, repo.Namespace),
-				// we should reconsider this when targeting non-local clusters.
-				Private:       false,
-				DefaultBranch: DefaultBranchName,
-				AutoInit:      true,
-			})
-			if CErr != nil {
-				return &gitea.Repository{}, fmt.Errorf("failed to create git repository: %w", CErr)
-			}
-			return createResp, nil
-		}
-	}
-	return resp, nil
-}
-
-func (r *RepositoryReconciler) SetupWithManager(mgr ctrl.Manager, notifyChan chan event.GenericEvent) error {
-	// TODO: should use notifyChan to trigger reconcile when FS changes
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.GitRepository{}).
-		Complete(r)
-}
-
-func (r *RepositoryReconciler) shouldProcess(repo v1alpha1.GitRepository) bool {
-	if repo.Spec.Source.Type == "local" && !filepath.IsAbs(repo.Spec.Source.Path) {
-		return false
-	}
-	return true
-}
-
-func (r *RepositoryReconciler) writeRepoContents(repo *v1alpha1.GitRepository, dstPath string) error {
-	if repo.Spec.Source.EmbeddedAppName != "" {
-		resources, err := localbuild.GetEmbeddedRawInstallResources(
-			repo.Spec.Source.EmbeddedAppName, r.Config,
-			v1alpha1.PackageCustomization{Name: repo.Spec.Customization.Name, FilePath: repo.Spec.Customization.FilePath}, r.Scheme)
-		if err != nil {
-			return fmt.Errorf("getting embedded resource; %w", err)
-		}
-
-		for i := range resources {
-			filePath := filepath.Join(dstPath, fmt.Sprintf("resource%d.yaml", i))
-			err = os.WriteFile(filePath, resources[i], 0644)
-			if err != nil {
-				return fmt.Errorf("writing embedded resource; %w", err)
-			}
-		}
-		return nil
-	}
-
-	err := util.CopyDirectory(repo.Spec.Source.Path, dstPath)
-	if err != nil {
-		return fmt.Errorf("copying files: %w", err)
-	}
-	return nil
-}
-
-func getRepositoryURL(namespace, name, baseUrl string) string {
-	return fmt.Sprintf("%s/giteaAdmin/%s-%s.git", baseUrl, namespace, name)
 }
 
 func configureGitClient() {

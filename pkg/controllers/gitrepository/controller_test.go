@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"code.gitea.io/sdk/gitea"
@@ -55,9 +57,18 @@ type expect struct {
 }
 
 type testCase struct {
-	giteaClient func(url string, options ...gitea.ClientOption) (GiteaClient, error)
+	giteaClient GiteaClient
 	input       v1alpha1.GitRepository
 	expect      expect
+}
+
+func (t testCase) giteaProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
+	return &giteaProvider{
+		Client:      kubeClient,
+		Scheme:      scheme,
+		giteaClient: t.giteaClient,
+		config:      tmplConfig,
+	}, nil
 }
 
 type fakeClient struct {
@@ -212,14 +223,12 @@ func TestGitRepositoryContentReconcile(t *testing.T) {
 	}
 
 	t.Run("files modified", func(t *testing.T) {
-		reconciler := RepositoryReconciler{
-			Client: &fakeClient{},
-			GiteaClientFunc: func(url string, options ...gitea.ClientOption) (GiteaClient, error) {
-				return mockGitea{}, nil
-			},
+		p := giteaProvider{
+			Client:      &fakeClient{},
+			giteaClient: mockGitea{},
 		}
 		// add file to source directory, reconcile, clone the repo and check if the added file exists
-		err := reconciler.reconcileRepoContent(ctx, &resource, &gitea.Repository{CloneURL: dir})
+		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: dir}, gitProviderCredentials{})
 		if err != nil {
 			t.Fatalf("failed adding %v", err)
 		}
@@ -241,7 +250,7 @@ func TestGitRepositoryContentReconcile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to remove added file %v", err)
 		}
-		err = reconciler.reconcileRepoContent(ctx, &resource, &gitea.Repository{CloneURL: dir})
+		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: dir}, gitProviderCredentials{})
 		if err != nil {
 			t.Fatalf("failed removing %v", err)
 		}
@@ -279,19 +288,18 @@ func TestGitRepositoryContentReconcileEmbedded(t *testing.T) {
 				EmbeddedAppName: "nginx",
 				Type:            "embedded",
 			},
-			InternalGitURL: "http://cnoe.io",
+			Provider: v1alpha1.Provider{
+				InternalGitURL: "http://cnoe.io",
+			},
 		},
 	}
 
-	t.Run("should sync embedded", func(t *testing.T) {
-		reconciler := RepositoryReconciler{
-			Client: &fakeClient{},
-			GiteaClientFunc: func(url string, options ...gitea.ClientOption) (GiteaClient, error) {
-				return mockGitea{}, nil
-			},
+	t.Run("should update content", func(t *testing.T) {
+		p := giteaProvider{
+			Client:      &fakeClient{},
+			giteaClient: mockGitea{},
 		}
-
-		err := reconciler.reconcileRepoContent(ctx, &resource, &gitea.Repository{CloneURL: dir})
+		err = p.updateRepoContent(ctx, &resource, repoInfo{cloneUrl: dir}, gitProviderCredentials{})
 		if err != nil {
 			t.Fatalf("failed adding %v", err)
 		}
@@ -322,12 +330,10 @@ func TestGitRepositoryReconcile(t *testing.T) {
 
 	cases := map[string]testCase{
 		"no op": {
-			giteaClient: func(url string, options ...gitea.ClientOption) (GiteaClient, error) {
-				return mockGitea{
-					getRepo: func() (*gitea.Repository, *gitea.Response, error) {
-						return &gitea.Repository{CloneURL: dir}, nil, nil
-					},
-				}, nil
+			giteaClient: mockGitea{
+				getRepo: func() (*gitea.Repository, *gitea.Response, error) {
+					return &gitea.Repository{CloneURL: dir}, nil, nil
+				},
 			},
 			input: v1alpha1.GitRepository{
 				ObjectMeta: m,
@@ -336,7 +342,10 @@ func TestGitRepositoryReconcile(t *testing.T) {
 						Path: resourcePath,
 						Type: "local",
 					},
-					InternalGitURL: "http://cnoe.io",
+					Provider: v1alpha1.Provider{
+						Name:           v1alpha1.GitProviderGitea,
+						InternalGitURL: "http://cnoe.io",
+					},
 				},
 			},
 			expect: expect{
@@ -348,44 +357,45 @@ func TestGitRepositoryReconcile(t *testing.T) {
 				},
 			},
 		},
-		//"update": {
-		//	giteaClient: func(url string, options ...gitea.ClientOption) (GiteaClient, error) {
-		//		return mockGitea{
-		//			getRepo: func() (*gitea.Repository, *gitea.Response, error) {
-		//				return &gitea.Repository{CloneURL: dir}, nil, nil
-		//			},
-		//		}, nil
-		//	},
-		//	input: v1alpha1.GitRepository{
-		//		ObjectMeta: m,
-		//		Spec: v1alpha1.GitRepositorySpec{
-		//			Source: v1alpha1.GitRepositorySource{
-		//				Path: addDir,
-		//				Type: "local",
-		//			},
-		//			InternalGitURL: "http://cnoe.io",
-		//		},
-		//	},
-		//	expect: expect{
-		//		resource: v1alpha1.GitRepositoryStatus{
-		//			ExternalGitRepositoryUrl: dir,
-		//			Synced:                   true,
-		//			InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
-		//		},
-		//	},
-		//},
+		"update": {
+			giteaClient: mockGitea{
+				getRepo: func() (*gitea.Repository, *gitea.Response, error) {
+					return &gitea.Repository{CloneURL: dir}, nil, nil
+				},
+			},
+			input: v1alpha1.GitRepository{
+				ObjectMeta: m,
+				Spec: v1alpha1.GitRepositorySpec{
+					Source: v1alpha1.GitRepositorySource{
+						Path: addDir,
+						Type: "local",
+					},
+					Provider: v1alpha1.Provider{
+						Name:           v1alpha1.GitProviderGitea,
+						InternalGitURL: "http://cnoe.io",
+					},
+				},
+			},
+			expect: expect{
+				resource: v1alpha1.GitRepositoryStatus{
+					ExternalGitRepositoryUrl: dir,
+					Synced:                   true,
+					InternalGitRepositoryUrl: "http://cnoe.io/giteaAdmin/test-test.git",
+				},
+			},
+		},
 	}
 
 	ctx := context.Background()
 
-	for k := range cases {
-		v := cases[k]
-		t.Run(k, func(t *testing.T) {
-			reconciler := RepositoryReconciler{
+	t.Run("repo updates", func(t *testing.T) {
+		for k := range cases {
+			v := cases[k]
+			r := RepositoryReconciler{
 				Client:          &fakeClient{},
-				GiteaClientFunc: v.giteaClient,
+				GitProviderFunc: v.giteaProvider,
 			}
-			_, err := reconciler.reconcileGitRepo(ctx, &v.input)
+			_, err := r.reconcileGitRepo(ctx, &v.input)
 			if v.expect.err == nil && err != nil {
 				t.Fatalf("failed %s: %v", k, err)
 			}
@@ -393,9 +403,10 @@ func TestGitRepositoryReconcile(t *testing.T) {
 			if v.expect.resource.LatestCommit.Hash == "" {
 				v.expect.resource.LatestCommit.Hash = v.input.Status.LatestCommit.Hash
 			}
+			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, v.input.Status, v.expect.resource)
-		})
-	}
+		}
+	})
 }
 
 func TestGitRepositoryPostReconcile(t *testing.T) {
