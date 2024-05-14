@@ -41,7 +41,7 @@ tar xzf idpbuilder.tar.gz
 
 ./idpbuilder version
 # example output
-# idpbuilder 0.3.0 go1.21.5 linux/amd64
+# idpbuilder 0.4.1 go1.21.5 linux/amd64
 ```
 
 Alternatively, you can download the latest binary from [the latest release page](https://github.com/cnoe-io/idpbuilder/releases/latest).
@@ -79,8 +79,8 @@ The most basic command which creates a Kubernetes Cluster (Kind cluster) with th
 
 Once idpbuilder finishes provisioning cluster and packages, you can access GUIs by going to the following addresses in your browser.
 
-* ArgoCD: https://argocd.cnoe.localtest.me:8443/
-* Gitea: https://gitea.cnoe.localtest.me:8443/
+* ArgoCD: https://cnoe.localtest.me:8443/argocd/
+* Gitea: https://cnoe.localtest.me:8443/gitea/
 
 You can obtain credentials for them by running the following command:
 
@@ -183,7 +183,7 @@ As a result the following actions were taken by idpbuilder:
 2. Fill the repository with contents from the manifests directory.
 3. Update the Application spec to use the newly created repository.
 
-You can verify this by going to this address in your browser: https://gitea.cnoe.localtest.me:8443/giteaAdmin/idpbuilder-localdev-my-app-manifests
+You can verify this by going to this address in your browser: https://cnoe.localtest.me:8443/gitea/giteaAdmin/idpbuilder-localdev-my-app-manifests
 
 ![img.png](docs/images/my-app-repo.png)
 
@@ -191,7 +191,7 @@ You can verify this by going to this address in your browser: https://gitea.cnoe
 This is the repository that corresponds to the [manifests](examples/basic/package1/manifests) folder.
 It contains a file called `alpine.yaml`, synced from the `manifests` directory above.
 
-You can also view the updated Application spec by going to this address: https://argocd.cnoe.localtest.me:8443/applications/argocd/my-app
+You can also view the updated Application spec by going to this address: https://cnoe.localtest.me:8443/argocd/applications/argocd/my-app
 
 ![myapp](docs/images/my-app.png)
 
