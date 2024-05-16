@@ -1,0 +1,19 @@
+apiVersion: aws.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: localstack
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: local-secret
+      key: creds
+  endpoint:
+    hostnameImmutable: true
+    url:
+      type: Static
+      static: http://localstack.localstack.svc.cluster.local:4566
