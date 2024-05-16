@@ -70,8 +70,12 @@ func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClien
 	case v1alpha1.GitProviderGitea:
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext: (&net.Dialer{
+				Timeout:   gitTCPTimeout,
+				KeepAlive: 30 * time.Second, // from http.DefaultTransport
+			}).DialContext,
 		}
-		c := &http.Client{Transport: tr}
+		c := &http.Client{Transport: tr, Timeout: gitHTTPTimeout}
 		giteaClient, err := NewGiteaClient(repo.Spec.Provider.GitURL, gitea.SetHTTPClient(c))
 		if err != nil {
 			return nil, err

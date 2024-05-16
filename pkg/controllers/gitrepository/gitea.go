@@ -83,7 +83,7 @@ func (g *giteaProvider) setProviderCredentials(ctx context.Context, repo *v1alph
 func (g *giteaProvider) getRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error) {
 	resp, repoResp, err := g.giteaClient.GetRepo(getOrganizationName(*repo), getRepositoryName(*repo))
 	if err != nil {
-		if repoResp.StatusCode == 404 {
+		if repoResp != nil && repoResp.StatusCode == 404 {
 			return repoInfo{}, notFoundError{}
 		}
 		return repoInfo{}, err
