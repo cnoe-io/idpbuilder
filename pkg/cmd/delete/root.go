@@ -3,9 +3,9 @@ package delete
 import (
 	"flag"
 
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/kind/pkg/cluster"
 )
@@ -16,10 +16,11 @@ var (
 )
 
 var DeleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete an IDP cluster",
-	Long:  ``,
-	RunE:  delete,
+	Use:     "delete",
+	Short:   "Delete an IDP cluster",
+	Long:    ``,
+	RunE:    delete,
+	PreRunE: preDeleteE,
 }
 
 func init() {
@@ -31,12 +32,18 @@ func init() {
 	}
 	opts.BindFlags(zapfs)
 	DeleteCmd.Flags().AddGoFlagSet(zapfs)
+}
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+func preDeleteE(cmd *cobra.Command, args []string) error {
+	return helpers.SetLogger()
 }
 
 func delete(cmd *cobra.Command, args []string) error {
-	provider := cluster.NewProvider(cluster.ProviderWithDocker())
+	detectOpt, err := cluster.DetectNodeProvider()
+	if err != nil {
+		return err
+	}
+	provider := cluster.NewProvider(detectOpt)
 	if err := provider.Delete(buildName, ""); err != nil {
 		return errors.Wrapf(err, "failed to delete cluster %q", buildName)
 	}
