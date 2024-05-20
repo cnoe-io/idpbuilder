@@ -42,7 +42,7 @@ spec:
                   argoPackageConfigs:
                     description: |-
                       ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
-                      If no fields are specified then the binary embedded resources will be used to intall ArgoCD.
+                      If no fields are specified then the binary embedded resources will be used to install ArgoCD.
                     properties:
                       enabled:
                         description: Enabled controls whether to install ArgoCD.

@@ -33,7 +33,7 @@ func TestGeneratePassword(t *testing.T) {
 			}
 		}
 		if counts[0] != passwordLength {
-			t.Fatalf("password legnth incorrect")
+			t.Fatalf("password length incorrect")
 		}
 		if counts[1] < numSpecialChars {
 			t.Fatalf("min number of special chars not generated")

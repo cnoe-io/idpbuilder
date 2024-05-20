@@ -10,7 +10,7 @@ The [package1 directory](./package1) is an example of a custom package that you 
 This configuration instructs idpbuilder to:
 
 1. Create a Gitea repository.
-2. Sync the contents of the [manifests](./package1/manifests) directory to the repostiory.
+2. Sync the contents of the [manifests](./package1/manifests) directory to the repository.
 3. Replace the `spec.Source(s).repoURL` field with the Gitea repository URL.
 
 ### Remote manifests

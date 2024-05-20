@@ -160,7 +160,7 @@ func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
 	// the format should be `<package-name>:<path-to-file>`
 	s := strings.Split(input, ":")
 	if len(s) != 2 {
-		return v1alpha1.PackageCustomization{}, fmt.Errorf("ensure %s is formated as <package-name>:<path-to-file>", input)
+		return v1alpha1.PackageCustomization{}, fmt.Errorf("ensure %s is formatted as <package-name>:<path-to-file>", input)
 	}
 
 	paths, err := helpers.GetAbsFilePaths([]string{s[1]}, false)

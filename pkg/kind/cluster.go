@@ -182,7 +182,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 			}
 
 			if !rightPort {
-				return fmt.Errorf("cant serve port %s. cluster %s is already running on a different port", c.cfg.Port, c.name)
+				return fmt.Errorf("can't serve port %s. cluster %s is already running on a different port", c.cfg.Port, c.name)
 			}
 
 			// reuse if there is no port conflict

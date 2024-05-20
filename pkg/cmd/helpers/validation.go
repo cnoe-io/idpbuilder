@@ -24,10 +24,10 @@ func ValidateKubernetesYamlFile(absPath string) error {
 	for i := range n {
 		obj := n[i]
 		if obj.IsNilOrEmpty() {
-			return fmt.Errorf("given file %s contains an invalid kubenretes manifest", absPath)
+			return fmt.Errorf("given file %s contains an invalid kubernetes manifest", absPath)
 		}
 		if obj.GetKind() == "" || obj.GetApiVersion() == "" {
-			return fmt.Errorf("given file %s contains an invalid kubenretes manifest", absPath)
+			return fmt.Errorf("given file %s contains an invalid kubernetes manifest", absPath)
 		}
 	}
 
