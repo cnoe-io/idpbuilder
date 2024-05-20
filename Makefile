@@ -20,6 +20,9 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+HELM_TGZ ?= $(LOCALBIN)/helm.tar.gz
+HELM ?= $(LOCALBIN)/helm
 
 ## Tool Versions
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
@@ -56,14 +59,37 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
+.PHONY: kustomize
+kustomize: ## Download kustomize if necessary
+ifeq (,$(wildcard $(KUSTOMIZE)))
+	cd $(LOCALBIN) && curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+endif
+
+helm_os := $(shell uname | tr '[:upper:]' '[:lower:]')
+helm_version ?= 3.15.0
+ifeq ($(shell uname -m), x86_64)
+	helm_arch ?= amd64
+endif
+ifeq ($(shell uname -m), arm64)
+	helm_arch ?= arm64
+endif
+
+.PHONY: helm
+helm: ## Download helm if necessary
+ifeq (,$(wildcard $(HELM)))
+	curl https://get.helm.sh/helm-v$(helm_version)-$(helm_os)-$(helm_arch).tar.gz -o $(HELM_TGZ)
+	tar xvzf $(HELM_TGZ) -C $(LOCALBIN) --strip-components 1 $(helm_os)-$(helm_arch)/helm
+	chmod +x $(HELM)
+endif
+
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: embedded-resources
-embedded-resources: 
-	./hack/embedded-resources.sh
+embedded-resources: kustomize helm
+	export PATH=$(LOCALBIN):$$PATH; ./hack/embedded-resources.sh;
 
 .PHONY: e2e
 e2e: build
