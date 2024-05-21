@@ -1,4 +1,4 @@
-package list
+package clusters
 
 import (
 	"flag"
@@ -11,9 +11,9 @@ import (
 	"sigs.k8s.io/kind/pkg/cluster"
 )
 
-var ListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List idp clusters",
+var ClustersCmd = &cobra.Command{
+	Use:   "clusters",
+	Short: "Get idp clusters",
 	Long:  ``,
 	RunE:  list,
 }
@@ -24,7 +24,7 @@ func init() {
 		Development: true,
 	}
 	opts.BindFlags(zapfs)
-	ListCmd.Flags().AddGoFlagSet(zapfs)
+	ClustersCmd.Flags().AddGoFlagSet(zapfs)
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 }
@@ -36,6 +36,8 @@ func list(cmd *cobra.Command, args []string) error {
 		return errors.Wrapf(err, "failed to list clusters")
 	}
 
-	fmt.Printf("Clusters: %v\n", clusters)
+	for _, cluster := range clusters {
+		fmt.Println(cluster)
+	}
 	return nil
 }

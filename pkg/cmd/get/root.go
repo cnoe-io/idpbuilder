@@ -3,6 +3,7 @@ package get
 import (
 	"fmt"
 
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/get/clusters"
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +20,7 @@ var (
 )
 
 func init() {
+	GetCmd.AddCommand(clusters.ClustersCmd)
 	GetCmd.AddCommand(SecretsCmd)
 	GetCmd.PersistentFlags().StringSliceVarP(&packages, "packages", "p", []string{}, "names of packages.")
 	GetCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format. json or yaml.")
