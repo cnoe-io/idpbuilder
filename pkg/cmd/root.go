@@ -8,7 +8,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/delete"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/get"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
-	"github.com/cnoe-io/idpbuilder/pkg/cmd/list"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/version"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +23,6 @@ func init() {
 	rootCmd.AddCommand(create.CreateCmd)
 	rootCmd.AddCommand(get.GetCmd)
 	rootCmd.AddCommand(delete.DeleteCmd)
-	rootCmd.AddCommand(list.ListCmd)
 	rootCmd.AddCommand(version.VersionCmd)
 }
 
