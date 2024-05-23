@@ -170,6 +170,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 	defer os.RemoveAll(dir)
+	setupLog.V(1).Info("Created temp directory for cloning repositories", "dir", dir)
 
 	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {

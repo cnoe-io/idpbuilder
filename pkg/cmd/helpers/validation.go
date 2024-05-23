@@ -36,8 +36,7 @@ func ValidateKubernetesYamlFile(absPath string) error {
 }
 
 func ParsePackageStrings(pkgStrings []string) ([]string, []string, error) {
-	remote := make([]string, 0, 2)
-	local := make([]string, 0, 2)
+	remote, local := make([]string, 0, 2), make([]string, 0, 2)
 	for i := range pkgStrings {
 		loc := pkgStrings[i]
 		_, err := util.NewKustomizeRemote(loc)

@@ -8,15 +8,17 @@ import (
 	"strings"
 	"time"
 
+	argocdapp "github.com/cnoe-io/argocd-api/api/argo/application"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/resources/localbuild"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -142,8 +144,8 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 		}
 	}
 
-	for i := range resource.Spec.PackageConfigs.CustomPackageDirs {
-		result, err := r.reconcileCustomPkgDir(ctx, resource, resource.Spec.PackageConfigs.CustomPackageDirs[i])
+	for _, s := range resource.Spec.PackageConfigs.CustomPackageDirs {
+		result, err := r.reconcileCustomPkgDir(ctx, resource, s)
 		if err != nil {
 			return result, err
 		}
@@ -187,7 +189,7 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 	}
 
 	err = r.Client.Get(ctx, client.ObjectKeyFromObject(app), app)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && k8serrors.IsNotFound(err) {
 		localbuild.SetApplicationSpec(
 			app,
 			repo.Status.InternalGitRepositoryUrl,
@@ -290,6 +292,72 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 	return true, nil
 }
 
+func (r *LocalbuildReconciler) reconcileCustomPkg(
+	ctx context.Context,
+	resource *v1alpha1.Localbuild,
+	b []byte,
+	filePath string,
+	remote *util.KustomizeRemote,
+) error {
+	o := &unstructured.Unstructured{}
+	_, gvk, fErr := scheme.Codecs.UniversalDeserializer().Decode(b, nil, o)
+	if fErr != nil {
+		return fErr
+	}
+
+	if isSupportedArgoCDTypes(gvk) {
+		appName := o.GetName()
+		appNS := o.GetNamespace()
+		customPkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      getCustomPackageName(filepath.Base(filePath), appName),
+				Namespace: globals.GetProjectNamespace(resource.Name),
+			},
+		}
+
+		cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
+
+		_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
+			if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
+				return err
+			}
+			if customPkg.ObjectMeta.Annotations == nil {
+				customPkg.ObjectMeta.Annotations = make(map[string]string)
+			}
+
+			util.SetCLIStartTimeAnnotationValue(customPkg.ObjectMeta.Annotations, cliStartTime)
+
+			customPkg.Spec = v1alpha1.CustomPackageSpec{
+				Replicate:           true,
+				GitServerURL:        resource.Status.Gitea.ExternalURL,
+				InternalGitServeURL: resource.Status.Gitea.InternalURL,
+				GitServerAuthSecretRef: v1alpha1.SecretReference{
+					Name:      resource.Status.Gitea.AdminUserSecretName,
+					Namespace: resource.Status.Gitea.AdminUserSecretNamespace,
+				},
+				ArgoCD: v1alpha1.ArgoCDPackageSpec{
+					ApplicationFile: filePath,
+					Name:            appName,
+					Namespace:       appNS,
+				},
+			}
+
+			if remote != nil {
+				customPkg.Spec.RemoteRepository = v1alpha1.RemoteRepositorySpec{
+					Url:             remote.CloneUrl(),
+					Ref:             remote.Ref,
+					CloneSubmodules: remote.Submodules,
+					Path:            remote.Path(),
+				}
+			}
+
+			return nil
+		})
+		return fErr
+	}
+	return nil
+}
+
 func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resource *v1alpha1.Localbuild, pkgUrl string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
@@ -318,71 +386,16 @@ func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resour
 		return ctrl.Result{}, fmt.Errorf("getting yaml files from repo, %s: %w", pkgUrl, err)
 	}
 
-	for i := range yamlFiles {
-		n := yamlFiles[i]
-		b, fErr := util.ReadWorktreeFile(wt, n)
+	for _, yamlFile := range yamlFiles {
+		b, fErr := util.ReadWorktreeFile(wt, yamlFile)
 		if fErr != nil {
-			logger.V(1).Info("processing", "file", n, "err", fErr)
+			logger.V(1).Info("processing", "file", yamlFile, "err", fErr)
 			continue
 		}
 
-		o := &unstructured.Unstructured{}
-		_, gvk, fErr := scheme.Codecs.UniversalDeserializer().Decode(b, nil, o)
-		if fErr != nil {
-			continue
-		}
-
-		if gvk.Kind == "Application" && gvk.Group == "argoproj.io" {
-			appName := o.GetName()
-			appNS := o.GetNamespace()
-			customPkg := &v1alpha1.CustomPackage{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      getCustomPackageName(filepath.Base(n), appName),
-					Namespace: globals.GetProjectNamespace(resource.Name),
-				},
-			}
-
-			cliStartTime, err := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
-			if err != nil {
-				logger.Error(err, "this resource may not sync correctly")
-			}
-
-			_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
-				if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
-					return err
-				}
-				if customPkg.ObjectMeta.Annotations == nil {
-					customPkg.ObjectMeta.Annotations = make(map[string]string)
-				}
-
-				util.SetCLIStartTimeAnnotationValue(customPkg.ObjectMeta.Annotations, cliStartTime)
-
-				customPkg.Spec = v1alpha1.CustomPackageSpec{
-					Replicate:           true,
-					GitServerURL:        resource.Status.Gitea.ExternalURL,
-					InternalGitServeURL: resource.Status.Gitea.InternalURL,
-					GitServerAuthSecretRef: v1alpha1.SecretReference{
-						Name:      resource.Status.Gitea.AdminUserSecretName,
-						Namespace: resource.Status.Gitea.AdminUserSecretNamespace,
-					},
-					ArgoCD: v1alpha1.ArgoCDPackageSpec{
-						ApplicationFile: n,
-						Name:            appName,
-						Namespace:       appNS,
-					},
-					RemoteRepository: v1alpha1.RemoteRepositorySpec{
-						Url:             remote.CloneUrl(),
-						Ref:             remote.Ref,
-						CloneSubmodules: remote.Submodules,
-						Path:            remote.Path(),
-					},
-				}
-				return nil
-			})
-			if fErr != nil {
-				logger.Error(fErr, "failed creating custom package object", "name", appName, "namespace", appNS)
-				continue
-			}
+		rErr := r.reconcileCustomPkg(ctx, resource, b, yamlFile, remote)
+		if rErr != nil {
+			logger.Error(rErr, "reconciling custom pkg", "file", yamlFile, "pkgUrl", pkgUrl)
 		}
 	}
 	return ctrl.Result{}, nil
@@ -409,56 +422,9 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 			continue
 		}
 
-		o := &unstructured.Unstructured{}
-		_, gvk, fErr := scheme.Codecs.UniversalDeserializer().Decode(b, nil, o)
-		if fErr != nil {
-			continue
-		}
-		if gvk.Kind == "Application" && gvk.Group == "argoproj.io" {
-			appName := o.GetName()
-			appNS := o.GetNamespace()
-			customPkg := &v1alpha1.CustomPackage{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      getCustomPackageName(file.Name(), appName),
-					Namespace: globals.GetProjectNamespace(resource.Name),
-				},
-			}
-
-			cliStartTime, err := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
-			if err != nil {
-				logger.Error(err, "this resource may not sync correctly")
-			}
-
-			_, fErr = controllerutil.CreateOrUpdate(ctx, r.Client, customPkg, func() error {
-				if err := controllerutil.SetControllerReference(resource, customPkg, r.Scheme); err != nil {
-					return err
-				}
-				if customPkg.ObjectMeta.Annotations == nil {
-					customPkg.ObjectMeta.Annotations = make(map[string]string)
-				}
-
-				util.SetCLIStartTimeAnnotationValue(customPkg.ObjectMeta.Annotations, cliStartTime)
-
-				customPkg.Spec = v1alpha1.CustomPackageSpec{
-					Replicate:           true,
-					GitServerURL:        resource.Status.Gitea.ExternalURL,
-					InternalGitServeURL: resource.Status.Gitea.InternalURL,
-					GitServerAuthSecretRef: v1alpha1.SecretReference{
-						Name:      resource.Status.Gitea.AdminUserSecretName,
-						Namespace: resource.Status.Gitea.AdminUserSecretNamespace,
-					},
-					ArgoCD: v1alpha1.ArgoCDPackageSpec{
-						ApplicationFile: filePath,
-						Name:            appName,
-						Namespace:       appNS,
-					},
-				}
-				return nil
-			})
-			if fErr != nil {
-				logger.Error(fErr, "failed creating custom package object", "name", appName, "namespace", appNS)
-				continue
-			}
+		rErr := r.reconcileCustomPkg(ctx, resource, b, filePath, nil)
+		if rErr != nil {
+			logger.Error(rErr, "reconciling custom pkg", "file", filePath, "pkgDir", pkgDir)
 		}
 	}
 
@@ -525,6 +491,13 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 func getCustomPackageName(fileName, appName string) string {
 	s := strings.Split(fileName, ".")
 	return fmt.Sprintf("%s-%s", strings.ToLower(s[0]), appName)
+}
+
+func isSupportedArgoCDTypes(gvk *schema.GroupVersionKind) bool {
+	if gvk == nil {
+		return false
+	}
+	return gvk.Kind == argocdapp.ApplicationKind && gvk.Group == argocdapp.Group
 }
 
 func GetEmbeddedRawInstallResources(name string, templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {

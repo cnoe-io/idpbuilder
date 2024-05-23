@@ -58,10 +58,11 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 	defer ctxCancel()
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
-	opts := build.NewBuildOptions{}
-	opts.KubeConfigPath = kubeConfigPath
-	opts.Scheme = k8s.GetScheme()
-	opts.CancelFunc = ctxCancel
+	opts := build.NewBuildOptions{
+		KubeConfigPath: kubeConfigPath,
+		Scheme:         k8s.GetScheme(),
+		CancelFunc:     ctxCancel,
+	}
 
 	b := build.NewBuild(opts)
 

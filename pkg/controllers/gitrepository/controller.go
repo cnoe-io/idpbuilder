@@ -239,6 +239,7 @@ func pushToRemote(ctx context.Context, remoteRepo *git.Repository, creds gitProv
 func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig, tmpDir string, repoMap *util.RepoMap) error {
 	logger := log.FromContext(ctx)
 	tgtCloneDir := util.RepoDir(tgtRepo.cloneUrl, tmpDir)
+
 	st := repoMap.LoadOrStore(tgtRepo.cloneUrl, tgtCloneDir)
 	st.MU.Lock()
 	defer st.MU.Unlock()

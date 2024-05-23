@@ -98,7 +98,14 @@ func (g *giteaProvider) getRepository(ctx context.Context, repo *v1alpha1.GitRep
 	}, nil
 }
 
-func (g *giteaProvider) updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials, tmpDir string, repoMap *util.RepoMap) error {
+func (g *giteaProvider) updateRepoContent(
+	ctx context.Context,
+	repo *v1alpha1.GitRepository,
+	repoInfo repoInfo,
+	creds gitProviderCredentials,
+	tmpDir string,
+	repoMap *util.RepoMap,
+) error {
 	switch repo.Spec.Source.Type {
 	case v1alpha1.SourceTypeLocal, v1alpha1.SourceTypeEmbedded:
 		return reconcileLocalRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config, tmpDir, repoMap)

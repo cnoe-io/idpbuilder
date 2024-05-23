@@ -281,19 +281,19 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) getArgoCDAppFile(ctx context.Context, resource *v1alpha1.CustomPackage) ([]byte, error) {
-	if resource.Spec.RemoteRepository.Url != "" {
-		cloneDir := util.RepoDir(resource.Spec.RemoteRepository.Url, r.TempDir)
-		st := r.RepoMap.LoadOrStore(resource.Spec.RemoteRepository.Url, cloneDir)
-		st.MU.Lock()
-		wt, _, err := util.CloneRemoteRepoToDir(ctx, resource.Spec.RemoteRepository, 1, false, cloneDir, "")
-		defer st.MU.Unlock()
-		if err != nil {
-			return nil, fmt.Errorf("cloning repo, %s: %w", resource.Spec.RemoteRepository.Url, err)
-		}
-		return util.ReadWorktreeFile(wt, resource.Spec.ArgoCD.ApplicationFile)
+	if resource.Spec.RemoteRepository.Url == "" {
+		return os.ReadFile(resource.Spec.ArgoCD.ApplicationFile)
 	}
 
-	return os.ReadFile(resource.Spec.ArgoCD.ApplicationFile)
+	cloneDir := util.RepoDir(resource.Spec.RemoteRepository.Url, r.TempDir)
+	st := r.RepoMap.LoadOrStore(resource.Spec.RemoteRepository.Url, cloneDir)
+	st.MU.Lock()
+	wt, _, err := util.CloneRemoteRepoToDir(ctx, resource.Spec.RemoteRepository, 1, false, cloneDir, "")
+	defer st.MU.Unlock()
+	if err != nil {
+		return nil, fmt.Errorf("cloning repo, %s: %w", resource.Spec.RemoteRepository.Url, err)
+	}
+	return util.ReadWorktreeFile(wt, resource.Spec.ArgoCD.ApplicationFile)
 }
 
 func localRepoName(appName, dir string) string {
