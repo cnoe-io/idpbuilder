@@ -1,3 +1,8 @@
+[![Codespell][codespell-badge]][codespell-link]
+[![E2E][e2e-badge]][e2e-link]
+[![Go Report Card][report-badge]][report-link]
+[![Commit Activity][commit-activity-badge]][commit-activity-link]
+
 # IDP Builder
 
 Internal development platform binary launcher.
@@ -230,3 +235,16 @@ If you'd like to contribute to the project or know the architecture and internal
 ## Extending the IDP builder
 
 We are actively working to include more patterns and examples of extending idpbuilder to get started easily.
+
+<!-- JUST BADGES & LINKS -->
+[codespell-badge]: https://github.com/cnoe-io/idpbuilder/actions/workflows/codespell.yaml/badge.svg
+[codespell-link]: https://github.com/cnoe-io/idpbuilder/actions/workflows/codespell.yaml
+
+[e2e-badge]: https://github.com/cnoe-io/idpbuilder/actions/workflows/e2e.yaml/badge.svg
+[e2e-link]: https://github.com/cnoe-io/idpbuilder/actions/workflows/e2e.yaml
+
+[report-badge]: https://goreportcard.com/badge/github.com/cnoe-io/idpbuilder
+[report-link]: https://goreportcard.com/report/github.com/cnoe-io/idpbuilder
+
+[commit-activity-badge]: https://img.shields.io/github/commit-activity/m/cnoe-io/idpbuilder
+[commit-activity-link]: https://github.com/cnoe-io/idpbuilder/pulse
