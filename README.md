@@ -145,7 +145,7 @@ Run the following commands for available flags and subcommands:
 Idpbuilder supports specifying custom packages using the flag `--package-dir` flag. 
 This flag expects a directory (local or remote) containing ArgoCD application files.
 In case of a remote directory, it must be a directory in a git repository, 
-and the URL format must be a [kustommize remote URL format](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md).
+and the URL format must be a [kustomize remote URL format](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md).
 
 Examples of using custom packages are available in the [example](./examples) directory. 
 Let's take a look at [this example](examples/basic). This defines two custom package directories to deploy to the cluster.
