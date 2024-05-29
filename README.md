@@ -228,8 +228,8 @@ If you'd like to contribute to the project or know the architecture and internal
    ```
 5. Because Codespaces gives a single externally routable host name for an instance, idpbuilder must deploy with path based routing. 
    This means ArgoCD and Gitea UIs are given with the following commands.
-   * ArgoCD: `echo https://argocd.${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
-   * Gitea: `echo https://gitea.${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
+   * ArgoCD: `echo https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/argocd`
+   * Gitea: `echo https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/gitea`
 6. Note that not all examples work with path based routing. 
 
 ## Extending the IDP builder

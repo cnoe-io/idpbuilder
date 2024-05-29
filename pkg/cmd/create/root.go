@@ -124,14 +124,16 @@ func create(cmd *cobra.Command, args []string) error {
 
 	subDomain := "argocd."
 	subPath := ""
+	formattedPort := ":" + port
 
 	if pathRouting == true {
 		subDomain = ""
 		subPath = "argocd"
+		formattedPort = ""
 	}
 
 	fmt.Print("\n\n########################### Finished Creating IDP Successfully! ############################\n\n\n")
-	fmt.Printf("Can Access ArgoCD at %s\nUsername: admin\n", fmt.Sprintf("%s://%s.%s%s:%s", protocol, subPath, subDomain, host, port))
+	fmt.Printf("Can Access ArgoCD at %s\nUsername: admin\n", fmt.Sprintf("%s://%s%s%s/%s", protocol, subDomain, host, formattedPort, subPath))
 	fmt.Print(`Password can be retrieved by running: idpbuilder get secrets -p argocd`, "\n")
 
 	return nil
