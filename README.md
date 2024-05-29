@@ -84,8 +84,8 @@ The most basic command which creates a Kubernetes Cluster (Kind cluster) with th
 
 Once idpbuilder finishes provisioning cluster and packages, you can access GUIs by going to the following addresses in your browser.
 
-* ArgoCD: https://cnoe.localtest.me:8443/argocd/
-* Gitea: https://cnoe.localtest.me:8443/gitea/
+* ArgoCD: https://argocd.cnoe.localtest.me:8443/
+* Gitea: https://gitea.cnoe.localtest.me:8443/
 
 You can obtain credentials for them by running the following command:
 
@@ -188,7 +188,7 @@ As a result the following actions were taken by idpbuilder:
 2. Fill the repository with contents from the manifests directory.
 3. Update the Application spec to use the newly created repository.
 
-You can verify this by going to this address in your browser: https://cnoe.localtest.me:8443/gitea/giteaAdmin/idpbuilder-localdev-my-app-manifests
+You can verify this by going to this address in your browser: https://gitea.cnoe.localtest.me:8443/giteaAdmin/idpbuilder-localdev-my-app-manifests
 
 ![img.png](docs/images/my-app-repo.png)
 
@@ -196,7 +196,7 @@ You can verify this by going to this address in your browser: https://cnoe.local
 This is the repository that corresponds to the [manifests](examples/basic/package1/manifests) folder.
 It contains a file called `alpine.yaml`, synced from the `manifests` directory above.
 
-You can also view the updated Application spec by going to this address: https://cnoe.localtest.me:8443/argocd/applications/argocd/my-app
+You can also view the updated Application spec by going to this address: https://argocd.cnoe.localtest.me:8443/applications/argocd/my-app
 
 ![myapp](docs/images/my-app.png)
 
@@ -228,8 +228,8 @@ If you'd like to contribute to the project or know the architecture and internal
    ```
 5. Because Codespaces gives a single externally routable host name for an instance, idpbuilder must deploy with path based routing. 
    This means ArgoCD and Gitea UIs are given with the following commands.
-   * ArgoCD: `echo https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/argocd`
-   * Gitea: `echo https://${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/gitea`
+   * ArgoCD: `echo https://argocd.${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
+   * Gitea: `echo https://gitea.${CODESPACE_NAME}-8080.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
 6. Note that not all examples work with path based routing. 
 
 ## Extending the IDP builder
