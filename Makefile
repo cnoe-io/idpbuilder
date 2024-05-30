@@ -12,7 +12,7 @@ build: manifests generate fmt vet embedded-resources
 	go build $(LD_FLAGS) -o $(OUT_FILE) main.go
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.27.1
+ENVTEST_K8S_VERSION = 1.29.1
 
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
