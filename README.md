@@ -153,7 +153,7 @@ Run the following commands for available flags and subcommands:
 ### Custom Packages
 
 Idpbuilder supports specifying custom packages using the flag `--package-dir` flag. 
-This flag expects a directory (local or remote) containing ArgoCD application files.
+This flag expects a directory (local or remote) containing ArgoCD application files and / or ArgoCD application set files.
 In case of a remote directory, it must be a directory in a git repository, 
 and the URL format must be a [kustomize remote URL format](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md).
 

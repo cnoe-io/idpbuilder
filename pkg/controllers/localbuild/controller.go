@@ -306,6 +306,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 	}
 
 	if isSupportedArgoCDTypes(gvk) {
+		kind := o.GetKind()
 		appName := o.GetName()
 		appNS := o.GetNamespace()
 		customPkg := &v1alpha1.CustomPackage{
@@ -339,6 +340,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 					ApplicationFile: filePath,
 					Name:            appName,
 					Namespace:       appNS,
+					Type:            kind,
 				},
 			}
 
@@ -497,7 +499,7 @@ func isSupportedArgoCDTypes(gvk *schema.GroupVersionKind) bool {
 	if gvk == nil {
 		return false
 	}
-	return gvk.Kind == argocdapp.ApplicationKind && gvk.Group == argocdapp.Group
+	return gvk.Group == argocdapp.Group && (gvk.Kind == argocdapp.ApplicationKind || gvk.Kind == argocdapp.ApplicationSetKind)
 }
 
 func GetEmbeddedRawInstallResources(name string, templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
