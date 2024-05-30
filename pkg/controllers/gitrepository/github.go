@@ -102,8 +102,15 @@ func (g *gitHubProvider) setProviderCredentials(ctx context.Context, repo *v1alp
 	return g.gitHubClient.setToken(creds.accessToken)
 }
 
-func (g *gitHubProvider) updateRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, repoInfo repoInfo, creds gitProviderCredentials) error {
-	return updateRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config)
+func (g *gitHubProvider) updateRepoContent(
+	ctx context.Context,
+	repo *v1alpha1.GitRepository,
+	repoInfo repoInfo,
+	creds gitProviderCredentials,
+	tmpDir string,
+	repoMap *util.RepoMap,
+) error {
+	return reconcileLocalRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config, tmpDir, repoMap)
 }
 
 func newGitHubClient(httpClient *http.Client) gitHubClient {

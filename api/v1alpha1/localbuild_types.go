@@ -38,6 +38,7 @@ type PackageConfigsSpec struct {
 	Argo                     ArgoPackageConfigSpec                     `json:"argoPackageConfigs,omitempty"`
 	EmbeddedArgoApplications EmbeddedArgoApplicationsPackageConfigSpec `json:"embeddedArgoApplicationsPackageConfigs,omitempty"`
 	CustomPackageDirs        []string                                  `json:"customPackageDirs,omitempty"`
+	CustomPackageUrls        []string                                  `json:"customPackageUrls,omitempty"`
 }
 
 type LocalbuildSpec struct {

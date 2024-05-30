@@ -8,11 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
-
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +31,8 @@ type Reconciler struct {
 	Recorder record.EventRecorder
 	Scheme   *runtime.Scheme
 	Config   util.CorePackageTemplateConfig
+	TempDir  string
+	RepoMap  *util.RepoMap
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -71,7 +72,7 @@ func (r *Reconciler) postProcessReconcile(ctx context.Context, req ctrl.Request,
 
 // create an in-cluster repository CR, update the application spec, then apply
 func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alpha1.CustomPackage) (ctrl.Result, error) {
-	b, err := os.ReadFile(resource.Spec.ArgoCD.ApplicationFile)
+	b, err := r.getArgoCDAppFile(ctx, resource)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("reading file %s: %w", resource.Spec.ArgoCD.ApplicationFile, err)
 	}
@@ -91,17 +92,17 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 
 	app, ok := objs[0].(*argov1alpha1.Application)
 	if !ok {
-		return ctrl.Result{}, fmt.Errorf("object is not an PackageSpec application %s", resource.Spec.ArgoCD.ApplicationFile)
+		return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application %s", resource.Spec.ArgoCD.ApplicationFile)
 	}
 
 	appName := app.GetName()
 	if resource.Spec.Replicate {
-		repoRefs := make([]v1alpha1.ObjectRef, 0, 1)
 		synced := true
+		repoRefs := make([]v1alpha1.ObjectRef, 0, 1)
 		if app.Spec.HasMultipleSources() {
 			for j := range app.Spec.Sources {
 				s := &app.Spec.Sources[j]
-				res, repo, sErr := r.reconcileArgocdSource(ctx, resource, appName, resource.Spec.ArgoCD.ApplicationFile, s.RepoURL)
+				res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s, appName)
 				if sErr != nil {
 					return res, sErr
 				}
@@ -119,7 +120,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 			}
 		} else {
 			s := app.Spec.Source
-			res, repo, sErr := r.reconcileArgocdSource(ctx, resource, appName, resource.Spec.ArgoCD.ApplicationFile, s.RepoURL)
+			res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s, appName)
 			if sErr != nil {
 				return res, sErr
 			}
@@ -161,30 +162,24 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 	return ctrl.Result{RequeueAfter: requeueTime}, nil
 }
 
-func (r *Reconciler) reconcileArgocdSource(ctx context.Context, resource *v1alpha1.CustomPackage, appName, pkgDir, repoURL string) (ctrl.Result, *v1alpha1.GitRepository, error) {
-	logger := log.FromContext(ctx)
-
-	process, absPath, err := isCNOEDirectory(pkgDir, repoURL)
-	if err != nil {
-		logger.Error(err, "processing argocd app source", "dir", pkgDir, "repoURL", repoURL)
-		return ctrl.Result{}, nil, err
+func (r *Reconciler) reconcileArgoCDSource(ctx context.Context, resource *v1alpha1.CustomPackage, appSource *argov1alpha1.ApplicationSource, appName string) (ctrl.Result, *v1alpha1.GitRepository, error) {
+	if isCNOEScheme(appSource.RepoURL) {
+		if resource.Spec.RemoteRepository.Url == "" {
+			return r.reconcileArgoCDSourceFromLocal(ctx, resource, appName, appSource.RepoURL)
+		}
+		return r.reconcileArgoCDSourceFromRemote(ctx, resource, appName, appSource.RepoURL)
 	}
-	if !process {
-		return ctrl.Result{}, nil, nil
-	}
-
-	repo, err := r.reconcileGitRepo(ctx, resource, repoName(appName, absPath), absPath)
-	if err != nil {
-		return ctrl.Result{}, nil, err
-	}
-
-	return ctrl.Result{}, repo, nil
+	return ctrl.Result{}, nil, nil
 }
 
-func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.CustomPackage, repoName, absPath string) (*v1alpha1.GitRepository, error) {
+func (r *Reconciler) reconcileArgoCDSourceFromRemote(ctx context.Context, resource *v1alpha1.CustomPackage, appName, repoURL string) (ctrl.Result, *v1alpha1.GitRepository, error) {
+	relativePath := strings.TrimPrefix(repoURL, v1alpha1.CNOEURIScheme)
+	// no guarantee that this path exists
+	dirPath := filepath.Join(resource.Spec.RemoteRepository.Path, relativePath)
+
 	repo := &v1alpha1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      repoName,
+			Name:      remoteRepoName(appName, dirPath, resource.Spec.RemoteRepository),
 			Namespace: resource.Namespace,
 		},
 	}
@@ -203,7 +198,60 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 
 		repo.Spec = v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
-				Type: "local",
+				Type:             v1alpha1.SourceTypeRemote,
+				RemoteRepository: resource.Spec.RemoteRepository,
+				Path:             dirPath,
+			},
+			Provider: v1alpha1.Provider{
+				Name:             v1alpha1.GitProviderGitea,
+				GitURL:           resource.Spec.GitServerURL,
+				InternalGitURL:   resource.Spec.InternalGitServeURL,
+				OrganizationName: v1alpha1.GiteaAdminUserName,
+			},
+			SecretRef: resource.Spec.GitServerAuthSecretRef,
+		}
+
+		return nil
+	})
+
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return ctrl.Result{}, nil, err
+	}
+
+	return ctrl.Result{}, repo, nil
+}
+
+func (r *Reconciler) reconcileArgoCDSourceFromLocal(ctx context.Context, resource *v1alpha1.CustomPackage, appName, repoURL string) (ctrl.Result, *v1alpha1.GitRepository, error) {
+	logger := log.FromContext(ctx)
+
+	absPath, err := getCNOEAbsPath(resource.Spec.ArgoCD.ApplicationFile, repoURL)
+	if err != nil {
+		logger.Error(err, "processing argocd app source", "dir", resource.Spec.ArgoCD.ApplicationFile, "repoURL", repoURL)
+		return ctrl.Result{}, nil, err
+	}
+
+	repo := &v1alpha1.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      localRepoName(appName, absPath),
+			Namespace: resource.Namespace,
+		},
+	}
+
+	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
+
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
+			return err
+		}
+
+		if repo.ObjectMeta.Annotations == nil {
+			repo.ObjectMeta.Annotations = make(map[string]string)
+		}
+		util.SetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations, cliStartTime)
+
+		repo.Spec = v1alpha1.GitRepositorySpec{
+			Source: v1alpha1.GitRepositorySource{
+				Type: v1alpha1.SourceTypeLocal,
 				Path: absPath,
 			},
 			Provider: v1alpha1.Provider{
@@ -220,10 +268,10 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Cu
 	// it's possible for an application to specify the same directory multiple times in the spec.
 	// if there is a repository already created for this package, no further action is necessary.
 	if !errors.IsAlreadyExists(err) {
-		return repo, err
+		return ctrl.Result{}, repo, err
 	}
 
-	return repo, nil
+	return ctrl.Result{}, repo, nil
 }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -232,27 +280,48 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func isCNOEDirectory(fPath, repoURL string) (bool, string, error) {
-	if strings.HasPrefix(repoURL, "cnoe://") {
-		parentDir := filepath.Dir(fPath)
-		relativePath := strings.TrimPrefix(repoURL, "cnoe://")
-		absPath, err := filepath.Abs(filepath.Join(parentDir, relativePath))
-		if err != nil {
-			return false, "", err
-		}
-
-		f, err := os.Stat(absPath)
-		if err != nil {
-			return false, "", err
-		}
-		if !f.IsDir() {
-			return false, "", fmt.Errorf("path not a directory: %s", absPath)
-		}
-		return true, absPath, err
+func (r *Reconciler) getArgoCDAppFile(ctx context.Context, resource *v1alpha1.CustomPackage) ([]byte, error) {
+	if resource.Spec.RemoteRepository.Url == "" {
+		return os.ReadFile(resource.Spec.ArgoCD.ApplicationFile)
 	}
-	return false, "", nil
+
+	cloneDir := util.RepoDir(resource.Spec.RemoteRepository.Url, r.TempDir)
+	st := r.RepoMap.LoadOrStore(resource.Spec.RemoteRepository.Url, cloneDir)
+	st.MU.Lock()
+	wt, _, err := util.CloneRemoteRepoToDir(ctx, resource.Spec.RemoteRepository, 1, false, cloneDir, "")
+	defer st.MU.Unlock()
+	if err != nil {
+		return nil, fmt.Errorf("cloning repo, %s: %w", resource.Spec.RemoteRepository.Url, err)
+	}
+	return util.ReadWorktreeFile(wt, resource.Spec.ArgoCD.ApplicationFile)
 }
 
-func repoName(appName, dir string) string {
+func localRepoName(appName, dir string) string {
 	return fmt.Sprintf("%s-%s", appName, filepath.Base(dir))
+}
+
+func remoteRepoName(appName, pathToPkg string, repo v1alpha1.RemoteRepositorySpec) string {
+	return fmt.Sprintf("%s-%s", appName, filepath.Base(pathToPkg))
+}
+
+func isCNOEScheme(repoURL string) bool {
+	return strings.HasPrefix(repoURL, v1alpha1.CNOEURIScheme)
+}
+
+func getCNOEAbsPath(fPath, repoURL string) (string, error) {
+	parentDir := filepath.Dir(fPath)
+	relativePath := strings.TrimPrefix(repoURL, v1alpha1.CNOEURIScheme)
+	absPath, err := filepath.Abs(filepath.Join(parentDir, relativePath))
+	if err != nil {
+		return "", err
+	}
+
+	f, err := os.Stat(absPath)
+	if err != nil {
+		return "", err
+	}
+	if !f.IsDir() {
+		return "", fmt.Errorf("path not a directory: %s", absPath)
+	}
+	return absPath, err
 }

@@ -4,6 +4,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	CNOEURIScheme = "cnoe://"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type CustomPackage struct {
@@ -30,10 +34,21 @@ type CustomPackageSpec struct {
 	GitServerAuthSecretRef SecretReference `json:"gitServerAuthSecretRef"`
 	// InternalGitServeURL specifies the base URL for the git server accessible within the cluster.
 	// for example, http://my-gitea-http.gitea.svc.cluster.local:3000
-	InternalGitServeURL string `json:"internalGitServeURL"`
+	InternalGitServeURL string               `json:"internalGitServeURL"`
+	RemoteRepository    RemoteRepositorySpec `json:"remoteRepository"`
 	// Replicate specifies whether to replicate remote or local contents to the local gitea server.
 	// +kubebuilder:default:=false
 	Replicate bool `json:"replicate"`
+}
+
+// RemoteRepositorySpec specifies information about remote repositories.
+type RemoteRepositorySpec struct {
+	CloneSubmodules bool   `json:"cloneSubmodules"`
+	Path            string `json:"path"`
+	// Url specifies the url to the repository containing the ArgoCD application file
+	Url string `json:"url"`
+	// Ref specifies the specific ref supported by git fetch
+	Ref string `json:"ref"`
 }
 
 type ArgoCDPackageSpec struct {

@@ -100,14 +100,38 @@ spec:
                       Path is the absolute path to directory that contains Kustomize structure or raw manifests.
                       This is required when Type is set to local.
                     type: string
+                  remoteRepository:
+                    description: RemoteRepositorySpec specifies information about
+                      remote repositories.
+                    properties:
+                      cloneSubmodules:
+                        type: boolean
+                      path:
+                        type: string
+                      ref:
+                        description: Ref specifies the specific ref supported by git
+                          fetch
+                        type: string
+                      url:
+                        description: Url specifies the url to the repository containing
+                          the ArgoCD application file
+                        type: string
+                    required:
+                    - cloneSubmodules
+                    - path
+                    - ref
+                    - url
+                    type: object
                   type:
                     default: embedded
                     description: Type is the source type.
                     enum:
                     - local
                     - embedded
+                    - remote
                     type: string
                 required:
+                - remoteRepository
                 - type
                 type: object
             required:
