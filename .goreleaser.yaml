@@ -20,6 +20,21 @@ builds:
     ignore:
       - goos: linux
         goarch: '386'
+brews:
+  - name: idpbuilder
+    homepage: "https://cnoe.io"
+    repository:
+      owner: nimakaviani
+      name: homebrew-cnoe
+      token: "{{ .Env.HOMEBREW_TOKEN }}"
+    commit_author:
+      name: "GoReleaser"
+      email: "noreply@goreleaser.com"
+    directory: formula
+    install: |
+      bin.install "idpbuilder"
+    test: |
+      system "#{bin}/idpbuilder --version"
 archives:
   - format: tar.gz
     name_template: >-
