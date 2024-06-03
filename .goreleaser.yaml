@@ -24,8 +24,8 @@ brews:
   - name: idpbuilder
     homepage: "https://cnoe.io"
     repository:
-      owner: nimakaviani
-      name: homebrew-cnoe
+      owner: cnoe-io
+      name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TOKEN }}"
     commit_author:
       name: "GoReleaser"
