@@ -30,13 +30,18 @@ A container engine is needed locally such as:
 
 **Note**: Set the `DOCKER_HOST` env var property using `podman` to let idpbuilder to talk with the engine (e.g  export DOCKER_HOST="unix:///var/run/docker.sock")
 
-## Quickstart
+## Getting Started
 
 If you are interested in running idpbuilder in Codespaces through your browser, check out the [Codespaces](#running-in-codespaces) section.
 
-### Download and install the idpbuilder
+### Quick Install
 
-Download the latest release with the commands:
+The following command can be used as a convenience for installing `idpbuilder`, (be sure to check the script first if you are concerned):
+```
+curl -fsSL https://raw.githubusercontent.com/cnoe-io/idpbuilder/main/hack/install.sh | bash
+```
+
+or download the latest release with the following commands:
 
 ```bash
 version=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/cnoe-io/idpbuilder/releases/latest)
