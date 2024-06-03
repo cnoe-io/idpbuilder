@@ -28,8 +28,8 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TOKEN }}"
     commit_author:
-      name: "GoReleaser"
-      email: "noreply@goreleaser.com"
+      name: "CNOEAutomation"
+      email: "noreply@cnoe.io"
     directory: formula
     install: |
       bin.install "idpbuilder"
