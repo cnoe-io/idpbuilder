@@ -56,7 +56,8 @@ type ArgoCDPackageSpec struct {
 	ApplicationFile string `json:"applicationFile"`
 	Name            string `json:"name"`
 	Namespace       string `json:"namespace"`
-	Type            string `json:"type"`
+	// +kubebuilder:validation:Enum:=Application;ApplicationSet
+	Type string `json:"type"`
 }
 
 type CustomPackageStatus struct {
