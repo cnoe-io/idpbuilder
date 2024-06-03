@@ -6,3 +6,5 @@ curl -L -o ./idpbuilder.tar.gz "https://github.com/cnoe-io/idpbuilder/releases/d
 tar xzf idpbuilder.tar.gz
 
 ./idpbuilder version
+
+sudo mv ./idpbuilder /usr/local/bin/
