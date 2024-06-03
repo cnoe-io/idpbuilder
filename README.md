@@ -38,7 +38,7 @@ If you are interested in running idpbuilder in Codespaces through your browser, 
 
 The following command can be used as a convenience for installing `idpbuilder`, (be sure to check the script first if you are concerned):
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/cnoe-io/idpbuilder/main/hack/install.sh)
+curl -fsSL https://raw.githubusercontent.com/cnoe-io/idpbuilder/main/hack/install.sh | bash
 ```
 
 or download the latest release with the following commands:
