@@ -119,30 +119,60 @@ func SendAndParse(target any, httpClient *http.Client, req *http.Request) error 
 
 func TestGiteaEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 	t.Log("testing gitea endpoints")
+	repos, err := GetGiteaRepos(ctx, baseUrl)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 3, len(repos))
+	expectedRepoNames := map[string]struct{}{
+		"idpbuilder-localdev-gitea":  {},
+		"idpbuilder-localdev-nginx":  {},
+		"idpbuilder-localdev-argocd": {},
+	}
+
+	for i := range repos {
+		_, ok := expectedRepoNames[repos[i].Name]
+		if ok {
+			delete(expectedRepoNames, repos[i].Name)
+		}
+	}
+	assert.Equal(t, 0, len(expectedRepoNames))
+}
+
+func GetGiteaRepos(ctx context.Context, baseUrl string) ([]gitea.Repository, error) {
 	auth, err := GetBasicAuth(ctx, "gitea-credential")
-	assert.Nil(t, err, fmt.Sprintf("getting gitea k8s secret %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("getting gitea credentials %w", err)
+	}
 
 	token, err := GetGiteaSessionToken(ctx, auth, baseUrl)
-	assert.Nil(t, err, fmt.Sprintf("getting gitea token %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("getting gitea token %w", err)
+	}
 
 	userEP := fmt.Sprintf("%s%s", baseUrl, fmt.Sprintf(GiteaUserEndpoint, auth.Username))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userEP, nil)
-	assert.Nil(t, err, fmt.Sprintf("creating new request %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("creating new request %w", err)
+	}
 
 	httpClient := GetHttpClient()
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 
 	user := gitea.User{}
 	err = SendAndParse(&user, httpClient, req)
-	assert.Nil(t, err, fmt.Sprintf("getting user info %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("getting user info %w", err)
+	}
 
 	repos := GiteaSearchRepoResponse{}
 	repoEp := fmt.Sprintf("%s%s", baseUrl, GiteaRepoEndpoint)
 	repoReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, repoEp, nil)
 	err = SendAndParse(&repos, httpClient, repoReq)
-	assert.Nil(t, err, fmt.Sprintf("getting user info %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("getting gitea repositories %w", err)
+	}
 
-	assert.Equal(t, 3, len(repos.Data))
+	return repos.Data, nil
 }
 
 func GetGiteaSessionToken(ctx context.Context, auth BasicAuth, baseUrl string) (string, error) {

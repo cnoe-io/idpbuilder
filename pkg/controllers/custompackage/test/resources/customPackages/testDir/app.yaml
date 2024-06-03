@@ -8,7 +8,7 @@ spec:
     namespace: my-app
     server: "https://kubernetes.default.svc"
   source:
-    repoURL: cnoe://busybox
+    repoURL: cnoe://app1
     targetRevision: HEAD
     path: "."
   project: default
