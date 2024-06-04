@@ -156,16 +156,16 @@ func TestReconcileCustomPkg(t *testing.T) {
 	c := mgr.GetClient()
 	repo := v1alpha1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      localRepoName("my-app", "test/resources/customPackages/testDir/busybox"),
+			Name:      localRepoName("my-app", "test/resources/customPackages/testDir/app1"),
 			Namespace: "test",
 		},
 	}
 	err = c.Get(context.Background(), client.ObjectKeyFromObject(&repo), &repo)
 	if err != nil {
-		t.Fatalf("getting my-app-busybox git repo %v", err)
+		t.Fatalf("getting my-app-app1 git repo %v", err)
 	}
 
-	p, _ := filepath.Abs("test/resources/customPackages/testDir/busybox")
+	p, _ := filepath.Abs("test/resources/customPackages/testDir/app1")
 	expectedRepo := v1alpha1.GitRepository{
 		Spec: v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
