@@ -20,7 +20,7 @@ import (
 var (
 	// Flags
 	recreateCluster           bool
-	buildName                 string
+	name                      string
 	kubeVersion               string
 	extraPortsMapping         string
 	kindConfigPath            string
@@ -45,7 +45,7 @@ var CreateCmd = &cobra.Command{
 func init() {
 	// cluster related flags
 	CreateCmd.PersistentFlags().BoolVar(&recreateCluster, "recreate", false, "Delete cluster first if it already exists.")
-	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
+	CreateCmd.PersistentFlags().StringVar(&name, "name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.29.2", "Version of the kind kubernetes cluster to create.")
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
@@ -110,7 +110,7 @@ func create(cmd *cobra.Command, args []string) error {
 	}
 
 	opts := build.NewBuildOptions{
-		Name:              buildName,
+		Name:              name,
 		KubeVersion:       kubeVersion,
 		KubeConfigPath:    kubeConfigPath,
 		KindConfigPath:    kindConfigPath,
@@ -155,8 +155,8 @@ func create(cmd *cobra.Command, args []string) error {
 }
 
 func validate() error {
-	if buildName == "" {
-		return fmt.Errorf("must specify build-name")
+	if name == "" {
+		return fmt.Errorf("must specify name")
 	}
 
 	_, err := url.Parse(fmt.Sprintf("%s://%s:%s", protocol, host, port))
