@@ -16,6 +16,8 @@ builds:
       - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.idpbuilderVersion={{ .Version }}
       - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.gitCommit={{ .FullCommit }}
       - -X github.com/cnoe-io/idpbuilder/pkg/cmd/version.buildDate={{ .CommitDate }}
+      - -w
+      - -s
     binary: idpbuilder
     ignore:
       - goos: linux
