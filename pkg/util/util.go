@@ -17,7 +17,7 @@ import (
 const (
 	chars           = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	digits          = "0123456789"
-	specialChars    = `!"#$%&'()*+,-./:;<=>?@[\\]^_{|}~`
+	specialChars    = `!#$%&'()*+,-./:;<=>?@[]^_{|}~`
 	passwordLength  = 40
 	numSpecialChars = 3
 	numDigits       = 3
