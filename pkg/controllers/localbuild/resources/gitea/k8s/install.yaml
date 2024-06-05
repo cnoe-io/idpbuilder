@@ -6,12 +6,12 @@ kind: Secret
 metadata:
   name: my-gitea-inline-config
   labels:
-    helm.sh/chart: gitea-10.1.3
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.21.7-cnoe-patches"
-    version: "1.21.7-cnoe-patches"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -48,12 +48,12 @@ kind: Secret
 metadata:
   name: my-gitea
   labels:
-    helm.sh/chart: gitea-10.1.3
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.21.7-cnoe-patches"
-    version: "1.21.7-cnoe-patches"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -220,12 +220,12 @@ kind: Secret
 metadata:
   name: my-gitea-init
   labels:
-    helm.sh/chart: gitea-10.1.3
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.21.7-cnoe-patches"
-    version: "1.21.7-cnoe-patches"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -321,10 +321,13 @@ metadata:
   namespace: gitea
   annotations:
     helm.sh/resource-policy: keep
+  labels:
+    {}
 spec:
   accessModes:
     - ReadWriteOnce
   volumeMode: Filesystem
+  
   resources:
     requests:
       storage: 5Gi
@@ -335,12 +338,12 @@ kind: Service
 metadata:
   name: my-gitea-http
   labels:
-    helm.sh/chart: gitea-10.1.3
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.21.7-cnoe-patches"
-    version: "1.21.7-cnoe-patches"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -361,12 +364,12 @@ kind: Service
 metadata:
   name: my-gitea-ssh
   labels:
-    helm.sh/chart: gitea-10.1.3
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.21.7-cnoe-patches"
-    version: "1.21.7-cnoe-patches"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -390,12 +393,12 @@ metadata:
   name: my-gitea
   annotations:
   labels:
-    helm.sh/chart: gitea-10.1.3
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.21.7-cnoe-patches"
-    version: "1.21.7-cnoe-patches"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -411,14 +414,14 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: dc8a742ffa47df3321e68788f9069f104e7e3f7448767e885fb2a4cc85a1510e
+        checksum/config: 9b7b5c7586d38c5c0feeb0c69191c8fbdb6bfac258ad125dd26b9a125ed67173
       labels:
-        helm.sh/chart: gitea-10.1.3
+        helm.sh/chart: gitea-10.1.4
         app: gitea
         app.kubernetes.io/name: gitea
         app.kubernetes.io/instance: my-gitea
-        app.kubernetes.io/version: "1.21.7-cnoe-patches"
-        version: "1.21.7-cnoe-patches"
+        app.kubernetes.io/version: "1.22.0"
+        version: "1.22.0"
         app.kubernetes.io/managed-by: Helm
     spec:
       
