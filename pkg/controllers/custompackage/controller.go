@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	argocdapplication "github.com/cnoe-io/argocd-api/api/argo/application"
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
@@ -77,12 +78,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 		return ctrl.Result{}, fmt.Errorf("reading file %s: %w", resource.Spec.ArgoCD.ApplicationFile, err)
 	}
 
-	var returnedRawResource []byte
-	if returnedRawResource, err = util.ApplyTemplate(b, r.Config); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	objs, err := k8s.ConvertYamlToObjects(r.Scheme, returnedRawResource)
+	objs, err := k8s.ConvertYamlToObjects(r.Scheme, b)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("converting yaml to object %w", err)
 	}
@@ -90,42 +86,93 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 		return ctrl.Result{}, fmt.Errorf("file contained 0 kubernetes objects %s", resource.Spec.ArgoCD.ApplicationFile)
 	}
 
-	app, ok := objs[0].(*argov1alpha1.Application)
-	if !ok {
-		return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application %s", resource.Spec.ArgoCD.ApplicationFile)
-	}
+	switch resource.Spec.ArgoCD.Type {
+	case argocdapplication.ApplicationKind:
+		app, ok := objs[0].(*argov1alpha1.Application)
+		if !ok {
+			return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application %s", resource.Spec.ArgoCD.ApplicationFile)
+		}
 
-	appName := app.GetName()
-	if resource.Spec.Replicate {
-		synced := true
-		repoRefs := make([]v1alpha1.ObjectRef, 0, 1)
-		if app.Spec.HasMultipleSources() {
-			for j := range app.Spec.Sources {
-				s := &app.Spec.Sources[j]
-				res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s, appName)
-				if sErr != nil {
-					return res, sErr
+		res, err := r.reconcileArgoCDApp(ctx, resource, app)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		foundAppObj := argov1alpha1.Application{}
+		err = r.Client.Get(ctx, client.ObjectKeyFromObject(app), &foundAppObj)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, app)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("creating %s app CR: %w", app.Name, err)
 				}
-				if repo != nil {
-					if synced {
-						synced = repo.Status.InternalGitRepositoryUrl != ""
-					}
-					s.RepoURL = repo.Status.InternalGitRepositoryUrl
-					repoRefs = append(repoRefs, v1alpha1.ObjectRef{
-						Namespace: repo.Namespace,
-						Name:      repo.Name,
-						UID:       string(repo.ObjectMeta.UID),
-					})
-				}
+
+				return ctrl.Result{RequeueAfter: requeueTime}, nil
 			}
-		} else {
-			s := app.Spec.Source
-			res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s, appName)
+			return ctrl.Result{}, fmt.Errorf("getting argocd application object: %w", err)
+		}
+
+		foundAppObj.Spec = app.Spec
+		foundAppObj.ObjectMeta.Annotations = app.GetAnnotations()
+		foundAppObj.ObjectMeta.Labels = app.GetLabels()
+		err = r.Client.Update(ctx, &foundAppObj)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("updating argocd application object %s: %w", app.Name, err)
+		}
+		return res, nil
+
+	case argocdapplication.ApplicationSetKind:
+		// application set embeds application spec. extract it then handle git generator repoURLs.
+		appSet, ok := objs[0].(*argov1alpha1.ApplicationSet)
+		if !ok {
+			return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application set %s", resource.Spec.ArgoCD.ApplicationFile)
+		}
+		res, err := r.reconcileArgoCDAppSet(ctx, resource, appSet)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		foundAppSetObj := argov1alpha1.ApplicationSet{}
+		err = r.Client.Get(ctx, client.ObjectKeyFromObject(appSet), &foundAppSetObj)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, appSet)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("creating %s argocd application set CR: %w", appSet.Name, err)
+				}
+				return ctrl.Result{RequeueAfter: requeueTime}, nil
+			}
+			return ctrl.Result{}, fmt.Errorf("getting argocd application set object: %w", err)
+		}
+
+		foundAppSetObj.Spec = appSet.Spec
+		foundAppSetObj.ObjectMeta.Annotations = appSet.GetAnnotations()
+		foundAppSetObj.ObjectMeta.Labels = appSet.GetLabels()
+		err = r.Client.Update(ctx, &foundAppSetObj)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("updating argocd application object %s: %w", appSet.Name, err)
+		}
+		return res, nil
+
+	default:
+		return ctrl.Result{}, fmt.Errorf("file is not a supported argocd kind %s", resource.Spec.ArgoCD.ApplicationFile)
+	}
+}
+
+func (r *Reconciler) reconcileArgoCDApp(ctx context.Context, resource *v1alpha1.CustomPackage, app *argov1alpha1.Application) (ctrl.Result, error) {
+	appSourcesSynced := true
+	repoRefs := make([]v1alpha1.ObjectRef, 0, 1)
+	if app.Spec.HasMultipleSources() {
+		notSyncedRepos := 0
+		for j := range app.Spec.Sources {
+			s := &app.Spec.Sources[j]
+			res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s.RepoURL, app.Name)
 			if sErr != nil {
 				return res, sErr
 			}
 			if repo != nil {
-				synced = repo.Status.InternalGitRepositoryUrl != ""
+				if repo.Status.InternalGitRepositoryUrl == "" {
+					notSyncedRepos += 1
+				}
 				s.RepoURL = repo.Status.InternalGitRepositoryUrl
 				repoRefs = append(repoRefs, v1alpha1.ObjectRef{
 					Namespace: repo.Namespace,
@@ -134,40 +181,69 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 				})
 			}
 		}
-		resource.Status.GitRepositoryRefs = repoRefs
-		resource.Status.Synced = synced
-	}
-
-	foundAppObj := argov1alpha1.Application{}
-	err = r.Client.Get(ctx, client.ObjectKeyFromObject(app), &foundAppObj)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, app)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("creating %s app CR: %w", appName, err)
-			}
-
-			return ctrl.Result{RequeueAfter: requeueTime}, nil
+		appSourcesSynced = notSyncedRepos == 0
+	} else {
+		s := app.Spec.Source
+		res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s.RepoURL, app.Name)
+		if sErr != nil {
+			return res, sErr
 		}
-		return ctrl.Result{}, fmt.Errorf("getting argocd application object: %w", err)
+		if repo != nil {
+			appSourcesSynced = repo.Status.InternalGitRepositoryUrl != ""
+			s.RepoURL = repo.Status.InternalGitRepositoryUrl
+			repoRefs = append(repoRefs, v1alpha1.ObjectRef{
+				Namespace: repo.Namespace,
+				Name:      repo.Name,
+				UID:       string(repo.ObjectMeta.UID),
+			})
+		}
 	}
-
-	foundAppObj.Spec = app.Spec
-	foundAppObj.ObjectMeta.Annotations = app.Annotations
-	foundAppObj.ObjectMeta.Labels = app.Labels
-	err = r.Client.Update(ctx, &foundAppObj)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("updating argocd application object %s: %w", appName, err)
-	}
+	resource.Status.GitRepositoryRefs = repoRefs
+	resource.Status.Synced = appSourcesSynced
 	return ctrl.Result{RequeueAfter: requeueTime}, nil
 }
 
-func (r *Reconciler) reconcileArgoCDSource(ctx context.Context, resource *v1alpha1.CustomPackage, appSource *argov1alpha1.ApplicationSource, appName string) (ctrl.Result, *v1alpha1.GitRepository, error) {
-	if isCNOEScheme(appSource.RepoURL) {
-		if resource.Spec.RemoteRepository.Url == "" {
-			return r.reconcileArgoCDSourceFromLocal(ctx, resource, appName, appSource.RepoURL)
+func (r *Reconciler) reconcileArgoCDAppSet(ctx context.Context, resource *v1alpha1.CustomPackage, appSet *argov1alpha1.ApplicationSet) (ctrl.Result, error) {
+	notSyncedRepos := 0
+	for i := range appSet.Spec.Generators {
+		g := appSet.Spec.Generators[i]
+		if g.Git != nil {
+			res, repo, gErr := r.reconcileArgoCDSource(ctx, resource, g.Git.RepoURL, appSet.GetName())
+			if gErr != nil {
+				return res, fmt.Errorf("reconciling git generator URL %s, %s: %w", g.Git.RepoURL, resource.Spec.ArgoCD.ApplicationFile, gErr)
+			}
+			if repo != nil {
+				g.Git.RepoURL = repo.Status.InternalGitRepositoryUrl
+				if repo.Status.InternalGitRepositoryUrl == "" {
+					notSyncedRepos += 1
+				}
+			}
 		}
-		return r.reconcileArgoCDSourceFromRemote(ctx, resource, appName, appSource.RepoURL)
+	}
+
+	gitGeneratorsSynced := notSyncedRepos == 0
+	app := argov1alpha1.Application{
+		ObjectMeta: metav1.ObjectMeta{Name: appSet.GetName(), Namespace: appSet.Namespace},
+	}
+	app.Spec = appSet.Spec.Template.Spec
+
+	_, err := r.reconcileArgoCDApp(ctx, resource, &app)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("reconciling application set %s %w", resource.Spec.ArgoCD.ApplicationFile, err)
+	}
+
+	resource.Status.Synced = resource.Status.Synced && gitGeneratorsSynced
+
+	return ctrl.Result{RequeueAfter: requeueTime}, nil
+}
+
+// create a gitrepository custom resource, then let the git repository controller take care of the rest
+func (r *Reconciler) reconcileArgoCDSource(ctx context.Context, resource *v1alpha1.CustomPackage, repoUrl, appName string) (ctrl.Result, *v1alpha1.GitRepository, error) {
+	if isCNOEScheme(repoUrl) {
+		if resource.Spec.RemoteRepository.Url == "" {
+			return r.reconcileArgoCDSourceFromLocal(ctx, resource, appName, repoUrl)
+		}
+		return r.reconcileArgoCDSourceFromRemote(ctx, resource, appName, repoUrl)
 	}
 	return ctrl.Result{}, nil, nil
 }
@@ -281,8 +357,10 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *Reconciler) getArgoCDAppFile(ctx context.Context, resource *v1alpha1.CustomPackage) ([]byte, error) {
+	filePath := resource.Spec.ArgoCD.ApplicationFile
+
 	if resource.Spec.RemoteRepository.Url == "" {
-		return os.ReadFile(resource.Spec.ArgoCD.ApplicationFile)
+		return os.ReadFile(filePath)
 	}
 
 	cloneDir := util.RepoDir(resource.Spec.RemoteRepository.Url, r.TempDir)
@@ -293,7 +371,7 @@ func (r *Reconciler) getArgoCDAppFile(ctx context.Context, resource *v1alpha1.Cu
 	if err != nil {
 		return nil, fmt.Errorf("cloning repo, %s: %w", resource.Spec.RemoteRepository.Url, err)
 	}
-	return util.ReadWorktreeFile(wt, resource.Spec.ArgoCD.ApplicationFile)
+	return util.ReadWorktreeFile(wt, filePath)
 }
 
 func localRepoName(appName, dir string) string {

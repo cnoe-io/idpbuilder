@@ -49,10 +49,16 @@ spec:
                     type: string
                   namespace:
                     type: string
+                  type:
+                    enum:
+                    - Application
+                    - ApplicationSet
+                    type: string
                 required:
                 - applicationFile
                 - name
                 - namespace
+                - type
                 type: object
               gitServerAuthSecretRef:
                 properties:
