@@ -6,21 +6,25 @@ kind: Secret
 metadata:
   name: my-gitea-inline-config
   labels:
-    helm.sh/chart: gitea-9.5.1
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
   _generals_: ""
-  cache: ADAPTER=memory
+  cache: |-
+    ADAPTER=memory
+    HOST=
   database: DB_TYPE=sqlite3
   indexer: ISSUE_INDEXER_TYPE=db
   metrics: ENABLED=false
-  queue: TYPE=level
+  queue: |-
+    CONN_STR=
+    TYPE=level
   repository: ROOT=/data/git/gitea-repositories
   security: INSTALL_LOCK=true
   server: |-
@@ -44,12 +48,12 @@ kind: Secret
 metadata:
   name: my-gitea
   labels:
-    helm.sh/chart: gitea-9.5.1
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -181,7 +185,7 @@ stringData:
     }
     
     # save existing envs prior to script execution. Necessary to keep order of preexisting and custom envs
-    env | (grep GITEA || [[ $? == 1 ]]) > /tmp/existing-envs
+    env | (grep -e '^GITEA__' || [[ $? == 1 ]]) > /tmp/existing-envs
     
     # MUST BE CALLED BEFORE OTHER CONFIGURATION
     env2ini::generate_initial_secrets
@@ -216,12 +220,12 @@ kind: Secret
 metadata:
   name: my-gitea-init
   labels:
-    helm.sh/chart: gitea-9.5.1
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 type: Opaque
 stringData:
@@ -260,7 +264,28 @@ stringData:
       exit 1
     }
     function configure_admin_user() {
-      local ACCOUNT_ID=$(gitea admin user list --admin | grep -e "\s\+${GITEA_ADMIN_USERNAME}\s\+" | awk -F " " "{printf \$1}")
+      local full_admin_list=$(gitea admin user list --admin)
+      local actual_user_table=''
+
+      # We might have distorted output due to warning logs, so we have to detect the actual user table by its headline and trim output above that line
+      local regex="(.*)(ID\s+Username\s+Email\s+IsActive.*)"
+      if [[ "${full_admin_list}" =~ $regex ]]; then
+        actual_user_table=$(echo "${BASH_REMATCH[2]}" | tail -n+2) # tail'ing to drop the table headline
+      else
+        # This code block should never be reached, as long as the output table header remains the same.
+        # If this code block is reached, the regex doesn't match anymore and we probably have to adjust this script.
+
+        echo "ERROR: 'configure_admin_user' was not able to determine the current list of admin users."
+        echo "       Please review the output of 'gitea admin user list --admin' shown below."
+        echo "       If you think it is an issue with the Helm Chart provisioning, file an issue at https://gitea.com/gitea/helm-chart/issues."
+        echo "DEBUG: Output of 'gitea admin user list --admin'"
+        echo "--"
+        echo "${full_admin_list}"
+        echo "--"
+        exit 1
+      fi
+
+      local ACCOUNT_ID=$(echo "${actual_user_table}" | grep -E "\s+${GITEA_ADMIN_USERNAME}\s+" | awk -F " " "{printf \$1}")
       if [[ -z "${ACCOUNT_ID}" ]]; then
         echo "No admin user '${GITEA_ADMIN_USERNAME}' found. Creating now..."
         gitea admin user create --admin --username "${GITEA_ADMIN_USERNAME}" --password "${GITEA_ADMIN_PASSWORD}" --email "gitea@local.domain" --must-change-password=false
@@ -296,10 +321,13 @@ metadata:
   namespace: gitea
   annotations:
     helm.sh/resource-policy: keep
+  labels:
+    {}
 spec:
   accessModes:
     - ReadWriteOnce
   volumeMode: Filesystem
+  
   resources:
     requests:
       storage: 5Gi
@@ -310,12 +338,12 @@ kind: Service
 metadata:
   name: my-gitea-http
   labels:
-    helm.sh/chart: gitea-9.5.1
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -336,12 +364,12 @@ kind: Service
 metadata:
   name: my-gitea-ssh
   labels:
-    helm.sh/chart: gitea-9.5.1
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
@@ -365,12 +393,12 @@ metadata:
   name: my-gitea
   annotations:
   labels:
-    helm.sh/chart: gitea-9.5.1
+    helm.sh/chart: gitea-10.1.4
     app: gitea
     app.kubernetes.io/name: gitea
     app.kubernetes.io/instance: my-gitea
-    app.kubernetes.io/version: "1.20.5"
-    version: "1.20.5"
+    app.kubernetes.io/version: "1.22.0"
+    version: "1.22.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -386,14 +414,14 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a727070bdf60a2bb53744cb0893234188ca3917339f231a79454d661720f50b0
+        checksum/config: 9b7b5c7586d38c5c0feeb0c69191c8fbdb6bfac258ad125dd26b9a125ed67173
       labels:
-        helm.sh/chart: gitea-9.5.1
+        helm.sh/chart: gitea-10.1.4
         app: gitea
         app.kubernetes.io/name: gitea
         app.kubernetes.io/instance: my-gitea
-        app.kubernetes.io/version: "1.20.5"
-        version: "1.20.5"
+        app.kubernetes.io/version: "1.22.0"
+        version: "1.22.0"
         app.kubernetes.io/managed-by: Helm
     spec:
       
@@ -401,7 +429,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: init-directories
-          image: "gitea/gitea:1.20.5-rootless"
+          image: "gitea/gitea:1.22.0-rootless"
           imagePullPolicy: IfNotPresent
           command: ["/usr/sbin/init_directory_structure.sh"]
           env:
@@ -429,7 +457,7 @@ spec:
               cpu: 100m
               memory: 128Mi
         - name: init-app-ini
-          image: "gitea/gitea:1.20.5-rootless"
+          image: "gitea/gitea:1.22.0-rootless"
           imagePullPolicy: IfNotPresent
           command: ["/usr/sbin/config_environment.sh"]
           env:
@@ -459,7 +487,7 @@ spec:
               cpu: 100m
               memory: 128Mi
         - name: configure-gitea
-          image: "gitea/gitea:1.20.5-rootless"
+          image: "gitea/gitea:1.22.0-rootless"
           command: ["/usr/sbin/configure_gitea.sh"]
           imagePullPolicy: IfNotPresent
           securityContext:
@@ -501,7 +529,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: gitea
-          image: "gitea/gitea:1.20.5-rootless"
+          image: "gitea/gitea:1.22.0-rootless"
           imagePullPolicy: IfNotPresent
           env:
             # SSH Port values have to be set here as well for openssh configuration
