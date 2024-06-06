@@ -179,13 +179,10 @@ func renderTemplate(templatePath string, outWriter io.Writer, data []any) error 
 func printOutput(templatePath string, outWriter io.Writer, data []any, format string) error {
 	switch format {
 	case "json":
-		b, err := json.MarshalIndent(data, "", "  ")
-		if err != nil {
-			return err
-		}
-		b = append(b, []byte("\n")...)
-		_, err = outWriter.Write(b)
-		return err
+		enc := json.NewEncoder(outWriter)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		return enc.Encode(data)
 	case "yaml":
 		b, err := yaml.Marshal(data)
 		if err != nil {
