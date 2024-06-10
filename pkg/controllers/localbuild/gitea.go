@@ -2,8 +2,11 @@ package localbuild
 
 import (
 	"context"
+	"crypto/tls"
 	"embed"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
@@ -14,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -34,7 +38,7 @@ func RawGiteaInstallResources(templateData any, config v1alpha1.PackageCustomiza
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/gitea/k8s", installGiteaFS, scheme, templateData)
 }
 
-func newGiteAdminSecret() (corev1.Secret, error) {
+func newGiteaAdminSecret() (corev1.Secret, error) {
 	pass, err := util.GeneratePassword()
 	if err != nil {
 		return corev1.Secret{}, err
@@ -56,6 +60,7 @@ func newGiteAdminSecret() (corev1.Secret, error) {
 }
 
 func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
+	logger := log.FromContext(ctx, "installer", "gitea")
 	gitea := EmbeddedInstallation{
 		name:         "Gitea",
 		resourcePath: "resources/gitea/k8s",
@@ -70,7 +75,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		},
 	}
 
-	giteCreds, err := newGiteAdminSecret()
+	giteCreds, err := newGiteaAdminSecret()
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
 	}
@@ -80,10 +85,39 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 	if result, err := gitea.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
-	resource.Status.Gitea.ExternalURL = fmt.Sprintf(giteaIngressURL, r.Config.Protocol, r.Config.Port)
+
+	baseUrl := giteaBaseUrl(r.Config)
+	// need this to ensure gitrepository controller can reach the api endpoint.
+	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
+	c := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+		Timeout: 2 * time.Second,
+	}
+	resp, err := c.Get(baseUrl)
+
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if resp != nil {
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			logger.V(1).Info("gitea manifests installed successfully. endpoint not ready", "statusCode", resp.StatusCode)
+			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
+		}
+	}
+
+	resource.Status.Gitea.ExternalURL = baseUrl
 	resource.Status.Gitea.InternalURL = giteaSvcURL
 	resource.Status.Gitea.AdminUserSecretName = giteaAdminSecret
 	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace
 	resource.Status.Gitea.Available = true
 	return ctrl.Result{}, nil
+}
+
+func giteaBaseUrl(config util.CorePackageTemplateConfig) string {
+	return fmt.Sprintf(giteaIngressURL, config.Protocol, config.Port)
 }

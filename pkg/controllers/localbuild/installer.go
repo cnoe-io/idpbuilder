@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -79,25 +78,10 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 		}
 	}
 
-	logger.V(1).Info(fmt.Sprintf("Installing/Reconciling %s resources", e.name))
-	for _, obj := range installObjs {
-		if gvk, ok := e.monitoredResources[obj.GetName()]; ok {
-			if obj.GetObjectKind().GroupVersionKind() == gvk {
-				sch := runtime.NewScheme()
-				_ = appsv1.AddToScheme(sch)
-				if gvkObj, err := sch.New(gvk); err == nil {
-					if gotObj, ok := gvkObj.(client.Object); ok {
-						if err := cli.Get(ctx, types.NamespacedName{Namespace: e.namespace, Name: obj.GetName()}, gotObj); err != nil {
-							if err = controllerutil.SetControllerReference(resource, obj, sc); err != nil {
-								logger.Error(err, "Setting controller reference for deployment", obj.GetName(), obj)
-								return ctrl.Result{}, err
-							}
-						}
-					}
-				}
-			}
-		}
+	sch := runtime.NewScheme()
+	appsv1.AddToScheme(sch)
 
+	for _, obj := range installObjs {
 		// Create object
 		if err = k8s.EnsureObject(ctx, nsClient, obj, e.namespace); err != nil {
 			return ctrl.Result{}, err
@@ -123,8 +107,6 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, re
 			go func(obj client.Object, gvk schema.GroupVersionKind) {
 				defer wg.Done()
 
-				sch := runtime.NewScheme()
-				_ = appsv1.AddToScheme(sch)
 				gvkObj, err := sch.New(gvk)
 				if err != nil {
 					errCh <- err

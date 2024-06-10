@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	argocdapp "github.com/cnoe-io/argocd-api/api/argo/application"
@@ -33,7 +34,8 @@ const (
 )
 
 var (
-	defaultRequeueTime = time.Second * 30
+	defaultRequeueTime = time.Second * 15
+	errRequeueTime     = time.Second * 5
 )
 
 type LocalbuildReconciler struct {
@@ -64,23 +66,62 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Make sure we post process
 	defer r.postProcessReconcile(ctx, req, &localBuild)
 
-	// respecting order of installation matters as there are hard dependencies
-	subReconcilers := []subReconciler{
-		r.ReconcileProjectNamespace,
-		r.ReconcileNginx,
-		r.ReconcileArgo,
-		r.ReconcileGitea,
-		r.ReconcileArgoAppsWithGitea,
+	_, err := r.ReconcileProjectNamespace(ctx, req, &localBuild)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	for _, sub := range subReconcilers {
-		result, err := sub(ctx, req, &localBuild)
-		if err != nil || result.Requeue || result.RequeueAfter != 0 {
-			return result, err
+	instCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errChan := make(chan error, 3)
+
+	go r.installCorePackages(instCtx, req, &localBuild, errChan)
+
+	select {
+	case <-ctx.Done():
+		return ctrl.Result{}, nil
+	case instErr := <-errChan:
+		if instErr != nil {
+			// likely due to ingress-nginx admission hook not ready. debug log and try again.
+			logger.V(1).Info("failed installing core package. likely not fatal. will try again", "error", instErr)
+			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
 		}
 	}
 
-	return ctrl.Result{}, nil
+	logger.V(1).Info("done installing core packages. passing control to argocd")
+	_, err = r.ReconcileArgoAppsWithGitea(ctx, req, &localBuild)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+}
+
+func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, errChan chan error) {
+	logger := log.FromContext(ctx)
+	defer close(errChan)
+	var wg sync.WaitGroup
+
+	installers := map[string]subReconciler{
+		"nginx":  r.ReconcileNginx,
+		"argocd": r.ReconcileArgo,
+		"gitea":  r.ReconcileGitea,
+	}
+	logger.V(1).Info("installing core packages")
+	for k, v := range installers {
+		wg.Add(1)
+		name := k
+		inst := v
+		go func() {
+			defer wg.Done()
+			_, iErr := inst(ctx, req, resource)
+			if iErr != nil {
+				logger.V(1).Info("failed installing %s: %s", name, iErr)
+				errChan <- fmt.Errorf("failed installing %s: %w", name, iErr)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // Responsible to updating ObservedGeneration in status
@@ -164,7 +205,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 	}
 	r.shouldShutdown = shutdown
 
-	return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName string, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
