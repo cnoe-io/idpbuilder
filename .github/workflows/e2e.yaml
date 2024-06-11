@@ -6,6 +6,8 @@ on:
       - 'main'
     paths:
       - '**.go'
+      - 'go.sum'
+      - 'go.mod'
 jobs:
   e2e:
     runs-on: ubuntu-22.04
