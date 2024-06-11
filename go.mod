@@ -4,7 +4,7 @@ go 1.21.3
 
 require (
 	code.gitea.io/sdk/gitea v0.16.0
-	github.com/cnoe-io/argocd-api v0.0.0-20240529230753-bb9d05f9e1d8
+	github.com/cnoe-io/argocd-api v0.0.0-20240530220153-91a5bf06f21d
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/go-git/go-billy/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.12.0
