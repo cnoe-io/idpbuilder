@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	mathrand "math/rand"
+	"path/filepath"
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -122,4 +123,9 @@ func getRandElement(input string) (string, error) {
 	}
 
 	return string(input[position.Int64()]), nil
+}
+
+func IsYamlFile(input string) bool {
+	extension := filepath.Ext(input)
+	return extension == ".yaml" || extension == ".yml"
 }

@@ -454,7 +454,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 
 	for i := range files {
 		file := files[i]
-		if !file.Type().IsRegular() {
+		if !file.Type().IsRegular() || !util.IsYamlFile(file.Name()) {
 			continue
 		}
 

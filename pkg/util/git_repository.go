@@ -85,7 +85,7 @@ func GetWorktreeYamlFiles(parent string, wt billy.Filesystem, recurse bool) ([]s
 			}
 			paths = append(paths, rPaths...)
 		}
-		if ent.Mode().IsRegular() && (strings.HasSuffix(ent.Name(), "yaml") || strings.HasSuffix(ent.Name(), "yml")) {
+		if ent.Mode().IsRegular() && IsYamlFile(ent.Name()) {
 			paths = append(paths, fmt.Sprintf("%s/%s", parent, ent.Name()))
 		}
 	}
