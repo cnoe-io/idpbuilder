@@ -92,6 +92,7 @@ Once idpbuilder finishes provisioning cluster and packages, you can access GUIs 
 * ArgoCD: https://argocd.cnoe.localtest.me:8443/
 * Gitea: https://gitea.cnoe.localtest.me:8443/
 
+#### Secrets
 You can obtain credentials for them by running the following command:
 
 ```bash
@@ -226,6 +227,42 @@ You can also view the updated Application spec by going to this address: https:/
 
 The second package directory defines two normal ArgoCD applications referencing a remote repository.
 They are applied as-is.
+
+## Local OCI Registry
+
+The local Gitea instance created by idpbuilder contains a built in OCI registry for hosting container images as "packages" in Gitea nomenclature.
+
+It is a standard OCI registry, so the API should be compatible with any tools that are OCI compliant. That includes the `docker` cli.
+
+For example you can push an image by running:
+
+```bash
+docker login gitea.cnoe.localtest.me:8443                                          
+Username: giteaAdmin
+Password: 
+docker push gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
+The push refers to repository [gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder]
+78a0cd9d2976: Layer already exists 
+with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f7fe17dba0ce992 size: 5566
+```
+
+*NOTE: You cant get the giteaAdmin password in the same way as for the web or git interface.*
+
+```bash
+  ./idpbuilder get secrets -p gitea
+```
+
+### Pulling images internal to cluster:
+
+Because we are using an NGINX Ingress and pushing our image from off cluster,
+Gitea and it's OCI registry think all images pushed to it are prefixed with `gitea.cnoe.localtest.me:8443`.
+
+This is correct by the OCI spec standards. However when you are on the cluster, that ingress is not available to you. 
+You can use the service name of gitea, but gitea will not know what images are being asked for at the svc domain name.
+
+So we use containerd to rewrite those image names so that they can be referenced at the external url:
+
+See `./pkg/kind/resources/kind.yaml.tmpl` for how this is done.
 
 
 ## Contributing
