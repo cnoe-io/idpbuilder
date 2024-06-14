@@ -4,6 +4,7 @@ metadata:
   name: argocd-cm
 data:
   application.resourceTrackingMethod: annotation
+  timeout.reconciliation: 60s
   resource.exclusions: |
     - kinds:
         - ProviderConfigUsage
