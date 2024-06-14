@@ -251,6 +251,70 @@ with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f
 ```bash
   ./idpbuilder get secrets -p gitea
 ```
+
+### Pulling Images
+
+You can pull an image back to your local machine using your docker client like so:
+
+```
+docker push gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder
+Using default tag: latest
+latest: Pulling from giteaadmin/beacon.idpbuilder
+Digest: sha256:6308ebbce176470277dcca5e59aee3d528d9798a19f13d6a73ddd74a3f5da17b
+Status: Downloaded newer image for gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:latest
+gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:latest
+```
+
+### Referencing images in manifests on the idpbuilder cluster
+If you are creating a pod or a deployment of some sort, you can refernce the images on the cluster using the same image name and tag like in the following example:
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: backstage
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: backstage
+    spec:
+      containers:
+      - command:
+        - node
+        - packages/backend
+        - --config
+        - config/app-config.yaml
+        env:
+        - name: LOG_LEVEL
+          value: debug
+        - name: NODE_TLS_REJECT_UNAUTHORIZED
+          value: "0"
+        envFrom:
+        - secretRef:
+            name: backstage-env-vars
+        - secretRef:
+            name: gitea-credentials
+        - secretRef:
+            name: argocd-credentials
+        image: gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
+        imagePullPolicy: IfNotPresent
+...
+
+
+
 ### Only Works With Subdomain based Idpbuilder installations
 Right now because of the way the OCI registy specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
 based installations of idpbuilder's core capabilities.
