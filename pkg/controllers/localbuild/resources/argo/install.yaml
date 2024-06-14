@@ -21087,6 +21087,7 @@ data:
         - ProviderConfigUsage
       apiGroups:
         - "*"
+  timeout.reconciliation: 60s
 kind: ConfigMap
 metadata:
   labels:
