@@ -251,6 +251,12 @@ with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f
 ```bash
   ./idpbuilder get secrets -p gitea
 ```
+### Only Works With Subdomain based Idpbuilder installations
+Right now because of the way the OCI registy specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
+based installations of idpbuilder's core capabilities.
+
+If you would like to use path based routing, you will have to install and manage your own OCI registry at this time.
+Other registries might be able to handle this better, however which registries and how to configure them is beyond the scope of this readme.
 
 ### Pulling images internal to cluster:
 
