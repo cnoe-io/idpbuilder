@@ -319,7 +319,8 @@ spec:
         imagePullPolicy: IfNotPresent
 ...
 
-
+### No Pull Secret Needed
+Our gitea instance allows for anonymous read access. This means that you can pull git repo contents and container images without the need to login.
 
 ### Only Works With Subdomain based Idpbuilder installations
 Right now because of the way the OCI registry specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
@@ -342,7 +343,6 @@ You can use the service name of gitea, but gitea will not know what images are b
 So we use containerd to rewrite those image names so that they can be referenced at the external url:
 
 See `./pkg/kind/resources/kind.yaml.tmpl` for how this is done.
-
 
 ## Contributing
 
