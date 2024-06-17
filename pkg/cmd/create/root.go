@@ -192,7 +192,7 @@ func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
 		return v1alpha1.PackageCustomization{}, err
 	}
 
-	corePkgs := map[string]struct{}{"argocd": {}, "gitea": {}, "nginx": {}}
+	corePkgs := map[string]struct{}{v1alpha1.ArgoCDPackageName: {}, v1alpha1.GiteaPackageName: {}, v1alpha1.IngressNginxPackageName: {}}
 	name := s[0]
 	_, ok := corePkgs[name]
 	if !ok {

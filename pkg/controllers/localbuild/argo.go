@@ -48,7 +48,12 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		skipReadinessCheck: true,
 	}
 
-	if result, err := argocd.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
+	v, ok := resource.Spec.PackageConfigs.CorePackageCustomization[v1alpha1.ArgoCDPackageName]
+	if ok {
+		argocd.customization = v
+	}
+
+	if result, err := argocd.Install(ctx, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
 

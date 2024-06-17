@@ -103,9 +103,9 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 	var wg sync.WaitGroup
 
 	installers := map[string]subReconciler{
-		"nginx":  r.ReconcileNginx,
-		"argocd": r.ReconcileArgo,
-		"gitea":  r.ReconcileGitea,
+		v1alpha1.IngressNginxPackageName: r.ReconcileNginx,
+		v1alpha1.ArgoCDPackageName:       r.ReconcileArgo,
+		v1alpha1.GiteaPackageName:        r.ReconcileGitea,
 	}
 	logger.V(1).Info("installing core packages")
 	for k, v := range installers {
@@ -177,7 +177,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 
 	// push bootstrap app manifests to Gitea. let ArgoCD take over
 	// will need a way to filter them based on user input
-	bootStrapApps := []string{"argocd", "nginx", "gitea"}
+	bootStrapApps := []string{v1alpha1.ArgoCDPackageName, v1alpha1.IngressNginxPackageName, v1alpha1.GiteaPackageName}
 	for _, n := range bootStrapApps {
 		result, err := r.reconcileEmbeddedApp(ctx, n, resource)
 		if err != nil {
@@ -221,7 +221,7 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 	app := &argov1alpha1.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      appName,
-			Namespace: "argocd",
+			Namespace: argocdNamespace,
 		},
 	}
 
@@ -518,7 +518,7 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 		} else {
 			repo.Spec.Source.Path = absPath
 		}
-		f, ok := resource.Spec.PackageConfigs.EmbeddedArgoApplications.PackageCustomization[embeddedName]
+		f, ok := resource.Spec.PackageConfigs.CorePackageCustomization[embeddedName]
 		if ok {
 			repo.Spec.Customization = v1alpha1.PackageCustomization{
 				Name:     embeddedName,
@@ -545,11 +545,11 @@ func isSupportedArgoCDTypes(gvk *schema.GroupVersionKind) bool {
 
 func GetEmbeddedRawInstallResources(name string, templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
 	switch name {
-	case "argocd":
+	case v1alpha1.ArgoCDPackageName:
 		return RawArgocdInstallResources(templateData, config, scheme)
-	case "gitea":
+	case v1alpha1.GiteaPackageName:
 		return RawGiteaInstallResources(templateData, config, scheme)
-	case "nginx":
+	case v1alpha1.IngressNginxPackageName:
 		return RawNginxInstallResources(templateData, config, scheme)
 	default:
 		return nil, fmt.Errorf("unsupported embedded app name %s", name)

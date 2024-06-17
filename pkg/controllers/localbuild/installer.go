@@ -53,7 +53,7 @@ func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace 
 	}
 }
 
-func (e *EmbeddedInstallation) Install(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.CorePackageTemplateConfig) (ctrl.Result, error) {
+func (e *EmbeddedInstallation) Install(ctx context.Context, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.CorePackageTemplateConfig) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	nsClient := client.NewNamespacedClient(cli, e.namespace)

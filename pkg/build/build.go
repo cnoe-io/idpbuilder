@@ -198,11 +198,11 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					Enabled: true,
 				},
 				EmbeddedArgoApplications: v1alpha1.EmbeddedArgoApplicationsPackageConfigSpec{
-					Enabled:              true,
-					PackageCustomization: b.packageCustomization,
+					Enabled: true,
 				},
-				CustomPackageDirs: b.customPackageDirs,
-				CustomPackageUrls: b.customPackageUrls,
+				CustomPackageDirs:        b.customPackageDirs,
+				CustomPackageUrls:        b.customPackageUrls,
+				CorePackageCustomization: b.packageCustomization,
 			},
 		}
 

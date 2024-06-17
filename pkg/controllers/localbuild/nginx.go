@@ -37,7 +37,12 @@ func (r *LocalbuildReconciler) ReconcileNginx(ctx context.Context, req ctrl.Requ
 		},
 	}
 
-	if result, err := nginx.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
+	v, ok := resource.Spec.PackageConfigs.CorePackageCustomization[v1alpha1.IngressNginxPackageName]
+	if ok {
+		nginx.customization = v
+	}
+
+	if result, err := nginx.Install(ctx, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
 
