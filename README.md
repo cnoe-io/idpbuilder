@@ -92,6 +92,7 @@ Once idpbuilder finishes provisioning cluster and packages, you can access GUIs 
 * ArgoCD: https://argocd.cnoe.localtest.me:8443/
 * Gitea: https://gitea.cnoe.localtest.me:8443/
 
+#### Secrets
 You can obtain credentials for them by running the following command:
 
 ```bash
@@ -227,6 +228,89 @@ You can also view the updated Application spec by going to this address: https:/
 The second package directory defines two normal ArgoCD applications referencing a remote repository.
 They are applied as-is.
 
+## Local OCI Registry
+
+The local Gitea instance created by idpbuilder contains a built in OCI registry for hosting container images as "packages" in Gitea nomenclature.
+
+It is a standard OCI registry, so the API should be compatible with any tools that are OCI compliant. That includes the `docker` cli.
+
+For example you can push an image by running:
+
+```bash
+docker login gitea.cnoe.localtest.me:8443                                          
+Username: giteaAdmin
+Password: 
+docker push gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
+The push refers to repository [gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder]
+78a0cd9d2976: Layer already exists 
+with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f7fe17dba0ce992 size: 5566
+```
+
+*NOTE: You can't get the giteaAdmin password in the same way as for the web or git interface.*
+
+```bash
+  ./idpbuilder get secrets -p gitea
+```
+
+Or you can use this one liner to login:
+
+```bash
+idpbuilder get secrets -p gitea -o json | jq '.[0].data.password' -r | docker login -u giteaAdmin --password-stdin gitea.cnoe.localtest.me:8443
+```
+
+### Pulling Images
+
+You can pull an image back to your local machine using your docker client like so:
+
+```
+docker push gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder
+Using default tag: latest
+latest: Pulling from giteaadmin/beacon.idpbuilder
+Digest: sha256:6308ebbce176470277dcca5e59aee3d528d9798a19f13d6a73ddd74a3f5da17b
+Status: Downloaded newer image for gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:latest
+gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:latest
+```
+
+### Referencing Images In Manifests On The Idpbuilder K8s Cluster
+If you are creating a pod or a deployment of some sort, you can reference the images on the cluster using the same image name and tag like in the following example:
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+spec:
+  template:
+    spec:
+      containers:
+      - image: gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
+        imagePullPolicy: IfNotPresent
+```
+
+### No Pull Secret Needed
+Our gitea instance allows for anonymous read access. This means that you can pull git repo contents and container images without the need to login.
+
+### Only Works With Subdomain Based Idpbuilder Installations
+Right now because of the way the OCI registry specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
+based installations of idpbuilder's core capabilities.
+
+If you would like to use path based routing, you will have to install and manage your own OCI registry at this time.
+Other registries might be able to handle this better, however which registries and how to configure them is beyond the scope of this readme.
+
+For more info on the OCI registry spec and the root cause of this "discovery" issue see the spec here:
+https://specs.opencontainers.org/distribution-spec/?v=v1.0.0#checking-if-content-exists-in-the-registry
+
+### Pulling Images From Inside Idpbuilder K8s Cluster:
+
+Because we are using an NGINX Ingress and pushing our image from off cluster,
+Gitea and it's OCI registry think all images pushed to it are prefixed with `gitea.cnoe.localtest.me:8443`.
+
+This is correct by the OCI spec standards. However when you are on the cluster, that ingress is not available to you. 
+You can use the service name of gitea, but gitea will not know what images are being asked for at the svc domain name.
+
+So we use containerd to rewrite those image names so that they can be referenced at the external url:
+
+See `./pkg/kind/resources/kind.yaml.tmpl` for how this is done.
 
 ## Contributing
 
