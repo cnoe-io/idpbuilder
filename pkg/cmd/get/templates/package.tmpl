@@ -1,0 +1,12 @@
+---
+name: {{ .Name }}
+namespace: {{ .Namespace }}
+category: {{ .Category }}
+package-type: {{ .PackageType }}
+spec:
+  description: {{ .Description }}
+  url: {{ .URL }}
+  credentials:
+{{- range $key, $value := .Credentials }}
+    {{ $key }}: {{ $value }}
+{{- end }}
