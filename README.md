@@ -246,7 +246,7 @@ The push refers to repository [gitea.cnoe.localtest.me:8443/giteaadmin/beacon.id
 with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f7fe17dba0ce992 size: 5566
 ```
 
-*NOTE: You cant get the giteaAdmin password in the same way as for the web or git interface.*
+*NOTE: You can't get the giteaAdmin password in the same way as for the web or git interface.*
 
 ```bash
   ./idpbuilder get secrets -p gitea
@@ -272,7 +272,7 @@ gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:latest
 ```
 
 ### Referencing images in manifests on the idpbuilder cluster
-If you are creating a pod or a deployment of some sort, you can refernce the images on the cluster using the same image name and tag like in the following example:
+If you are creating a pod or a deployment of some sort, you can reference the images on the cluster using the same image name and tag like in the following example:
 
 ```
 apiVersion: apps/v1
@@ -322,11 +322,14 @@ spec:
 
 
 ### Only Works With Subdomain based Idpbuilder installations
-Right now because of the way the OCI registy specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
+Right now because of the way the OCI registry specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
 based installations of idpbuilder's core capabilities.
 
 If you would like to use path based routing, you will have to install and manage your own OCI registry at this time.
 Other registries might be able to handle this better, however which registries and how to configure them is beyond the scope of this readme.
+
+For more info on the OCI registry spec and the root cause of this "discovery" issue see the spec here:
+https://specs.opencontainers.org/distribution-spec/?v=v1.0.0#checking-if-content-exists-in-the-registry
 
 ### Pulling images internal to cluster:
 
