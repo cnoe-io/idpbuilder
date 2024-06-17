@@ -100,7 +100,7 @@ data:
   user-user1.json: |
     {
         "username": "user1",
-        "email": "user1@noreply.com",
+        "email": "",
         "firstName": "user",
         "lastName": "one",
         "requiredActions": [],
@@ -113,7 +113,7 @@ data:
   user-user2.json: |
     {
         "username": "user2",
-        "email": "user2@noreply.com",
+        "email": "",
         "firstName": "user",
         "lastName": "two",
         "requiredActions": [],
