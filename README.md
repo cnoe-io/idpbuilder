@@ -317,7 +317,7 @@ spec:
             name: argocd-credentials
         image: gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
         imagePullPolicy: IfNotPresent
-...
+```
 
 ### No Pull Secret Needed
 Our gitea instance allows for anonymous read access. This means that you can pull git repo contents and container images without the need to login.
