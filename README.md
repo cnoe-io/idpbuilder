@@ -252,6 +252,12 @@ with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f
   ./idpbuilder get secrets -p gitea
 ```
 
+Or you can use this one liner to login:
+
+```bash
+idpbuilder get secrets -p gitea -o json | jq '.[0].data.password' -r | docker login -u giteaAdmin --password-stdin gitea.cnoe.localtest.me:8443
+```
+
 ### Pulling Images
 
 You can pull an image back to your local machine using your docker client like so:
