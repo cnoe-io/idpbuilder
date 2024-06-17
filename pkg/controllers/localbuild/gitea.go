@@ -82,7 +82,12 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 
 	gitea.unmanagedResources = []client.Object{&giteCreds}
 
-	if result, err := gitea.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
+	v, ok := resource.Spec.PackageConfigs.CorePackageCustomization[v1alpha1.GiteaPackageName]
+	if ok {
+		gitea.customization = v
+	}
+
+	if result, err := gitea.Install(ctx, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
 

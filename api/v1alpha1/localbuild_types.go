@@ -17,6 +17,10 @@ const (
 	CLISecretLabelKey   = "cnoe.io/cli-secret"
 	CLISecretLabelValue = "true"
 	PackageNameLabelKey = "cnoe.io/package-name"
+
+	ArgoCDPackageName       = "argocd"
+	GiteaPackageName        = "gitea"
+	IngressNginxPackageName = "nginx"
 )
 
 // ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
@@ -30,8 +34,6 @@ type ArgoPackageConfigSpec struct {
 type EmbeddedArgoApplicationsPackageConfigSpec struct {
 	// Enabled controls whether to install the embedded argo applications and the associated GitServer
 	Enabled bool `json:"enabled,omitempty"`
-	// +kubebuilder:validation:Optional
-	PackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
 type PackageConfigsSpec struct {
@@ -39,6 +41,8 @@ type PackageConfigsSpec struct {
 	EmbeddedArgoApplications EmbeddedArgoApplicationsPackageConfigSpec `json:"embeddedArgoApplicationsPackageConfigs,omitempty"`
 	CustomPackageDirs        []string                                  `json:"customPackageDirs,omitempty"`
 	CustomPackageUrls        []string                                  `json:"customPackageUrls,omitempty"`
+	// +kubebuilder:validation:Optional
+	CorePackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
 type LocalbuildSpec struct {

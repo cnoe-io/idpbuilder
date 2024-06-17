@@ -64,23 +64,22 @@ spec:
                         description: Enabled controls whether to install the embedded
                           argo applications and the associated GitServer
                         type: boolean
-                      packageCustomization:
-                        additionalProperties:
-                          description: PackageCustomization defines how packages are
-                            customized
-                          properties:
-                            filePath:
-                              description: FilePath is the absolute file path to a
-                                YAML file that contains Kubernetes manifests.
-                              type: string
-                            name:
-                              description: Name is the name of the package to be customized.
-                                e.g. argocd
-                              type: string
-                          required:
-                          - name
-                          type: object
-                        type: object
+                    type: object
+                  packageCustomization:
+                    additionalProperties:
+                      description: PackageCustomization defines how packages are customized
+                      properties:
+                        filePath:
+                          description: FilePath is the absolute file path to a YAML
+                            file that contains Kubernetes manifests.
+                          type: string
+                        name:
+                          description: Name is the name of the package to be customized.
+                            e.g. argocd
+                          type: string
+                      required:
+                      - name
+                      type: object
                     type: object
                 type: object
             type: object
