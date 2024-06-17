@@ -246,7 +246,7 @@ The push refers to repository [gitea.cnoe.localtest.me:8443/giteaadmin/beacon.id
 with-app-fix2: digest: sha256:50dc814b89e22988a69ac23aa7158daa834ab450b38b299e7f7fe17dba0ce992 size: 5566
 ```
 
-*NOTE: You can't get the giteaAdmin password in the same way as for the web or git interface.*
+*NOTE: You can get the giteaAdmin password in the same way as you do for the web or git interface.*
 
 ```bash
   ./idpbuilder get secrets -p gitea
