@@ -271,7 +271,7 @@ Status: Downloaded newer image for gitea.cnoe.localtest.me:8443/giteaadmin/beaco
 gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:latest
 ```
 
-### Referencing images in manifests on the idpbuilder cluster
+### Referencing Images In Manifests On The Idpbuilder K8s Cluster
 If you are creating a pod or a deployment of some sort, you can reference the images on the cluster using the same image name and tag like in the following example:
 
 ```
@@ -280,49 +280,17 @@ kind: Deployment
 metadata:
   annotations:
 spec:
-  progressDeadlineSeconds: 600
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      app: backstage
-  strategy:
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
-    type: RollingUpdate
   template:
-    metadata:
-      creationTimestamp: null
-      labels:
-        app: backstage
     spec:
       containers:
-      - command:
-        - node
-        - packages/backend
-        - --config
-        - config/app-config.yaml
-        env:
-        - name: LOG_LEVEL
-          value: debug
-        - name: NODE_TLS_REJECT_UNAUTHORIZED
-          value: "0"
-        envFrom:
-        - secretRef:
-            name: backstage-env-vars
-        - secretRef:
-            name: gitea-credentials
-        - secretRef:
-            name: argocd-credentials
-        image: gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
+      - image: gitea.cnoe.localtest.me:8443/giteaadmin/beacon.idpbuilder:with-app-fix2
         imagePullPolicy: IfNotPresent
 ```
 
 ### No Pull Secret Needed
 Our gitea instance allows for anonymous read access. This means that you can pull git repo contents and container images without the need to login.
 
-### Only Works With Subdomain based Idpbuilder installations
+### Only Works With Subdomain Based Idpbuilder Installations
 Right now because of the way the OCI registry specifications discovers information about a repo, this will only work with subdomain `gitea.cnoe.localtest.me`
 based installations of idpbuilder's core capabilities.
 
@@ -332,7 +300,7 @@ Other registries might be able to handle this better, however which registries a
 For more info on the OCI registry spec and the root cause of this "discovery" issue see the spec here:
 https://specs.opencontainers.org/distribution-spec/?v=v1.0.0#checking-if-content-exists-in-the-registry
 
-### Pulling images internal to cluster:
+### Pulling Images From Inside Idpbuilder K8s Cluster:
 
 Because we are using an NGINX Ingress and pushing our image from off cluster,
 Gitea and it's OCI registry think all images pushed to it are prefixed with `gitea.cnoe.localtest.me:8443`.
