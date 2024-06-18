@@ -153,7 +153,7 @@ Run the following commands for available flags and subcommands:
 
 ### Custom Packages
 
-Idpbuilder supports specifying custom packages using the flag `--package-dir` flag. 
+Idpbuilder supports specifying custom packages using the flag `--package` flag. 
 This flag expects a directory (local or remote) containing ArgoCD application files and / or ArgoCD application set files.
 In case of a remote directory, it must be a directory in a git repository, 
 and the URL format must be a [kustomize remote URL format](https://github.com/kubernetes-sigs/kustomize/blob/master/examples/remoteBuild.md).
@@ -164,7 +164,7 @@ Let's take a look at [this example](https://github.com/cnoe-io/stacks/tree/main/
 To deploy these packages, run the following command.
 
 ```
-idpbuilder create -p https://github.com/cnoe-io/stacks//basic/package1 -p https://github.com/cnoe-io/stacks//basic/package2
+idpbuilder create --package https://github.com/cnoe-io/stacks//basic/package1 --package https://github.com/cnoe-io/stacks//basic/package2
 
 ```
 
@@ -175,7 +175,7 @@ Alternatively, you can use the local directory format.
 git clone https://github.com/cnoe-io/stacks.git
 cd stacks
 # run idpbuilder against the local directory
-idpbuilder create --package-dir basic/package1  --package-dir basic/package2
+idpbuilder create --package basic/package1  --package basic/package2
 
 ```
 
