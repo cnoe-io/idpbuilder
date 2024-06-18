@@ -59,9 +59,9 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", "Port number under which idpBuilder tools are accessible.")
 	CreateCmd.PersistentFlags().BoolVar(&pathRouting, "use-path-routing", false, "When set to true, web UIs are exposed under single domain name.")
 	// TODO: Remove package-dir and deprecation notice after 0.6.0 release
-	CreateCmd.Flags().StringSliceVarP(&extraPackagesDirs, "package-dir", "p", []string{}, "Paths to directories containing custom packages")
+	CreateCmd.Flags().StringSliceVar(&extraPackagesDirs, "package-dir", []string{}, "Paths to directories containing custom packages")
 	CreateCmd.Flags().MarkDeprecated("package-dir", "use --package instead")
-	CreateCmd.Flags().StringSliceVar(&extraPackages, "package", []string{}, "Paths to locations containing custom packages")
+	CreateCmd.Flags().StringSliceVarP(&extraPackages, "package", "p", []string{}, "Paths to locations containing custom packages")
 	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, "Name of the package and the path to file to customize the package with. e.g. argocd:/tmp/argocd.yaml")
 	// idpbuilder related flags
 	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")

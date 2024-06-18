@@ -118,7 +118,7 @@ func testCustomPkg(t *testing.T) {
 	defer cancel()
 	defer CleanUpDocker(t)
 
-	cmdString := "create -p ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
+	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
 
 	t.Log(fmt.Sprintf("running %s", cmdString))
 	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, strings.Split(cmdString, " ")...)

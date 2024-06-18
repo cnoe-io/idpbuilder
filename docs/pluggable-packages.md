@@ -88,7 +88,7 @@ Users are expected to run the `helm template` command to generate manifests.
 ### Runtime Git server content generation
 
 As mentioned earlier, Git server contents are generated at compile time and cannot be changed at run time.
-To solve this, Git content should be created at run time by introducing a new flag, `--package-dir`, to idpbuilder. This flag takes a directory that contains ArgoCD Applications. 
+To solve this, Git content should be created at run time by introducing a new flag, `--package`, to idpbuilder. This flag takes a directory that contains ArgoCD Applications. 
 If this flag is not specified, use the embedded FS to provide the "default experience" where it uses the manifests provided at compile time to bootstrap and add predetermined packages to the cluster.
 
 Because Helm and Kustomize can reference remote repositories, this approach introduces a use case where secrets must be passed to the cluster from local machine. Kubernetes resource YAML files are often stored on a private Git server and require credentials to access. For ArgoCD to access the Git server, the credentials must be passed to ArgoCD as Kubernetes Secrets. 
@@ -267,7 +267,7 @@ Given the complexity involved with this approach, the first iteration should foc
 
 ###### ArgoCD Application handling
 
-Consider a case where idpbuilder is given the flag `--package-dir ./packages`, and the `packages` directory contains a yaml file for a ArgoCD application.
+Consider a case where idpbuilder is given the flag `--package ./packages`, and the `packages` directory contains a yaml file for a ArgoCD application.
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
