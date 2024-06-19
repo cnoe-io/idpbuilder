@@ -10,18 +10,17 @@ import (
 	"time"
 
 	argocdapp "github.com/cnoe-io/argocd-api/api/argo/application"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/resources/localbuild"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,11 +30,8 @@ import (
 
 const (
 	defaultArgoCDProjectName string = "default"
-)
-
-var (
-	defaultRequeueTime = time.Second * 15
-	errRequeueTime     = time.Second * 5
+	defaultRequeueTime              = time.Second * 15
+	errRequeueTime                  = time.Second * 5
 )
 
 type LocalbuildReconciler struct {
@@ -116,7 +112,7 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 			defer wg.Done()
 			_, iErr := inst(ctx, req, resource)
 			if iErr != nil {
-				logger.V(1).Info("failed installing %s: %s", name, iErr)
+				logger.V(1).Info("failed installing", "name", name, "error", iErr)
 				errChan <- fmt.Errorf("failed installing %s: %w", name, iErr)
 			}
 		}()

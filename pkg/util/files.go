@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -94,7 +95,10 @@ func CreateIfNotExists(dir string, perm os.FileMode) error {
 }
 
 func ApplyTemplate(in []byte, templateData any) ([]byte, error) {
-	t, err := template.New("template").Parse(string(in))
+	funcMap := template.FuncMap{
+		"indentNewLines": templateIndentNewlines,
+	}
+	t, err := template.New("template").Funcs(funcMap).Parse(string(in))
 	if err != nil {
 		return nil, err
 	}
@@ -107,4 +111,9 @@ func ApplyTemplate(in []byte, templateData any) ([]byte, error) {
 	}
 
 	return ret.Bytes(), nil
+}
+
+// indent given string with given number of spaces whenever a newline symbol is found.
+func templateIndentNewlines(n int, val string) string {
+	return strings.Replace(val, "\n", "\n"+strings.Repeat(" ", n), -1)
 }

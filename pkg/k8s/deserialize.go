@@ -24,7 +24,7 @@ func ConvertYamlToObjects(scheme *runtime.Scheme, objYamls []byte) ([]client.Obj
 
 	var k8sObjects []client.Object
 
-	for _, objYaml := range bytes.Split(objYamls, []byte{'-', '-', '-'}) {
+	for _, objYaml := range bytes.Split(objYamls, []byte{'\n', '-', '-', '-', '\n'}) {
 		if len(objYaml) == 0 {
 			continue
 		}

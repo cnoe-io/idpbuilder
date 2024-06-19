@@ -12,3 +12,4 @@ patches:
   - path: argocd-applicationset-controller.yaml
   - path: argocd-repo-server.yaml
   - path: argocd-redis.yaml
+  - path: argocd-tls-certs-cm.yaml.tmpl

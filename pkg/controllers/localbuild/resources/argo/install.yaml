@@ -21154,6 +21154,11 @@ metadata:
   name: argocd-ssh-known-hosts-cm
 ---
 apiVersion: v1
+data:
+  '{{.Host}}': |
+    {{ .SelfSignedCert | indentNewLines 4 }}
+  gitea.cnoe.localtest.me: |
+    {{ .SelfSignedCert | indentNewLines 4 }}
 kind: ConfigMap
 metadata:
   labels:

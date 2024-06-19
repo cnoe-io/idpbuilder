@@ -6,4 +6,5 @@ type CorePackageTemplateConfig struct {
 	IngressHost    string
 	Port           string
 	UsePathRouting bool
+	SelfSignedCert string
 }

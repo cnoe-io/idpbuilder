@@ -178,6 +178,13 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
+	setupLog.Info("Setting up TLS certificate")
+	cert, err := setupSelfSignedCertificate(ctx, setupLog, kubeClient, b.cfg)
+	if err != nil {
+		return err
+	}
+	b.cfg.SelfSignedCert = string(cert)
+
 	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {
 		setupLog.Error(err, "Error running controllers")

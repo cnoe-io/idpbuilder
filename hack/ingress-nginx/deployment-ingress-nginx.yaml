@@ -32,6 +32,7 @@ spec:
             - --watch-ingress-without-class=true
             - --publish-status-address=localhost
             - --enable-ssl-passthrough
+            - --default-ssl-certificate=ingress-nginx/idpbuilder-cert
           ports:
             - containerPort: 80
               hostPort: 80
