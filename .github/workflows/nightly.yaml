@@ -41,9 +41,9 @@ jobs:
       - name: 'Clean up nightly releases'
         uses: dev-drprasad/delete-older-releases@v0.3.4
         with:
-          keep_latest: 1
+          keep_latest: 0
           delete_tags: true
           delete_tag_pattern: nightly
-          delete_prerelease_only: true
+          delete_prerelease_only: false
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
