@@ -28,17 +28,21 @@ const (
 	certificateOrgName = "cnoe.io"
 )
 
-func createIngressCertificateConfigMap(ctx context.Context, kubeClient client.Client, cert []byte) error {
-	cm := &corev1.ConfigMap{
+var (
+	certificateValidLength = time.Hour * 8766 // one year
+)
+
+func createIngressCertificateSecret(ctx context.Context, kubeClient client.Client, cert []byte) error {
+	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      globals.SelfSignedCertCMName,
 			Namespace: corev1.NamespaceDefault,
 		},
-		Data: map[string]string{
-			globals.SelfSignedCertCMKeyName: string(cert),
+		Data: map[string][]byte{
+			globals.SelfSignedCertCMKeyName: cert,
 		},
 	}
-	err := kubeClient.Create(ctx, cm)
+	err := kubeClient.Create(ctx, secret)
 	if err != nil {
 		if k8serrors.IsAlreadyExists(err) {
 			return nil
@@ -113,7 +117,7 @@ func createSelfSignedCertificate(sans []string) ([]byte, []byte, error) {
 
 	keyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
 	notBefore := time.Now()
-	notAfter := notBefore.Add(time.Hour * 8766) // one year
+	notAfter := notBefore.Add(certificateValidLength)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -191,8 +195,8 @@ func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubecli
 		return nil, err
 	}
 
-	logger.V(1).Info("Creating ConfigMap for certificate", "host", config.Host)
-	err = createIngressCertificateConfigMap(ctx, kubeclient, cert)
+	logger.V(1).Info("Creating secret for certificate", "host", config.Host)
+	err = createIngressCertificateSecret(ctx, kubeclient, cert)
 	if err != nil {
 		return nil, err
 	}
