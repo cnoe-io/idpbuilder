@@ -19,11 +19,11 @@ import (
 
 var (
 	// Flags
-	recreateCluster           bool
-	buildName                 string
-	kubeVersion               string
-	extraPortsMapping         string
-	kindConfigPath            string
+	recreateCluster   bool
+	buildName         string
+	kubeVersion       string
+	extraPortsMapping string
+	kindConfigPath    string
 	// TODO: Remove extraPackagesDirs after 0.6.0 release
 	extraPackagesDirs         []string
 	extraPackages             []string
