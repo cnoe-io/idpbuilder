@@ -25,7 +25,7 @@ jobs:
           fail-build: false
           path: "."
 
-      - name: Upload Trivy scan results to GitHub Security tab
+      - name: Upload scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
