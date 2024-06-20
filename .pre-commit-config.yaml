@@ -8,4 +8,4 @@ repos:
     rev: v2.2.6
     hooks:
       - id: codespell
-        args: ["--skip=*.excalidraw,*.git,*.png,*.jpg,*.svg,go.sum,go.mod"]
+        args: ["--skip=*.excalidraw,*.git,*.png,*.jpg,*.svg,go.sum,go.mod,./pkg/controllers/localbuild/resources"]
