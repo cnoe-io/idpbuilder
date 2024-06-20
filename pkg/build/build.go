@@ -172,6 +172,12 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	defer os.RemoveAll(dir)
 	setupLog.V(1).Info("Created temp directory for cloning repositories", "dir", dir)
 
+	setupLog.Info("Setting up CoreDNS")
+	err = setupCoreDNS(ctx, kubeClient, b.scheme, b.cfg)
+	if err != nil {
+		return err
+	}
+
 	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {
 		setupLog.Error(err, "Error running controllers")
