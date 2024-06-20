@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-conf-default
+  namespace: kube-system
+data:
+  default.conf: |
+    # subdomain names resolves to ingress IP. e.g. gitea.cnoe.localtest.me becomes ingress-nginx-controller.ingress-nginx.svc.cluster.local
+    rewrite stop {
+        name regex (.*).{{ .Host }} ingress-nginx-controller.ingress-nginx.svc.cluster.local
+    }
+    # host name resolves to ingress IP
+    rewrite name exact {{ .Host }} ingress-nginx-controller.ingress-nginx.svc.cluster.local
