@@ -50,5 +50,5 @@ jobs:
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
-            const { data: { id } } = await github.rest.repos.getReleaseByTag({ ${{ github.repository_owner }}, ${{ github.repository }}, ${{ env.PREVIOUS_NIGHTLY_TAG }} })
-            await github.repos.deleteRelease({ ${{ github.repository_owner }}, ${{ github.repository }}, release_id: id })
+            const { data: { id } } = await github.rest.repos.getReleaseByTag({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, ${{ env.PREVIOUS_NIGHTLY_TAG }} })
+            await github.repos.deleteRelease({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, release_id: id })
