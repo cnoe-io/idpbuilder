@@ -38,10 +38,7 @@ jobs:
           TAG="${MAJOR_VERSION}.${MINOR_VERSION}.0-nightly.$(date +'%Y%m%d')"
           git tag -a $TAG -m "$TAG: nightly build"
           git push origin $TAG
-      - name: Set PREVIOUS_TAG in actual release
-        if: ${{ !contains(github.ref, '-nightly') }}
-        # find previous tag by filtering out nightly tags and choosing the
-        # second to last tag (last one is the current release)
+      - name: Find previous nightly
         run: |
           prev_tag=$(git tag | grep "nightly" | sort -r --version-sort | head -n 2 | tail -n 1)
           echo "PREVIOUS_NIGHTLY_TAG=$prev_tag" >> $GITHUB_ENV
@@ -51,13 +48,14 @@ jobs:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
             const latestRelease = await github.rest.repos.getReleaseByTag({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, ${{ env.PREVIOUS_NIGHTLY_TAG }} })
+            console.log(latestRelease)
             if (latestRelease && latestRelease.data && latestRelease.data.id) {
               await github.rest.repos.deleteRelease({
-              ${{ github.repository_owner }},
-              ${{ github.event.repository.name }},
-              release_id: latestRelease.data.id,
-            });
-            console.log(`Release id ${latestRelease.data.id} has been deleted.`);
+                ${{ github.repository_owner }},
+                ${{ github.event.repository.name }},
+                release_id: latestRelease.data.id,
+              });
+              console.log(`Release id ${latestRelease.data.id} has been deleted.`);
             } else {
               console.log("No latest release found or failed to retrieve it.");
             }
