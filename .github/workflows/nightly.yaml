@@ -38,12 +38,18 @@ jobs:
           TAG="${MAJOR_VERSION}.${MINOR_VERSION}.0-nightly.$(date +'%Y%m%d')"
           git tag -a $TAG -m "$TAG: nightly build"
           git push origin $TAG
+      - name: Set PREVIOUS_TAG in actual release
+        if: ${{ !contains(github.ref, '-nightly') }}
+        # find previous tag by filtering out nightly tags and choosing the
+        # second to last tag (last one is the current release)
+        run: |
+          prev_tag=$(git tag | grep -v "nightly" | sort -r --version-sort | head -n 2 | tail -n 1)
+          echo "PREVIOUS_TAG=$prev_tag" >> $GITHUB_ENV
       - name: 'Clean up nightly releases'
-        uses: dev-drprasad/delete-older-releases@v0.3.4
+        uses: actions/github-script@v4
         with:
-          keep_latest: 0
-          delete_tags: true
-          delete_tag_pattern: nightly
-          delete_prerelease_only: false
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const { owner, repo } = context.repo
+            const { data: { id } } = await github.repos.getReleaseByTag({ owner, repo, ['PREVIOUS_TAG'] })
+            await github.repos.deleteRelease({ owner, repo, release_id: id })
