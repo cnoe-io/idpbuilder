@@ -20,6 +20,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -79,8 +80,10 @@ type fakeClient struct {
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	s := obj.(*v1.Secret)
 	s.Data = map[string][]byte{
-		giteaAdminUsernameKey: []byte("abc"),
-		giteaAdminPasswordKey: []byte("abc"),
+		giteaAdminUsernameKey:   []byte("abc"),
+		giteaAdminPasswordKey:   []byte("abc"),
+		corev1.TLSCertKey:       []byte("abc"),
+		corev1.TLSPrivateKeyKey: []byte("abc"),
 	}
 	return nil
 }

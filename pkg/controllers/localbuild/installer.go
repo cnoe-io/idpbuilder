@@ -62,13 +62,8 @@ func (e *EmbeddedInstallation) Install(ctx context.Context, resource *v1alpha1.L
 		return ctrl.Result{}, err
 	}
 
-	// Ensure namespace exists
-	newNS := e.newNamespace(e.namespace)
-	if err = cli.Get(ctx, types.NamespacedName{Name: e.namespace}, newNS); err != nil {
-		// We got an error so try creating the NS
-		if err = cli.Create(ctx, newNS); err != nil {
-			return ctrl.Result{}, err
-		}
+	if err = k8s.EnsureNamespace(ctx, nsClient, e.namespace); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	for i := range e.unmanagedResources {

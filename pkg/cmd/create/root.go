@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
@@ -53,7 +54,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
 
 	// in-cluster resources related flags
-	CreateCmd.PersistentFlags().StringVar(&host, "host", "cnoe.localtest.me", "Host name to access resources in this cluster.")
+	CreateCmd.PersistentFlags().StringVar(&host, "host", globals.DefaultHostName, "Host name to access resources in this cluster.")
 	CreateCmd.PersistentFlags().StringVar(&ingressHost, "ingress-host-name", "", "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions.")
 	CreateCmd.PersistentFlags().StringVar(&protocol, "protocol", "https", "Protocol to use to access web UIs. http or https.")
 	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", "Port number under which idpBuilder tools are accessible.")
