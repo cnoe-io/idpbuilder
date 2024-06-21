@@ -50,5 +50,14 @@ jobs:
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
-            const { data: { id } } = await github.rest.repos.getReleaseByTag({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, ${{ env.PREVIOUS_NIGHTLY_TAG }} })
-            await github.rest.repos.deleteRelease({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, release_id: id })
+            const latestRelease = await github.rest.repos.getReleaseByTag({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, ${{ env.PREVIOUS_NIGHTLY_TAG }} })
+            if (latestRelease && latestRelease.data && latestRelease.data.id) {
+              await github.rest.repos.deleteRelease({
+              ${{ github.repository_owner }},
+              ${{ github.event.repository.name }},
+              release_id: latestRelease.data.id,
+            });
+            console.log(`Release id ${latestRelease.data.id} has been deleted.`);
+            } else {
+              console.log("No latest release found or failed to retrieve it.");
+            }
