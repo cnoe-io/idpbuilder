@@ -28,7 +28,7 @@ const (
 	giteaIngressURL = "%s://gitea.cnoe.localtest.me:%s"
 	// this is the URL accessible within cluster for ArgoCD to fetch resources.
 	// resolves to cluster ip
-	giteaSvcURL = "http://my-gitea-http.gitea.svc.cluster.local:3000"
+	giteaSvcURL = "%s://%s%s:%s%s"
 )
 
 //go:embed resources/gitea/k8s/*
@@ -116,7 +116,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 	}
 
 	resource.Status.Gitea.ExternalURL = baseUrl
-	resource.Status.Gitea.InternalURL = giteaSvcURL
+	resource.Status.Gitea.InternalURL = giteaInternalBaseUrl(r.Config)
 	resource.Status.Gitea.AdminUserSecretName = giteaAdminSecret
 	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace
 	resource.Status.Gitea.Available = true
@@ -125,4 +125,12 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 
 func giteaBaseUrl(config util.CorePackageTemplateConfig) string {
 	return fmt.Sprintf(giteaIngressURL, config.Protocol, config.Port)
+}
+
+// gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
+func giteaInternalBaseUrl(config util.CorePackageTemplateConfig) string {
+	if config.UsePathRouting {
+		return fmt.Sprintf(giteaSvcURL, config.Protocol, "", config.Host, config.Port, "/gitea")
+	}
+	return fmt.Sprintf(giteaSvcURL, config.Protocol, "gitea.", config.Host, config.Port, "")
 }
