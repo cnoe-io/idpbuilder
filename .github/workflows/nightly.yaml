@@ -47,17 +47,16 @@ jobs:
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
-            const PREVIOUS_NIGHTLY_TAG = process.env
             const latestRelease = await github.rest.repos.getReleaseByTag({ 
-              owner: ${{ github.repository_owner }}, 
-              repo: ${{ github.event.repository.name }}, 
-              tag: "v0.6.0-nightly.20240623"
+              owner: "${{ github.repository_owner }}", 
+              repo: "${{ github.event.repository.name }}", 
+              tag: "${{ env.PREVIOUS_NIGHTLY_TAG }}"
             });
             console.log(`Release ${latestRelease}`);
             if (latestRelease && latestRelease.data && latestRelease.data.id) {
               await github.rest.repos.deleteRelease({
-                owner: ${{ github.repository_owner }},
-                repo: ${{ github.event.repository.name }},
+                owner: "${{ github.repository_owner }}",
+                repo: "${{ github.event.repository.name }}",
                 release_id: latestRelease.data.id,
               });
               console.log(`Release id ${latestRelease.data.id} has been deleted.`);
