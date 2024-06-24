@@ -47,7 +47,7 @@ jobs:
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
-            const latestRelease = await github.rest.repos.getReleaseByTag({ ${{ github.repository_owner }}, ${{ github.event.repository.name }}, ${{ env.PREVIOUS_NIGHTLY_TAG }} })
+            const latestRelease = await github.rest.repos.getRelease({ owner: ${{ github.repository_owner }}, repo: ${{ github.event.repository.name }}, title: ${{ env.PREVIOUS_NIGHTLY_TAG }} })
             console.log(`Release ${latestRelease}`);
             if (latestRelease && latestRelease.data && latestRelease.data.id) {
               await github.rest.repos.deleteRelease({
