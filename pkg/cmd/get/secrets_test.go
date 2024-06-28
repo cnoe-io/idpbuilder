@@ -144,7 +144,7 @@ func TestOutput(t *testing.T) {
 	ctx := context.Background()
 	r, _ := labels.NewRequirement(v1alpha1.CLISecretLabelKey, selection.Equals, []string{v1alpha1.CLISecretLabelValue})
 
-	corePkgData := map[string]TemplateData{
+	corePkgData := map[string]SecretTemplateData{
 		argoCDInitialAdminSecretName: {
 			Name:      argoCDInitialAdminSecretName,
 			Namespace: "argocd",
@@ -163,7 +163,7 @@ func TestOutput(t *testing.T) {
 		},
 	}
 
-	packageData := map[string]TemplateData{
+	packageData := map[string]SecretTemplateData{
 		"name1": {
 			Name:      "name1",
 			Namespace: "ns1",
@@ -217,7 +217,7 @@ func TestOutput(t *testing.T) {
 	assert.Nil(t, err)
 
 	// verify received json data
-	var received []TemplateData
+	var received []SecretTemplateData
 	err = json.Unmarshal(buffer.Bytes(), &received)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(received))
@@ -243,7 +243,7 @@ func TestOutput(t *testing.T) {
 	assert.Equal(t, 0, len(packageData))
 }
 
-func templateDataToSecret(data TemplateData) v1.Secret {
+func templateDataToSecret(data SecretTemplateData) v1.Secret {
 	d := make(map[string][]byte)
 	for k := range data.Data {
 		d[k] = []byte(data.Data[k])

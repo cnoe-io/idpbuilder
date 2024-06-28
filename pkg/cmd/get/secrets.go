@@ -2,7 +2,6 @@ package get
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -31,9 +30,6 @@ const (
 	giteaAdminSecretName         = "gitea-credential"
 )
 
-//go:embed templates
-var templates embed.FS
-
 var SecretsCmd = &cobra.Command{
 	Use:   "secrets",
 	Short: "retrieve secrets from the cluster",
@@ -47,7 +43,7 @@ var corePkgSecrets = map[string][]string{
 	"gitea":  []string{giteaAdminSecretName},
 }
 
-type TemplateData struct {
+type SecretTemplateData struct {
 	Name      string            `json:"name"`
 	Namespace string            `json:"namespace"`
 	Data      map[string]string `json:"data"`
@@ -197,8 +193,8 @@ func printOutput(templatePath string, outWriter io.Writer, data []any, format st
 	}
 }
 
-func secretToTemplateData(s v1.Secret) TemplateData {
-	data := TemplateData{
+func secretToTemplateData(s v1.Secret) SecretTemplateData {
+	data := SecretTemplateData{
 		Name:      s.Name,
 		Namespace: s.Namespace,
 		Data:      make(map[string]string),
