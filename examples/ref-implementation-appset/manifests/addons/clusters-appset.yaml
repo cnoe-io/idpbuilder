@@ -1,0 +1,37 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: clusters
+spec:
+  generators:
+    - clusters:
+        selector:
+          matchExpressions:
+            - key: akuity.io/argo-cd-cluster-name
+              operator: NotIn
+              values: [in-cluster]
+  template:
+    metadata:
+      name: cluster-{{name}}
+    spec:
+      project: default
+      source:
+        repoURL: '{{metadata.annotations.addons_repo_url}}'
+        targetRevision: '{{metadata.annotations.addons_repo_revision}}'
+        path: environments/{{name}}
+        directory:
+          recurse: true
+          exclude: addons/*
+      destination:
+        name: '{{name}}'
+        namespace: '*'
+      syncPolicy:
+        retry:
+          backoff:
+            duration: 2m
+            factor: 2
+            maxDuration: 60m
+          limit: 100
+        automated:
+          allowEmpty: true

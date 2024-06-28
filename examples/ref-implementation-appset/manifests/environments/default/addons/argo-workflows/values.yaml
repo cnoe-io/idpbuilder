@@ -1,0 +1,25 @@
+# Helm chart values
+controller:
+  workflowNamespaces:
+    - default
+  metricsConfig:
+    enabled: true
+workflow:
+  serviceAccount:
+    # -- Specifies whether a service account should be created in namespaces controller.workflowNamespaces
+    create: true
+server:
+  # -- Run the argo server in "secure" mode. Configure this value instead of `--secure` in extraArgs.
+  ## See the following documentation for more details on secure mode:
+  ## https://argoproj.github.io/argo-workflows/tls/
+  secure: false
+  # -- A list of supported authentication modes. Available values are `server`, `client`, or `sso`. If you provide sso, please configure `.Values.server.sso` as well.
+  ## Ref: https://argoproj.github.io/argo-workflows/argo-server-auth-mode/
+  authModes: []
+  extraEnv:
+    - name: FIRST_TIME_USER_MODAL
+      value: "false"
+    - name: FEEDBACK_MODAL
+      value: "false"
+    - name: NEW_VERSION_MODAL
+      value: "false"
