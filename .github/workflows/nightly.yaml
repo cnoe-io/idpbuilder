@@ -1,0 +1,65 @@
+name: nightly
+on:
+  # This can be used to automatically publish nightlies at UTC nighttime
+  schedule:
+    - cron: '0 7 * * *' # run at 7 AM UTC
+  # This can be used to allow manually triggering nightlies from the web interface
+  workflow_dispatch:
+
+jobs:
+  nightly:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.CNOE_GH_WORKFLOW_TOKEN_APP_ID }}
+          private-key: ${{ secrets.CNOE_GH_WORKFLOW_TOKEN_PRIVATE_KEY }}
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          fetch-depth: 0
+
+      - run: git fetch --force --tags
+      -
+        name: 'Push new tag'
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+          # A previous release was created using a lightweight tag
+          # git describe by default includes only annotated tags
+          # git describe --tags includes lightweight tags as well
+          DESCRIBE=`git tag -l --sort=-v:refname | grep -v nightly | head -n 1`
+          MAJOR_VERSION=`echo $DESCRIBE | awk '{split($0,a,"."); print a[1]}'`
+          MINOR_VERSION=`echo $DESCRIBE | awk '{split($0,a,"."); print a[2]}'`
+          MINOR_VERSION="$((${MINOR_VERSION} + 1))"
+          TAG="${MAJOR_VERSION}.${MINOR_VERSION}.0-nightly.$(date +'%Y%m%d')"
+          git tag -a $TAG -m "$TAG: nightly build"
+          git push origin $TAG
+      - name: Find previous nightly
+        run: |
+          prev_tag=$(git tag | grep "nightly" | sort -r --version-sort | head -n 2 | tail -n 1)
+          echo "PREVIOUS_NIGHTLY_TAG=$prev_tag" >> $GITHUB_ENV
+      - name: 'Clean up nightly releases'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const latestRelease = await github.rest.repos.getReleaseByTag({ 
+              owner: "${{ github.repository_owner }}", 
+              repo: "${{ github.event.repository.name }}", 
+              tag: "${{ env.PREVIOUS_NIGHTLY_TAG }}"
+            });
+            console.log(`Release ${latestRelease}`);
+            if (latestRelease && latestRelease.data && latestRelease.data.id) {
+              await github.rest.repos.deleteRelease({
+                owner: "${{ github.repository_owner }}",
+                repo: "${{ github.event.repository.name }}",
+                release_id: latestRelease.data.id,
+              });
+              console.log(`Release id ${latestRelease.data.id} has been deleted.`);
+            } else {
+              console.log("No latest release found or failed to retrieve it.");
+            }
