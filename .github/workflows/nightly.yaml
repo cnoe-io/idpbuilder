@@ -38,6 +38,7 @@ jobs:
           TAG="${MAJOR_VERSION}.${MINOR_VERSION}.0-nightly.$(date +'%Y%m%d')"
           git tag -a $TAG -m "$TAG: nightly build"
           git push origin $TAG
+          git push --delete origin $prev_tag
       - name: Find previous nightly
         run: |
           prev_tag=$(git tag | grep "nightly" | sort -r --version-sort | head -n 2 | tail -n 1)
