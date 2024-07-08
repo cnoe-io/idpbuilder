@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -29,6 +31,7 @@ var (
 	extraPackagesDirs         []string
 	extraPackages             []string
 	packageCustomizationFiles []string
+	packageParamsFile         string
 	noExit                    bool
 	protocol                  string
 	host                      string
@@ -63,7 +66,8 @@ func init() {
 	CreateCmd.Flags().StringSliceVar(&extraPackagesDirs, "package-dir", []string{}, "Paths to directories containing custom packages")
 	CreateCmd.Flags().MarkDeprecated("package-dir", "use --package instead")
 	CreateCmd.Flags().StringSliceVarP(&extraPackages, "package", "p", []string{}, "Paths to locations containing custom packages")
-	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, "Name of the package and the path to file to customize the package with. e.g. argocd:/tmp/argocd.yaml")
+	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, "Name of the package and the path to file to customize a core package with. e.g. argocd:/tmp/argocd.yaml")
+	CreateCmd.Flags().StringVarP(&packageParamsFile, "package-params-file", "F", "", "Path to file containing parameters for custom packages.")
 	// idpbuilder related flags
 	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")
 }
@@ -91,6 +95,7 @@ func create(cmd *cobra.Command, args []string) error {
 
 	var absDirPaths []string
 	var remotePaths []string
+	var customPackageParams map[string]any
 
 	// TODO: Remove this block after deprecation
 	if len(extraPackagesDirs) > 0 {
@@ -111,9 +116,17 @@ func create(cmd *cobra.Command, args []string) error {
 		remotePaths = r
 	}
 
+	if packageParamsFile != "" {
+		c, err := getPackageCustomizationFile(packageParamsFile)
+		if err != nil {
+			return fmt.Errorf("getting package customization from file %s : %w", packageParamsFile, err)
+		}
+		customPackageParams = c
+	}
+
 	o := make(map[string]v1alpha1.PackageCustomization)
 	for i := range packageCustomizationFiles {
-		c, pErr := getPackageCustomFile(packageCustomizationFiles[i])
+		c, pErr := getCorePackageCustomFile(packageCustomizationFiles[i])
 		if pErr != nil {
 			return pErr
 		}
@@ -132,13 +145,7 @@ func create(cmd *cobra.Command, args []string) error {
 		KindConfigPath:    kindConfigPath,
 		ExtraPortsMapping: extraPortsMapping,
 
-		TemplateData: util.CorePackageTemplateConfig{
-			Protocol:       protocol,
-			Host:           host,
-			IngressHost:    ingressHost,
-			Port:           port,
-			UsePathRouting: pathRouting,
-		},
+		TemplateData: util.NewPackageTemplateConfig(protocol, host, ingressHost, port, pathRouting, customPackageParams),
 
 		CustomPackageDirs:    absDirPaths,
 		CustomPackageUrls:    remotePaths,
@@ -181,17 +188,16 @@ func validate() error {
 	}
 
 	for i := range packageCustomizationFiles {
-		_, pErr := getPackageCustomFile(packageCustomizationFiles[i])
+		_, pErr := getCorePackageCustomFile(packageCustomizationFiles[i])
 		if pErr != nil {
 			return pErr
 		}
 	}
-
 	_, _, err = helpers.ParsePackageStrings(extraPackagesDirs)
 	return err
 }
 
-func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
+func getCorePackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
 	// the format should be `<package-name>:<path-to-file>`
 	s := strings.Split(input, ":")
 	if len(s) != 2 {
@@ -218,4 +224,24 @@ func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
 		Name:     name,
 		FilePath: paths[0],
 	}, nil
+}
+
+func getPackageCustomizationFile(input string) (map[string]any, error) {
+	absPath, err := helpers.GetAbsPath(input, false)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var conf map[string]any
+	err = yaml.Unmarshal(b, &conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return conf, nil
 }

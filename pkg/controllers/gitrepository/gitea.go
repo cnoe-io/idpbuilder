@@ -28,7 +28,7 @@ type giteaProvider struct {
 	client.Client
 	Scheme      *runtime.Scheme
 	giteaClient GiteaClient
-	config      util.CorePackageTemplateConfig
+	config      util.PackageTemplateConfig
 }
 
 func (g *giteaProvider) createRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error) {
@@ -110,14 +110,14 @@ func (g *giteaProvider) updateRepoContent(
 	case v1alpha1.SourceTypeLocal, v1alpha1.SourceTypeEmbedded:
 		return reconcileLocalRepoContent(ctx, repo, repoInfo, creds, g.Scheme, g.config, tmpDir, repoMap)
 	case v1alpha1.SourceTypeRemote:
-		return reconcileRemoteRepoContent(ctx, repo, repoInfo, creds, tmpDir, repoMap)
+		return reconcileRemoteRepoContent(ctx, repo, repoInfo, creds, g.config, tmpDir, repoMap)
 	default:
 		return nil
 	}
 }
 
-func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config util.CorePackageTemplateConfig, scheme *runtime.Scheme) error {
-	if repo.Spec.Source.EmbeddedAppName != "" {
+func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config any, scheme *runtime.Scheme) error {
+	if repo.Spec.Source.Type == v1alpha1.SourceTypeEmbedded {
 		resources, err := localbuild.GetEmbeddedRawInstallResources(
 			repo.Spec.Source.EmbeddedAppName, config,
 			v1alpha1.PackageCustomization{Name: repo.Spec.Customization.Name, FilePath: repo.Spec.Customization.FilePath}, scheme)
@@ -134,8 +134,7 @@ func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config util
 		}
 		return nil
 	}
-
-	err := util.CopyDirectory(repo.Spec.Source.Path, dstPath)
+	err := util.CopyDirectory(repo.Spec.Source.Path, dstPath, config)
 	if err != nil {
 		return fmt.Errorf("copying files: %w", err)
 	}

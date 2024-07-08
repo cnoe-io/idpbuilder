@@ -40,7 +40,7 @@ type LocalbuildReconciler struct {
 	CancelFunc     context.CancelFunc
 	ExitOnSync     bool
 	shouldShutdown bool
-	Config         util.CorePackageTemplateConfig
+	Config         util.PackageTemplateConfig
 	TempDir        string
 	RepoMap        *util.RepoMap
 }
@@ -434,7 +434,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resour
 
 		rErr := r.reconcileCustomPkg(ctx, resource, b, yamlFile, remote)
 		if rErr != nil {
-			logger.Error(rErr, "reconciling custom pkg", "file", yamlFile, "pkgUrl", pkgUrl)
+			logger.V(1).Info("reconciling custom pkg", "file", yamlFile, "pkgUrl", pkgUrl, "error", rErr)
 		}
 	}
 	return ctrl.Result{}, nil
@@ -463,7 +463,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 
 		rErr := r.reconcileCustomPkg(ctx, resource, b, filePath, nil)
 		if rErr != nil {
-			logger.Error(rErr, "reconciling custom pkg", "file", filePath, "pkgDir", pkgDir)
+			logger.V(1).Info("reconciling custom pkg", "file", filePath, "pkgDir", pkgDir, "error", rErr)
 		}
 	}
 

@@ -182,7 +182,7 @@ func CloneRemoteRepoToDir(ctx context.Context, remote v1alpha1.RemoteRepositoryS
 	return wt.Filesystem, repo, nil
 }
 
-func CopyTreeToTree(srcWT, dstWT billy.Filesystem, srcPath, dstPath string) error {
+func CopyTreeToTree(srcWT, dstWT billy.Filesystem, srcPath, dstPath string, templateData any) error {
 	files, err := srcWT.ReadDir(srcPath)
 	if err != nil {
 		return err
@@ -193,7 +193,7 @@ func CopyTreeToTree(srcWT, dstWT billy.Filesystem, srcPath, dstPath string) erro
 		fullSrcPath := filepath.Join(srcPath, srcFile.Name())
 		fullDstPath := filepath.Join(dstPath, srcFile.Name())
 		if srcFile.Mode().IsRegular() {
-			cErr := CopyWTFile(srcWT, dstWT, fullSrcPath, fullDstPath)
+			cErr := CopyWTFile(srcWT, dstWT, fullSrcPath, fullDstPath, templateData)
 			if cErr != nil {
 				return cErr
 			}
@@ -201,7 +201,7 @@ func CopyTreeToTree(srcWT, dstWT billy.Filesystem, srcPath, dstPath string) erro
 		}
 
 		if srcFile.IsDir() {
-			dErr := CopyTreeToTree(srcWT, dstWT, fullSrcPath, fullDstPath)
+			dErr := CopyTreeToTree(srcWT, dstWT, fullSrcPath, fullDstPath, templateData)
 			if dErr != nil {
 				return dErr
 			}
@@ -210,20 +210,29 @@ func CopyTreeToTree(srcWT, dstWT billy.Filesystem, srcPath, dstPath string) erro
 	return nil
 }
 
-func CopyWTFile(srcWT, dstWT billy.Filesystem, srcFile, dstFile string) error {
+func CopyWTFile(srcWT, dstWT billy.Filesystem, srcFile, dstFile string, templateData any) error {
 	newFile, err := dstWT.Create(dstFile)
 	if err != nil {
 		return fmt.Errorf("creating file %s: %w", dstFile, err)
 	}
 	defer newFile.Close()
-
 	srcF, err := srcWT.Open(srcFile)
 	if err != nil {
-		return fmt.Errorf("reading file %s: %w", srcFile, err)
+		return fmt.Errorf("opening file %s: %w", srcFile, err)
 	}
 	defer srcF.Close()
 
-	_, err = io.Copy(newFile, srcF)
+	srcB, err := io.ReadAll(srcF)
+	if err != nil {
+		return fmt.Errorf("reading file %s: %w", srcFile, err)
+	}
+
+	rendered, err := ApplyTemplateWithCustomDelim(srcB, templateData)
+	if err != nil {
+		return fmt.Errorf("applying template %s: %w", srcFile, err)
+	}
+
+	_, err = io.WriteString(newFile, string(rendered))
 	if err != nil {
 		return fmt.Errorf("copying file %s: %w", srcFile, err)
 	}

@@ -31,7 +31,7 @@ type Reconciler struct {
 	client.Client
 	Recorder record.EventRecorder
 	Scheme   *runtime.Scheme
-	Config   util.CorePackageTemplateConfig
+	Config   util.PackageTemplateConfig
 	TempDir  string
 	RepoMap  *util.RepoMap
 }

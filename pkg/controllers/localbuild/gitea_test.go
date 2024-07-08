@@ -8,7 +8,7 @@ import (
 )
 
 func TestGiteaInternalBaseUrl(t *testing.T) {
-	c := util.CorePackageTemplateConfig{
+	c := util.PackageTemplateConfig{
 		Protocol:       "http",
 		Port:           "8080",
 		Host:           "cnoe.localtest.me",

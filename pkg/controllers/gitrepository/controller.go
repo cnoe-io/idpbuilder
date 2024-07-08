@@ -44,13 +44,13 @@ type RepositoryReconciler struct {
 	client.Client
 	Recorder        record.EventRecorder
 	Scheme          *runtime.Scheme
-	Config          util.CorePackageTemplateConfig
+	Config          util.PackageTemplateConfig
 	GitProviderFunc gitProviderFunc
 	TempDir         string
 	RepoMap         *util.RepoMap
 }
 
-type gitProviderFunc func(context.Context, *v1alpha1.GitRepository, client.Client, *runtime.Scheme, util.CorePackageTemplateConfig) (gitProvider, error)
+type gitProviderFunc func(context.Context, *v1alpha1.GitRepository, client.Client, *runtime.Scheme, util.PackageTemplateConfig) (gitProvider, error)
 
 type notFoundError struct{}
 
@@ -70,7 +70,7 @@ func getFallbackRepositoryURL(repo *v1alpha1.GitRepository, info repoInfo) strin
 	return fmt.Sprintf("%s/%s.git", repo.Spec.Provider.GitURL, info.fullName)
 }
 
-func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
+func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.PackageTemplateConfig) (gitProvider, error) {
 	switch repo.Spec.Provider.Name {
 	case v1alpha1.GitProviderGitea:
 		tr := &http.Transport{
@@ -236,7 +236,7 @@ func pushToRemote(ctx context.Context, remoteRepo *git.Repository, creds gitProv
 }
 
 // add files from local fs to target repository (gitea for now)
-func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig, tmpDir string, repoMap *util.RepoMap) error {
+func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, scheme *runtime.Scheme, tmplConfig util.PackageTemplateConfig, tmpDir string, repoMap *util.RepoMap) error {
 	logger := log.FromContext(ctx)
 	tgtCloneDir := util.RepoDir(tgtRepo.cloneUrl, tmpDir)
 
@@ -256,7 +256,7 @@ func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository
 		return fmt.Errorf("cloning repo %s: %w", tgtRepoSpec.Url, err)
 	}
 
-	err = writeRepoContents(repo, tgtCloneDir, tmplConfig, scheme)
+	err = writeRepoContents(repo, tgtCloneDir, tmplConfig.Data, scheme)
 	if err != nil {
 		return fmt.Errorf("writing repo contents: %w", err)
 	}
@@ -287,7 +287,7 @@ func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository
 }
 
 // add files from another repository at specified path to target repository (gitea for now)
-func reconcileRemoteRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, tmpDir string, repoMap *util.RepoMap) error {
+func reconcileRemoteRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, templateData any, tmpDir string, repoMap *util.RepoMap) error {
 	logger := log.FromContext(ctx)
 	srcRepo := repo.Spec.Source.RemoteRepository
 	cloneDir := util.RepoDir(srcRepo.Url, tmpDir)
@@ -321,7 +321,7 @@ func reconcileRemoteRepoContent(ctx context.Context, repo *v1alpha1.GitRepositor
 		return fmt.Errorf("cloning repo %s: %w", srcRepo.Url, err)
 	}
 
-	err = util.CopyTreeToTree(remoteWT, tgtRepoWT, fmt.Sprintf("/%s", repo.Spec.Source.Path), ".")
+	err = util.CopyTreeToTree(remoteWT, tgtRepoWT, fmt.Sprintf("/%s", repo.Spec.Source.Path), ".", templateData)
 	if err != nil {
 		return fmt.Errorf("copying contents, %s: %w", tgtRepo.cloneUrl, err)
 	}

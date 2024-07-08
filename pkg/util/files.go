@@ -3,14 +3,27 @@ package util
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 )
 
-func CopyDirectory(scrDir, dest string) error {
+const (
+	LeftGoTemplateDelim  = "#{"
+	RightGoTemplateDelim = "}#"
+)
+
+var (
+	templateFuncMap = template.FuncMap{
+		"indentNewLines": templateIndentNewlines,
+	}
+	templateParser = template.New("template").Funcs(templateFuncMap).
+			Delims(LeftGoTemplateDelim, RightGoTemplateDelim).
+			Option("missingkey=error")
+)
+
+func CopyDirectory(scrDir, dest string, templateData any) error {
 	entries, err := os.ReadDir(scrDir)
 	if err != nil {
 		return err
@@ -29,13 +42,13 @@ func CopyDirectory(scrDir, dest string) error {
 			if err := CreateIfNotExists(destPath, 0755); err != nil {
 				return err
 			}
-			if err := CopyDirectory(sourcePath, destPath); err != nil {
+			if err := CopyDirectory(sourcePath, destPath, templateData); err != nil {
 				return err
 			}
 		case os.ModeSymlink:
 			continue
 		default:
-			if err := Copy(sourcePath, destPath); err != nil {
+			if err := Copy(sourcePath, destPath, templateData); err != nil {
 				return err
 			}
 		}
@@ -51,27 +64,18 @@ func CopyDirectory(scrDir, dest string) error {
 	return nil
 }
 
-func Copy(srcFile, dstFile string) error {
-	out, err := os.Create(dstFile)
+func Copy(srcFile, dstFile string, templateData any) error {
+	inB, err := os.ReadFile(srcFile)
 	if err != nil {
 		return err
 	}
 
-	defer out.Close()
-
-	in, err := os.Open(srcFile)
+	rendered, err := ApplyTemplateWithCustomDelim(inB, templateData)
 	if err != nil {
-		return err
+		return fmt.Errorf("applying template: %w", err)
 	}
 
-	defer in.Close()
-
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(dstFile, rendered, 0644)
 }
 
 func Exists(filePath string) bool {
@@ -103,13 +107,27 @@ func ApplyTemplate(in []byte, templateData any) ([]byte, error) {
 		return nil, err
 	}
 
-	// Execute the template with the file content and write the output to the destination file
+	// Execute the template with the file content and write the output
 	ret := bytes.Buffer{}
 	err = t.Execute(&ret, templateData)
 	if err != nil {
 		return nil, err
 	}
 
+	return ret.Bytes(), nil
+}
+
+func ApplyTemplateWithCustomDelim(in []byte, templateData any) ([]byte, error) {
+	t, err := templateParser.Parse(string(in))
+	if err != nil {
+		return nil, err
+	}
+
+	ret := bytes.Buffer{}
+	err = t.Execute(&ret, templateData)
+	if err != nil {
+		return nil, err
+	}
 	return ret.Bytes(), nil
 }
 

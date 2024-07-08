@@ -18,7 +18,7 @@ func RunControllers(
 	exitCh chan error,
 	ctxCancel context.CancelFunc,
 	exitOnSync bool,
-	cfg util.CorePackageTemplateConfig,
+	cfg util.PackageTemplateConfig,
 	tmpDir string,
 ) error {
 	logger := log.FromContext(ctx)
