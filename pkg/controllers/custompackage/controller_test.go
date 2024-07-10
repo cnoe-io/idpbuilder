@@ -465,6 +465,70 @@ func TestReconcileCustomPkgAppSet(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: v1alpha1.CustomPackage{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test4",
+					Namespace: "test",
+					UID:       "test4",
+				},
+				Spec: v1alpha1.CustomPackageSpec{
+					Replicate:           true,
+					GitServerURL:        "https://cnoe.io",
+					InternalGitServeURL: "http://internal.cnoe.io",
+					ArgoCD: v1alpha1.ArgoCDPackageSpec{
+						ApplicationFile: filepath.Join(cwd, "test/resources/customPackages/applicationSet/generator-matrix.yaml"),
+						Type:            "ApplicationSet",
+					},
+				},
+			},
+			expectedGitRepo: v1alpha1.GitRepository{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      localRepoName("generator-matrix", "test/resources/customPackages/applicationSet/test1"),
+					Namespace: "test",
+				},
+				Spec: v1alpha1.GitRepositorySpec{
+					Source: v1alpha1.GitRepositorySource{
+						Type: "local",
+						Path: filepath.Join(cwd, "test/resources/customPackages/applicationSet/test1"),
+					},
+					Provider: v1alpha1.Provider{
+						Name:             v1alpha1.GitProviderGitea,
+						GitURL:           "https://cnoe.io",
+						InternalGitURL:   "http://internal.cnoe.io",
+						OrganizationName: v1alpha1.GiteaAdminUserName,
+					},
+				},
+			},
+			expectedApplicationSet: argov1alpha1.ApplicationSet{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "generator-matrix",
+					Namespace: "argocd",
+				},
+				Spec: argov1alpha1.ApplicationSetSpec{
+					Generators: []argov1alpha1.ApplicationSetGenerator{
+						{
+							Matrix: &argov1alpha1.MatrixGenerator{
+								Generators: []argov1alpha1.ApplicationSetNestedGenerator{
+									{
+										Git: &argov1alpha1.GitGenerator{
+											RepoURL: "",
+										},
+									},
+								},
+							},
+						},
+					},
+					Template: argov1alpha1.ApplicationSetTemplate{
+						Spec: argov1alpha1.ApplicationSpec{
+							Source: &argov1alpha1.ApplicationSource{
+								RepoURL: "",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for i := range cases {
@@ -501,6 +565,13 @@ func TestReconcileCustomPkgAppSet(t *testing.T) {
 				exg := tc.expectedApplicationSet.Spec.Generators[j]
 				if exg.Git != nil {
 					assert.Equal(t, exg.Git.RepoURL, appset.Spec.Generators[j].Git.RepoURL)
+				}
+				if exg.Matrix != nil {
+					for k := range exg.Matrix.Generators {
+						if exg.Matrix.Generators[k].Git != nil {
+							assert.Equal(t, exg.Matrix.Generators[k].Git.RepoURL, appset.Spec.Generators[j].Matrix.Generators[k].Git.RepoURL)
+						}
+					}
 				}
 			}
 		}

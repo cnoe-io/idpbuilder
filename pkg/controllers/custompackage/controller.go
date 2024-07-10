@@ -219,6 +219,23 @@ func (r *Reconciler) reconcileArgoCDAppSet(ctx context.Context, resource *v1alph
 				}
 			}
 		}
+		if g.Matrix != nil {
+			for j := range g.Matrix.Generators {
+				nestedGenerator := g.Matrix.Generators[j]
+				if nestedGenerator.Git != nil {
+					res, repo, gErr := r.reconcileArgoCDSource(ctx, resource, nestedGenerator.Git.RepoURL, appSet.GetName())
+					if gErr != nil {
+						return res, fmt.Errorf("reconciling git generator URL %s, %s: %w", nestedGenerator.Git.RepoURL, resource.Spec.ArgoCD.ApplicationFile, gErr)
+					}
+					if repo != nil {
+						nestedGenerator.Git.RepoURL = repo.Status.InternalGitRepositoryUrl
+						if repo.Status.InternalGitRepositoryUrl == "" {
+							notSyncedRepos += 1
+						}
+					}
+				}
+			}
+		}
 	}
 
 	gitGeneratorsSynced := notSyncedRepos == 0
