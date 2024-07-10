@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: generator-matrix
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: "cnoe://test1"
+              revision: HEAD
+              files:
+                - path: "**/config.yaml"
+  template:
+    metadata:
+      name: "{{ .name }}"
+      labels:
+        environment: "{{ .environment }}"
+    spec:
+      project: default
+      source:
+        repoURL: "cnoe://test1"
+        targetRevision: HEAD
+        path: "{{ .manifestPath }}/manifests"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .namespace }}"
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
