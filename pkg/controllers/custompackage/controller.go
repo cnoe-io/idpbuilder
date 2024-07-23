@@ -2,6 +2,7 @@ package custompackage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -165,10 +166,16 @@ func (r *Reconciler) reconcileArgoCDApp(ctx context.Context, resource *v1alpha1.
 		notSyncedRepos := 0
 		for j := range app.Spec.Sources {
 			s := &app.Spec.Sources[j]
+			res, sErr := r.reconcileHelmValueObject(ctx, s, resource, app.Name)
+			if sErr != nil {
+				return res, sErr
+			}
+
 			res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s.RepoURL, app.Name)
 			if sErr != nil {
 				return res, sErr
 			}
+
 			if repo != nil {
 				if repo.Status.InternalGitRepositoryUrl == "" {
 					notSyncedRepos += 1
@@ -184,10 +191,16 @@ func (r *Reconciler) reconcileArgoCDApp(ctx context.Context, resource *v1alpha1.
 		appSourcesSynced = notSyncedRepos == 0
 	} else {
 		s := app.Spec.Source
+		res, sErr := r.reconcileHelmValueObject(ctx, s, resource, app.Name)
+		if sErr != nil {
+			return res, sErr
+		}
+
 		res, repo, sErr := r.reconcileArgoCDSource(ctx, resource, s.RepoURL, app.Name)
 		if sErr != nil {
 			return res, sErr
 		}
+
 		if repo != nil {
 			appSourcesSynced = repo.Status.InternalGitRepositoryUrl != ""
 			s.RepoURL = repo.Status.InternalGitRepositoryUrl
@@ -389,6 +402,68 @@ func (r *Reconciler) getArgoCDAppFile(ctx context.Context, resource *v1alpha1.Cu
 		return nil, fmt.Errorf("cloning repo, %s: %w", resource.Spec.RemoteRepository.Url, err)
 	}
 	return util.ReadWorktreeFile(wt, filePath)
+}
+
+func (r *Reconciler) reconcileHelmValueObject(ctx context.Context, source *argov1alpha1.ApplicationSource,
+	resource *v1alpha1.CustomPackage, appName string,
+) (ctrl.Result, error) {
+	if source.Helm == nil || source.Helm.ValuesObject == nil {
+		return ctrl.Result{}, nil
+	}
+
+	var data any
+	err := json.Unmarshal(source.Helm.ValuesObject.Raw, &data)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("processing helm valuesObject: %w", err)
+	}
+
+	res, err := r.reconcileHelmValueObjectSource(ctx, &data, resource, appName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("converting helm valuesObject to json")
+	}
+
+	source.Helm.ValuesObject.Raw = raw
+	return res, nil
+}
+
+func (r *Reconciler) reconcileHelmValueObjectSource(ctx context.Context,
+	valueObject *any, resource *v1alpha1.CustomPackage, appName string,
+) (ctrl.Result, error) {
+
+	switch val := (*valueObject).(type) {
+	case string:
+		res, repo, err := r.reconcileArgoCDSource(ctx, resource, val, appName)
+		if err != nil {
+			return res, fmt.Errorf("processing %s in helmValueObject: %w", val, err)
+		}
+		if repo != nil {
+			*valueObject = repo.Status.InternalGitRepositoryUrl
+		}
+	case map[string]any:
+		for k := range val {
+			v := val[k]
+			res, err := r.reconcileHelmValueObjectSource(ctx, &v, resource, appName)
+			if err != nil {
+				return res, err
+			}
+			val[k] = v
+		}
+	case []any:
+		for k := range val {
+			v := val[k]
+			res, err := r.reconcileHelmValueObjectSource(ctx, &v, resource, appName)
+			if err != nil {
+				return res, err
+			}
+			val[k] = v
+		}
+	}
+	return ctrl.Result{RequeueAfter: requeueTime}, nil
 }
 
 func localRepoName(appName, dir string) string {

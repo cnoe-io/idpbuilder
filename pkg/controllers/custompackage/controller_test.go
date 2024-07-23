@@ -577,3 +577,126 @@ func TestReconcileCustomPkgAppSet(t *testing.T) {
 		}
 	}
 }
+
+func TestReconcileHelmValueObject(t *testing.T) {
+	s := k8sruntime.NewScheme()
+	sb := k8sruntime.NewSchemeBuilder(
+		v1.AddToScheme,
+		argov1alpha1.AddToScheme,
+		v1alpha1.AddToScheme,
+	)
+	sb.AddToScheme(s)
+	testEnv := &envtest.Environment{
+		CRDDirectoryPaths: []string{
+			filepath.Join("..", "resources"),
+			"../localbuild/resources/argo/install.yaml",
+		},
+		ErrorIfCRDPathMissing: true,
+		Scheme:                s,
+		BinaryAssetsDirectory: filepath.Join("..", "..", "..", "bin", "k8s",
+			fmt.Sprintf("1.29.1-%s-%s", runtime.GOOS, runtime.GOARCH)),
+	}
+
+	cfg, err := testEnv.Start()
+	if err != nil {
+		t.Fatalf("Starting testenv: %v", err)
+	}
+	defer testEnv.Stop()
+
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: s,
+	})
+	if err != nil {
+		t.Fatalf("getting manager: %v", err)
+	}
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	stoppedCh := make(chan error)
+	go func() {
+		err := mgr.Start(ctx)
+		stoppedCh <- err
+	}()
+
+	defer func() {
+		ctxCancel()
+		err := <-stoppedCh
+		if err != nil {
+			t.Errorf("Starting controller manager: %v", err)
+			t.FailNow()
+		}
+	}()
+
+	time.Sleep(1 * time.Second)
+
+	for _, n := range []string{"argocd", "test"} {
+		ns := v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: n,
+			},
+		}
+		err = mgr.GetClient().Create(context.Background(), &ns)
+		if err != nil {
+			t.Fatalf("creating test ns: %v", err)
+		}
+	}
+
+	r := &Reconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("test-custompkg-controller"),
+	}
+
+	cwd, _ := os.Getwd()
+
+	resource := v1alpha1.CustomPackage{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test1",
+			Namespace: "test",
+			UID:       "abc",
+		},
+		Spec: v1alpha1.CustomPackageSpec{
+			Replicate:           true,
+			GitServerURL:        "https://cnoe.io",
+			InternalGitServeURL: "http://internal.cnoe.io",
+			ArgoCD: v1alpha1.ArgoCDPackageSpec{
+				ApplicationFile: filepath.Join(cwd, "test/resources/customPackages/helm/app.yaml"),
+				Name:            "my-app",
+				Namespace:       "argocd",
+				Type:            "Application",
+			},
+		},
+	}
+
+	source := &argov1alpha1.ApplicationSource{
+		Helm: &argov1alpha1.ApplicationSourceHelm{
+			ValuesObject: &k8sruntime.RawExtension{
+				Raw: []byte(`{
+				 "repoURLGit": "cnoe://test",
+				 "nested": {
+				   "repoURLGit": "cnoe://test",
+				   "bool": true,
+				   "int": 123
+				 },
+				 "bool": false,
+				 "int": 456,
+				 "arrayString": [
+				   "abc",
+				   "cnoe://test"
+				 ],
+				 "arrayMap": [
+				   {
+				     "test": "cnoe://test",
+				     "nested": {
+				       "test": "cnoe://test"
+				     }
+				   }
+				 ]
+				}`),
+			},
+		},
+	}
+
+	_, err = r.reconcileHelmValueObject(ctx, source, &resource, "test")
+	assert.NoError(t, err)
+	expectJson := `{"arrayMap":[{"nested":{"test":""},"test":""}],"arrayString":["abc",""],"bool":false,"int":456,"nested":{"bool":true,"int":123,"repoURLGit":""},"repoURLGit":""}`
+	assert.JSONEq(t, expectJson, string(source.Helm.ValuesObject.Raw))
+}
