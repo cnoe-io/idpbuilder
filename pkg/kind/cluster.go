@@ -28,7 +28,7 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
-	cfg               util.CorePackageTemplateConfig
+	cfg               util.PackageTemplateConfig
 }
 
 type PortMapping struct {
@@ -100,7 +100,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.PackageTemplateConfig) (*Cluster, error) {
 	detectOpt, err := cluster.DetectNodeProvider()
 
 	if err != nil {

@@ -28,7 +28,7 @@ var (
 
 type Build struct {
 	name                 string
-	cfg                  util.CorePackageTemplateConfig
+	cfg                  util.PackageTemplateConfig
 	kindConfigPath       string
 	kubeConfigPath       string
 	kubeVersion          string
@@ -43,7 +43,7 @@ type Build struct {
 
 type NewBuildOptions struct {
 	Name                 string
-	TemplateData         util.CorePackageTemplateConfig
+	TemplateData         util.PackageTemplateConfig
 	KindConfigPath       string
 	KubeConfigPath       string
 	KubeVersion          string
@@ -115,7 +115,7 @@ func (b *Build) GetKubeClient(kubeConfig *rest.Config) (client.Client, error) {
 
 func (b *Build) ReconcileCRDs(ctx context.Context, kubeClient client.Client) error {
 	// Ensure idpbuilder CRDs
-	if err := controllers.EnsureCRDs(ctx, b.scheme, kubeClient, b.cfg); err != nil {
+	if err := controllers.EnsureCRDs(ctx, b.scheme, kubeClient, b.cfg.Data); err != nil {
 		setupLog.Error(err, "Error creating idpbuilder CRDs")
 		return err
 	}
@@ -184,6 +184,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 	b.cfg.SelfSignedCert = string(cert)
+	b.cfg.Data["SelfSignedCert"] = string(cert)
 
 	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {

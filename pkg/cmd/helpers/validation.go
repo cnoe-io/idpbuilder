@@ -45,7 +45,7 @@ func ParsePackageStrings(pkgStrings []string) ([]string, []string, error) {
 			continue
 		}
 
-		absPath, err := getAbsPath(loc, true)
+		absPath, err := GetAbsPath(loc, true)
 		if err == nil {
 			local = append(local, absPath)
 			continue
@@ -56,7 +56,7 @@ func ParsePackageStrings(pkgStrings []string) ([]string, []string, error) {
 	return remote, local, nil
 }
 
-func getAbsPath(path string, isDir bool) (string, error) {
+func GetAbsPath(path string, isDir bool) (string, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to validate path %s : %w", path, err)
@@ -77,7 +77,7 @@ func getAbsPath(path string, isDir bool) (string, error) {
 func GetAbsFilePaths(paths []string, isDir bool) ([]string, error) {
 	out := make([]string, len(paths))
 	for i := range paths {
-		absPath, err := getAbsPath(paths[i], isDir)
+		absPath, err := GetAbsPath(paths[i], isDir)
 		if err != nil {
 			return nil, err
 		}

@@ -173,7 +173,7 @@ func createSelfSignedCertificate(sans []string) ([]byte, []byte, error) {
 	return certOut, privateKeyOut, nil
 }
 
-func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubeclient client.Client, config util.CorePackageTemplateConfig) ([]byte, error) {
+func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubeclient client.Client, config util.PackageTemplateConfig) ([]byte, error) {
 	if err := k8s.EnsureNamespace(ctx, kubeclient, globals.NginxNamespace); err != nil {
 		return nil, err
 	}

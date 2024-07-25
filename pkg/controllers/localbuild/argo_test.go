@@ -43,7 +43,7 @@ func TestGetRawInstallResources(t *testing.T) {
 		resourcePath: "resources/argo",
 	}
 	resources, err := util.ConvertFSToBytes(e.resourceFS, e.resourcePath,
-		util.CorePackageTemplateConfig{
+		util.PackageTemplateConfig{
 			Protocol:       "",
 			Host:           "",
 			Port:           "",
@@ -69,7 +69,7 @@ func TestGetK8sInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	objs, err := e.installResources(k8s.GetScheme(), util.CorePackageTemplateConfig{
+	objs, err := e.installResources(k8s.GetScheme(), util.PackageTemplateConfig{
 		Protocol:       "",
 		Host:           "",
 		Port:           "",

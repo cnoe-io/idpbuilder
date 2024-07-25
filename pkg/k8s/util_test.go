@@ -38,7 +38,7 @@ func TestBuildCustomizedManifests(t *testing.T) {
 
 	for key := range cases {
 		c := cases[key]
-		b, err := BuildCustomizedManifests(c.filePath, c.fsPath, testDataFS, GetScheme(), util.CorePackageTemplateConfig{
+		b, err := BuildCustomizedManifests(c.filePath, c.fsPath, testDataFS, GetScheme(), util.PackageTemplateConfig{
 			Protocol:       "http",
 			Host:           "cnoe.localtest.me",
 			IngressHost:    "localhost",

@@ -4,3 +4,5 @@ metadata:
   name: config
 data:
   test1: "one"
+  hostName: #{ .Host }#
+  customParam: #{ .custom.value }#

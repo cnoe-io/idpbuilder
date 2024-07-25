@@ -123,12 +123,12 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
-func giteaBaseUrl(config util.CorePackageTemplateConfig) string {
+func giteaBaseUrl(config util.PackageTemplateConfig) string {
 	return fmt.Sprintf(giteaIngressURL, config.Protocol, config.Port)
 }
 
 // gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
-func giteaInternalBaseUrl(config util.CorePackageTemplateConfig) string {
+func giteaInternalBaseUrl(config util.PackageTemplateConfig) string {
 	if config.UsePathRouting {
 		return fmt.Sprintf(giteaSvcURL, config.Protocol, "", config.Host, config.Port, "/gitea")
 	}

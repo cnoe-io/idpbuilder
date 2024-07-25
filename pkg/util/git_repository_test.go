@@ -63,7 +63,7 @@ func TestCopyTreeToTree(t *testing.T) {
 	src, _, err := CloneRemoteRepoToMemory(context.Background(), spec, 1, false)
 	assert.Nil(t, err)
 
-	err = CopyTreeToTree(src, dst, spec.Path, ".")
+	err = CopyTreeToTree(src, dst, spec.Path, ".", map[string]string{})
 	assert.Nil(t, err)
 	testCopiedFiles(t, src, dst, spec.Path, ".")
 }
@@ -113,4 +113,27 @@ func TestGetWorktreeYamlFiles(t *testing.T) {
 	paths, err = GetWorktreeYamlFiles("./pkg", wt, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 0, len(paths))
+}
+
+func TestCopyFile(t *testing.T) {
+	a, err := os.MkdirTemp("", "")
+	assert.NoError(t, err)
+	defer os.RemoveAll(a)
+	d := map[string]any{
+		"Host":    "abc.abc",
+		"Custom1": "custom1",
+		"Custom2": map[string]string{
+			"abc": "def",
+		},
+	}
+
+	f := filepath.Join(a, "test.yaml")
+	err = Copy("test/template.yaml.tmpl", f, d)
+	assert.NoError(t, err)
+
+	tb, err := os.ReadFile(f)
+	assert.NoError(t, err)
+	eb, err := os.ReadFile("test/expect.yaml")
+	assert.NoError(t, err)
+	assert.YAMLEq(t, string(eb), string(tb))
 }

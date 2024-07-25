@@ -17,7 +17,7 @@ import (
 )
 
 func TestGetConfig(t *testing.T) {
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.CorePackageTemplateConfig{
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.PackageTemplateConfig{
 		Port: "8443",
 	})
 	if err != nil {
@@ -56,7 +56,7 @@ containerdConfigPatches:
 
 func TestExtraPortMappings(t *testing.T) {
 
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.CorePackageTemplateConfig{
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.PackageTemplateConfig{
 		Port: "8443",
 	})
 	if err != nil {
@@ -181,7 +181,7 @@ func TestRunsOnWrongPort(t *testing.T) {
 	cluster := &Cluster{
 		name:     "test-cluster",
 		provider: mockProvider,
-		cfg: util.CorePackageTemplateConfig{
+		cfg: util.PackageTemplateConfig{
 			Port: "8080",
 		},
 	}
