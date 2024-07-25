@@ -32,6 +32,11 @@ const (
 	defaultArgoCDProjectName string = "default"
 	defaultRequeueTime              = time.Second * 15
 	errRequeueTime                  = time.Second * 5
+
+	argoCDApplicationAnnotationKeyRefresh         = "argocd.argoproj.io/refresh"
+	argoCDApplicationAnnotationValueRefreshNormal = "normal"
+	argoCDApplicationSetAnnotationKeyRefresh      = "argocd.argoproj.io/application-set-refresh"
+	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
 )
 
 type LocalbuildReconciler struct {
@@ -122,18 +127,26 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 
 // Responsible to updating ObservedGeneration in status
 func (r *LocalbuildReconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	log.Info("Checking if we should shutdown")
+	logger.Info("Checking if we should shutdown")
 	if r.shouldShutdown {
-		log.Info("Shutting Down")
+		logger.Info("Shutting Down")
+		err := r.requestArgoCDAppRefresh(ctx)
+		if err != nil {
+			logger.V(1).Info("failed requesting argocd application refresh", "error", err)
+		}
+		err = r.requestArgoCDAppSetRefresh(ctx)
+		if err != nil {
+			logger.V(1).Info("failed requesting argocd application set refresh", "error", err)
+		}
 		r.CancelFunc()
 		return
 	}
 
 	resource.Status.ObservedGeneration = resource.GetGeneration()
 	if err := r.Status().Update(ctx, resource); err != nil {
-		log.Error(err, "Failed to update resource status after reconcile")
+		logger.Error(err, "Failed to update resource status after reconcile")
 	}
 }
 
@@ -525,6 +538,63 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 	})
 
 	return repo, err
+}
+
+func (r *LocalbuildReconciler) requestArgoCDAppRefresh(ctx context.Context) error {
+	apps := &argov1alpha1.ApplicationList{}
+	err := r.Client.List(ctx, apps, client.InNamespace(argocdNamespace))
+	if err != nil {
+		return fmt.Errorf("listing argocd apps for refresh: %w", err)
+	}
+
+	for i := range apps.Items {
+		app := apps.Items[i]
+		aErr := r.applyArgoCDAnnotation(ctx, &app, argocdapp.ApplicationKind, argoCDApplicationAnnotationKeyRefresh, argoCDApplicationAnnotationValueRefreshNormal)
+		if aErr != nil {
+			return aErr
+		}
+	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) requestArgoCDAppSetRefresh(ctx context.Context) error {
+	appsets := &argov1alpha1.ApplicationSetList{}
+	err := r.Client.List(ctx, appsets, client.InNamespace(argocdNamespace))
+	if err != nil {
+		return fmt.Errorf("listing argocd apps for refresh: %w", err)
+	}
+
+	for i := range appsets.Items {
+		appset := appsets.Items[i]
+		aErr := r.applyArgoCDAnnotation(ctx, &appset, argocdapp.ApplicationSetKind, argoCDApplicationSetAnnotationKeyRefresh, argoCDApplicationSetAnnotationKeyRefreshTrue)
+		if aErr != nil {
+			return aErr
+		}
+	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj client.Object, argoCDType, annotationKey, annotationValue string) error {
+	annotations := obj.GetAnnotations()
+	if annotations != nil {
+		_, ok := annotations[annotationKey]
+		if !ok {
+			annotations[annotationKey] = annotationValue
+			err := util.ApplyAnnotation(ctx, r.Client, obj, annotations, client.FieldOwner(v1alpha1.FieldManager))
+			if err != nil {
+				return fmt.Errorf("applying %s refresh annotation for %s: %w", argoCDType, obj.GetName(), err)
+			}
+		}
+	} else {
+		a := map[string]string{
+			annotationKey: annotationValue,
+		}
+		err := util.ApplyAnnotation(ctx, r.Client, obj, a, client.FieldOwner(v1alpha1.FieldManager))
+		if err != nil {
+			return fmt.Errorf("applying %s refresh annotation for %s: %w", argoCDType, obj.GetName(), err)
+		}
+	}
+	return nil
 }
 
 func getCustomPackageName(fileName, appName string) string {

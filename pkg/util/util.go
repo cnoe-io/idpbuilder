@@ -65,14 +65,18 @@ func UpdateSyncAnnotation(ctx context.Context, kubeClient client.Client, obj cli
 	}
 	annotations := make(map[string]string, 1)
 	SetLastObservedSyncTimeAnnotationValue(annotations, timeStamp)
+
+	return ApplyAnnotation(ctx, kubeClient, obj, annotations, client.ForceOwnership, client.FieldOwner(v1alpha1.FieldManager))
+}
+
+func ApplyAnnotation(ctx context.Context, kubeClient client.Client, obj client.Object, annotations map[string]string, opts ...client.PatchOption) error {
 	// MUST be unstructured to avoid managing fields we do not care about.
 	u := unstructured.Unstructured{}
 	u.SetAnnotations(annotations)
 	u.SetName(obj.GetName())
 	u.SetNamespace(obj.GetNamespace())
 	u.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
-
-	return kubeClient.Patch(ctx, &u, client.Apply, client.ForceOwnership, client.FieldOwner(v1alpha1.FieldManager))
+	return kubeClient.Patch(ctx, &u, client.Apply, opts...)
 }
 
 func GeneratePassword() (string, error) {
