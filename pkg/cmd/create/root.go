@@ -20,13 +20,11 @@ import (
 
 var (
 	// Flags
-	recreateCluster   bool
-	buildName         string
-	kubeVersion       string
-	extraPortsMapping string
-	kindConfigPath    string
-	// TODO: Remove extraPackagesDirs after 0.6.0 release
-	extraPackagesDirs         []string
+	recreateCluster           bool
+	buildName                 string
+	kubeVersion               string
+	extraPortsMapping         string
+	kindConfigPath            string
 	extraPackages             []string
 	packageCustomizationFiles []string
 	noExit                    bool
@@ -59,9 +57,6 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&protocol, "protocol", "https", "Protocol to use to access web UIs. http or https.")
 	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", "Port number under which idpBuilder tools are accessible.")
 	CreateCmd.PersistentFlags().BoolVar(&pathRouting, "use-path-routing", false, "When set to true, web UIs are exposed under single domain name.")
-	// TODO: Remove package-dir and deprecation notice after 0.6.0 release
-	CreateCmd.Flags().StringSliceVar(&extraPackagesDirs, "package-dir", []string{}, "Paths to directories containing custom packages")
-	CreateCmd.Flags().MarkDeprecated("package-dir", "use --package instead")
 	CreateCmd.Flags().StringSliceVarP(&extraPackages, "package", "p", []string{}, "Paths to locations containing custom packages")
 	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, "Name of the package and the path to file to customize the package with. e.g. argocd:/tmp/argocd.yaml")
 	// idpbuilder related flags
@@ -91,16 +86,6 @@ func create(cmd *cobra.Command, args []string) error {
 
 	var absDirPaths []string
 	var remotePaths []string
-
-	// TODO: Remove this block after deprecation
-	if len(extraPackagesDirs) > 0 {
-		r, l, pErr := helpers.ParsePackageStrings(extraPackagesDirs)
-		if pErr != nil {
-			return pErr
-		}
-		absDirPaths = l
-		remotePaths = r
-	}
 
 	if len(extraPackages) > 0 {
 		r, l, pErr := helpers.ParsePackageStrings(extraPackages)
@@ -187,7 +172,7 @@ func validate() error {
 		}
 	}
 
-	_, _, err = helpers.ParsePackageStrings(extraPackagesDirs)
+	_, _, err = helpers.ParsePackageStrings(extraPackages)
 	return err
 }
 
