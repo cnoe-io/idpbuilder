@@ -1,10 +1,14 @@
 package get
 
 import (
+	"embed"
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
+
+//go:embed templates
+var templates embed.FS
 
 var GetCmd = &cobra.Command{
 	Use:   "get",
