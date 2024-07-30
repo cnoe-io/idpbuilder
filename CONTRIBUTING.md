@@ -106,7 +106,7 @@ ingress-nginx manifests are generated using a bash script available [here](./hac
 This script runs kustomize to modify the basic installation manifests provided by ingress-nginx.
 
 ## Installation Flow
-This diagram highlights the installation flow of idpbuilder and the varipus core packages. 
+This diagram highlights the installation flow of idpbuilder and the various core packages. 
 
 ```mermaid
 flowchart TD
