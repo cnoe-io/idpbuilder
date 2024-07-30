@@ -18,6 +18,7 @@ import (
 
 func TestGetConfig(t *testing.T) {
 	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.CorePackageTemplateConfig{
+		Host: "cnoe.localtest.me",
 		Port: "8443",
 	})
 	if err != nil {
@@ -57,6 +58,7 @@ containerdConfigPatches:
 func TestExtraPortMappings(t *testing.T) {
 
 	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.CorePackageTemplateConfig{
+		Host: "cnoe.localtest.me",
 		Port: "8443",
 	})
 	if err != nil {
