@@ -111,7 +111,7 @@ idpbuilder is made of two phases: CLI and Kubernetes controllers.
 
 ![idpbuilder.png](docs/images/idpbuilder.png)
 
-##Installation Flow
+## Installation Flow
 
 ```mermaid
 flowchart TD
