@@ -8,8 +8,8 @@ import (
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -152,7 +152,7 @@ func TestArgoCDAppAnnotation(t *testing.T) {
 		}
 		err := rec.requestArgoCDAppRefresh(ctx)
 		fClient.AssertExpectations(t)
-		assert.NilError(t, err)
+		assert.NoError(t, err)
 	}
 }
 
