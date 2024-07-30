@@ -46,10 +46,9 @@ type IProvider interface {
 }
 
 type TemplateConfig struct {
+	util.CorePackageTemplateConfig
 	KubernetesVersion string
 	ExtraPortsMapping []PortMapping
-	IngressProtocol   string
-	Port              string
 }
 
 //go:embed resources/*
@@ -89,10 +88,9 @@ func (c *Cluster) getConfig() ([]byte, error) {
 
 	var retBuff []byte
 	if retBuff, err = util.ApplyTemplate(rawConfigTempl, TemplateConfig{
-		KubernetesVersion: c.kubeVersion,
-		ExtraPortsMapping: portMappingPairs,
-		IngressProtocol:   c.cfg.Protocol,
-		Port:              c.cfg.Port,
+		CorePackageTemplateConfig: c.cfg,
+		KubernetesVersion:         c.kubeVersion,
+		ExtraPortsMapping:         portMappingPairs,
 	}); err != nil {
 		return []byte{}, err
 	}

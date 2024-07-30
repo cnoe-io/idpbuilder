@@ -11,7 +11,7 @@ nodes:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
   extraPortMappings:
-  - containerPort: {{ if (eq .IngressProtocol "http")  -}} 80 {{- else -}} 443 {{- end }}
+  - containerPort: {{ if (eq .Protocol "http")  -}} 80 {{- else -}} 443 {{- end }}
     hostPort: {{ .Port }}
     protocol: TCP
   {{ range .ExtraPortsMapping -}}
@@ -21,7 +21,7 @@ nodes:
   {{ end }}
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.cnoe.localtest.me:8443"]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ .Host }}:{{ .Port }}"]
     endpoint = ["https://gitea.cnoe.localtest.me"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.cnoe.localtest.me".tls]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ .Host }}".tls]
     insecure_skip_verify = true
