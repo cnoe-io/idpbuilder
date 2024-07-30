@@ -105,13 +105,8 @@ This script runs helm template to generate most files. See the values file for m
 ingress-nginx manifests are generated using a bash script available [here](./hack/ingress-nginx/generate-manifests.sh).
 This script runs kustomize to modify the basic installation manifests provided by ingress-nginx.
 
-## Architecture
-
-idpbuilder is made of two phases: CLI and Kubernetes controllers.
-
-![idpbuilder.png](docs/images/idpbuilder.png)
-
 ## Installation Flow
+This diagram highlights the installation flow of idpbuilder and the varipus core packages. 
 
 ```mermaid
 flowchart TD
@@ -148,6 +143,12 @@ flowchart TD
     end
 
 ```
+## Architecture
+
+idpbuilder is made of two phases: CLI and Kubernetes controllers.
+
+![idpbuilder.png](docs/images/idpbuilder.png)
+
 
 ### CLI
 
