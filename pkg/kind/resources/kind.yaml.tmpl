@@ -21,7 +21,7 @@ nodes:
   {{ end }}
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ .Host }}:{{ .Port }}"]
-    endpoint = ["https://gitea.cnoe.localtest.me"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ .Host }}".tls]
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.{{ .Host }}:{{ .Port }}"]
+    endpoint = ["https://gitea.{{ .Host }}"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.{{ .Host }}".tls]
     insecure_skip_verify = true
