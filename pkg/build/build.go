@@ -225,11 +225,6 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return fmt.Errorf("creating localbuild resource: %w", err)
 	}
 
-	if err != nil {
-		setupLog.Error(err, "Error creating localbuild resource")
-		return err
-	}
-
 	err = <-managerExit
 	close(managerExit)
 	return err
