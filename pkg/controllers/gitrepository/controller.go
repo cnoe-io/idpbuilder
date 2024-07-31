@@ -272,7 +272,7 @@ func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository
 			return fmt.Errorf("getting remote url %w", err)
 		}
 
-		logger.V(1).Info("pushing to remote url %s", remoteUrl)
+		logger.V(1).Info("pushing to remote url", "remoteUrl", remoteUrl)
 		err = pushToRemote(ctx, tgtRepository, creds)
 		if err != nil {
 			return fmt.Errorf("pushing to git: %w", err)
@@ -337,7 +337,7 @@ func reconcileRemoteRepoContent(ctx context.Context, repo *v1alpha1.GitRepositor
 			return fmt.Errorf("getting remote url %w", err)
 		}
 
-		logger.V(1).Info("pushing to remote url %s", remoteUrl)
+		logger.V(1).Info("pushing to remote url", "remoteUrl", remoteUrl)
 		err = pushToRemote(ctx, tgtRepository, creds)
 		if err != nil {
 			return fmt.Errorf("pushing to git: %w", err)
