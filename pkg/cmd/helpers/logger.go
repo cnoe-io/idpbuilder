@@ -14,6 +14,7 @@ import (
 var (
 	LogLevel    string
 	LogLevelMsg = "Set the log verbosity. Supported values are: debug, info, warn, and error."
+	CmdLogger   logr.Logger
 )
 
 func SetLogger() error {
@@ -29,6 +30,7 @@ func SetLogger() error {
 
 	klog.SetLogger(klogger)
 	ctrl.SetLogger(logger)
+	CmdLogger = logger
 	return nil
 }
 
