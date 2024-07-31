@@ -23,20 +23,20 @@ func CleanUpDocker(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	b, err := e2e.RunCommand(ctx, `docker ps -aqf name=localdev-control-plane`, 10*time.Second)
-	assert.Nil(t, err, fmt.Sprintf("error while listing docker containers: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while listing docker containers: %s, %s", err, b))
 
 	conts := strings.TrimSpace(string(b))
 	if len(conts) == 0 {
 		return
 	}
 	b, err = e2e.RunCommand(ctx, fmt.Sprintf("docker container rm -f %s", conts), 60*time.Second)
-	assert.Nil(t, err, fmt.Sprintf("error while removing docker containers: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while removing docker containers: %s, %s", err, b))
 
 	b, err = e2e.RunCommand(ctx, "docker system prune -f", 60*time.Second)
-	assert.Nil(t, err, fmt.Sprintf("error while pruning system: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while pruning system: %s, %s", err, b))
 
 	b, err = e2e.RunCommand(ctx, "docker volume prune -f", 60*time.Second)
-	assert.Nil(t, err, fmt.Sprintf("error while pruning volumes: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while pruning volumes: %s, %s", err, b))
 	t.Log("finished cleaning up docker env")
 }
 
@@ -59,10 +59,10 @@ func testCreate(t *testing.T) {
 	t.Log("running idpbuilder create")
 	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create")
 	b, err := cmd.CombinedOutput()
-	assert.Nil(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+	assert.NoError(t, err, b)
 
 	kubeClient, err := e2e.GetKubeClient()
-	assert.Nil(t, err, fmt.Sprintf("error while getting client: %s", err))
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
 
 	e2e.TestArgoCDApps(ctx, t, kubeClient, e2e.CorePackages)
 
@@ -80,10 +80,10 @@ func testCreatePath(t *testing.T) {
 	t.Log("running idpbuilder create --use-path-routing")
 	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create", "--use-path-routing")
 	b, err := cmd.CombinedOutput()
-	assert.Nil(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := e2e.GetKubeClient()
-	assert.Nil(t, err, fmt.Sprintf("error while getting client: %s", err))
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
 
 	e2e.TestArgoCDApps(ctx, t, kubeClient, e2e.CorePackages)
 
@@ -101,10 +101,10 @@ func testCreatePort(t *testing.T) {
 	t.Logf("running idpbuilder create --port %s", port)
 	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create", "--port", port)
 	b, err := cmd.CombinedOutput()
-	assert.Nil(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := e2e.GetKubeClient()
-	assert.Nil(t, err, fmt.Sprintf("error while getting client: %s", err))
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
 
 	e2e.TestArgoCDApps(ctx, t, kubeClient, e2e.CorePackages)
 
@@ -123,11 +123,11 @@ func testCustomPkg(t *testing.T) {
 	t.Log(fmt.Sprintf("running %s", cmdString))
 	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, strings.Split(cmdString, " ")...)
 	b, err := cmd.CombinedOutput()
-	assert.Nil(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := e2e.GetKubeClient()
 
-	assert.Nil(t, err, fmt.Sprintf("error while getting client: %s", err))
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
 	if err != nil {
 		assert.FailNow(t, "failed creating cluster")
 	}
@@ -142,7 +142,7 @@ func testCustomPkg(t *testing.T) {
 	}
 	e2e.TestArgoCDApps(ctx, t, kubeClient, expectedApps)
 	repos, err := e2e.GetGiteaRepos(ctx, giteaBaseUrl)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	expectedRepoNames := map[string]struct{}{
 		"idpbuilder-localdev-my-app-app1":  {},
 		"idpbuilder-localdev-my-app2-app2": {},
