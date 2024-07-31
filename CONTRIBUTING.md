@@ -116,15 +116,12 @@ flowchart TD
             ArgoCD_App[ArgoCD]
             Ingress[Ingress-nginx]
             Gitea_App[Gitea]
-            
         end
 
         subgraph Gitea[Git Repositories]
             Gitea_ArgoCD[ArgoCD]
             Gitea_Ingress[Ingress-nginx]
             Gitea_Gitea[Gitea]
-           
-          
         end
 
         ArgoCD -->|GitOps| Gitea
