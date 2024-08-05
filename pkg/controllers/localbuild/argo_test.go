@@ -6,6 +6,7 @@ import (
 
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/stretchr/testify/assert"
@@ -137,7 +138,7 @@ func TestArgoCDAppAnnotation(t *testing.T) {
 	for i := range cases {
 		c := cases[i]
 		fClient := new(fakeKubeClient)
-		fClient.On("List", ctx, mock.Anything, []client.ListOption{client.InNamespace(argocdNamespace)}).
+		fClient.On("List", ctx, mock.Anything, []client.ListOption{client.InNamespace(globals.ArgoCDNamespace)}).
 			Run(func(args mock.Arguments) {
 				apps := args.Get(1).(*argov1alpha1.ApplicationList)
 				apps.Items = c.listApps

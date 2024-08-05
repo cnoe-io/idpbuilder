@@ -25,12 +25,32 @@ import (
 )
 
 const (
-	certificateOrgName = "cnoe.io"
+	certificateOrgName     = "cnoe.io"
+	certificateValidLength = time.Hour * 8766
+	argocdTLSSecretName    = "argocd-server-tls"
 )
 
-var (
-	certificateValidLength = time.Hour * 8766 // one year
-)
+func createCertificateAndKeySecret(ctx context.Context, kubeClient client.Client, name, namespace string, cert, key []byte) error {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			corev1.TLSCertKey:       cert,
+			corev1.TLSPrivateKeyKey: key,
+		},
+	}
+	err := kubeClient.Create(ctx, secret)
+	if err != nil {
+		if k8serrors.IsAlreadyExists(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
 
 func createIngressCertificateSecret(ctx context.Context, kubeClient client.Client, cert []byte) error {
 	secret := &corev1.Secret{
@@ -86,20 +106,9 @@ func getOrCreateIngressCertificateAndKey(ctx context.Context, kubeClient client.
 				return nil, nil, cErr
 			}
 
-			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: namespace,
-				},
-				Type: corev1.SecretTypeTLS,
-				StringData: map[string]string{
-					corev1.TLSPrivateKeyKey: string(privateKey),
-					corev1.TLSCertKey:       string(cert),
-				},
-			}
-			cErr = kubeClient.Create(ctx, secret)
+			cErr = createCertificateAndKeySecret(ctx, kubeClient, name, namespace, cert, privateKey)
 			if cErr != nil {
-				return nil, nil, fmt.Errorf("creating secret %s: %w", secret.Name, err)
+				return nil, nil, fmt.Errorf("creating secret %s: %w", name, err)
 			}
 			return cert, privateKey, nil
 		} else {
@@ -178,6 +187,10 @@ func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubecli
 		return nil, err
 	}
 
+	if err := k8s.EnsureNamespace(ctx, kubeclient, globals.ArgoCDNamespace); err != nil {
+		return nil, err
+	}
+
 	sans := []string{
 		globals.DefaultHostName,
 		globals.DefaultSANWildcard,
@@ -190,13 +203,19 @@ func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubecli
 	}
 
 	logger.V(1).Info("Creating/getting certificate", "host", config.Host, "sans", sans)
-	cert, _, err := getOrCreateIngressCertificateAndKey(ctx, kubeclient, globals.SelfSignedCertSecretName, globals.NginxNamespace, sans)
+	cert, privateKey, err := getOrCreateIngressCertificateAndKey(ctx, kubeclient, globals.SelfSignedCertSecretName, globals.NginxNamespace, sans)
 	if err != nil {
 		return nil, err
 	}
 
 	logger.V(1).Info("Creating secret for certificate", "host", config.Host)
 	err = createIngressCertificateSecret(ctx, kubeclient, cert)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.V(1).Info("Creating secret for ArgoCD server", "host", config.Host)
+	err = createCertificateAndKeySecret(ctx, kubeclient, argocdTLSSecretName, globals.ArgoCDNamespace, cert, privateKey)
 	if err != nil {
 		return nil, err
 	}
