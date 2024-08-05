@@ -133,6 +133,55 @@ func TestArgoCDAppAnnotation(t *testing.T) {
 				},
 			},
 		},
+		{
+			err: nil,
+			listApps: []argov1alpha1.Application{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       argov1alpha1.ApplicationSchemaGroupVersionKind.Kind,
+						APIVersion: argov1alpha1.ApplicationSchemaGroupVersionKind.GroupVersion().String(),
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "owned-by-appset",
+						Namespace: "argocd",
+						Annotations: map[string]string{
+							"test": "value",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Kind: "ApplicationSet",
+							},
+						},
+					},
+				},
+			},
+			annotations: nil,
+		},
+		{
+			err: nil,
+			listApps: []argov1alpha1.Application{
+				{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       argov1alpha1.ApplicationSchemaGroupVersionKind.Kind,
+						APIVersion: argov1alpha1.ApplicationSchemaGroupVersionKind.GroupVersion().String(),
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "owned-by-non-appset",
+						Namespace: "argocd",
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Kind: "Something",
+							},
+						},
+					},
+				},
+			},
+			annotations: []map[string]string{
+				{
+					argoCDApplicationAnnotationKeyRefresh: argoCDApplicationAnnotationValueRefreshNormal,
+				},
+			},
+		},
 	}
 
 	for i := range cases {

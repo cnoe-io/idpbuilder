@@ -547,8 +547,15 @@ func (r *LocalbuildReconciler) requestArgoCDAppRefresh(ctx context.Context) erro
 		return fmt.Errorf("listing argocd apps for refresh: %w", err)
 	}
 
+apps:
 	for i := range apps.Items {
 		app := apps.Items[i]
+		for _, o := range app.OwnerReferences {
+			// if this app is owned by an ApplicationSet, we should let the ApplicationSet refresh.
+			if o.Kind == argocdapp.ApplicationSetKind {
+				continue apps
+			}
+		}
 		aErr := r.applyArgoCDAnnotation(ctx, &app, argocdapp.ApplicationKind, argoCDApplicationAnnotationKeyRefresh, argoCDApplicationAnnotationValueRefreshNormal)
 		if aErr != nil {
 			return aErr
