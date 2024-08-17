@@ -1,6 +1,6 @@
 module github.com/cnoe-io/idpbuilder
 
-go 1.22
+go 1.22.0
 
 require (
 	code.gitea.io/sdk/gitea v0.16.0
