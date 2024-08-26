@@ -3,6 +3,7 @@ package kind
 import (
 	"context"
 	"io"
+	"os"
 	"testing"
 
 	runtime "github.com/cnoe-io/idpbuilder/pkg/runtime"
@@ -97,6 +98,45 @@ containerdConfigPatches:
     insecure_skip_verify = true`
 
 	assert.YAMLEq(t, expectConfig, string(cfg))
+}
+
+func TestGetConfigCustom(t *testing.T) {
+
+	type testCase struct {
+		inputPath  string
+		outputPath string
+		hostPort   string
+		Protocol   string
+	}
+
+	cases := []testCase{
+		{
+			inputPath:  "testdata/no-necessary-port.yaml",
+			outputPath: "testdata/expected/no-necessary-port.yaml",
+			hostPort:   "8443",
+			Protocol:   "https",
+		},
+		{
+			inputPath:  "testdata/necessary-port-present.yaml",
+			outputPath: "testdata/expected/necessary-port-present.yaml",
+			hostPort:   "80",
+			Protocol:   "http",
+		},
+	}
+
+	for _, v := range cases {
+		c, _ := NewCluster("testcase", "v1.26.3", "", v.inputPath, "", util.CorePackageTemplateConfig{
+			Host:     "cnoe.localtest.me",
+			Port:     v.hostPort,
+			Protocol: v.Protocol,
+		})
+
+		b, err := c.getConfig()
+		assert.NoError(t, err)
+		expected, _ := os.ReadFile(v.outputPath)
+		assert.YAMLEq(t, string(expected), string(b))
+	}
+
 }
 
 // Mock provider for testing
