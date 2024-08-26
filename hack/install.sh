@@ -6,7 +6,7 @@ set -e -o pipefail
 version=$(curl -s https://api.github.com/repos/cnoe-io/idpbuilder/releases | grep tag_name | grep -o -e '"v[0-9].[0-9].[0-9]"' | head -n1 | sed 's/"//g')
 
 echo "Downloading idpbuilder version ${version}"
-curl -L --progress-bar -o ./idpbuilder.tar.gz "https://github.com/cnoe-io/idpbuilder/releases/download/${version}/idpbuilder-$(uname | awk '{print tolower($0)}')-$(uname -m | sed 's/x86_64/amd64/').tar.gz"
+curl -L --progress-bar -o ./idpbuilder.tar.gz "https://github.com/cnoe-io/idpbuilder/releases/download/${version}/idpbuilder-$(uname | awk '{print tolower($0)}')-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/').tar.gz"
 tar xzf idpbuilder.tar.gz
 
 echo "Moving idpbuilder binary to /usr/local/bin"
