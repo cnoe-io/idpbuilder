@@ -1,0 +1,14 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - containerPath: /var/lib/kubelet/config.json
+        hostPath: ~/.docker/config.json
+    extraPortMappings:
+      - containerPort: 31337
+        hostPort: 31337
+      - containerPort: 31340
+        hostPort: 31340
+      - containerPort: 31333
+        hostPort: 31333
