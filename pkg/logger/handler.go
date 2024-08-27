@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"runtime"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 )
@@ -179,9 +178,6 @@ func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 	} else {
 		buf = slog.Time(slog.TimeKey, record.Time).Value.Time().AppendFormat(buf, fmt.Sprintf("%s ", dateFormat))
 		buf = fmt.Appendf(buf, "%s ", record.Level)
-		if strings.Contains(record.Message, "Adding CRDs to the cluster") {
-			fmt.Println("hi")
-		}
 		buf = fmt.Appendf(buf, "%s ", record.Message)
 	}
 
