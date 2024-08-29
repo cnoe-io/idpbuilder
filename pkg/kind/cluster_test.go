@@ -106,21 +106,38 @@ func TestGetConfigCustom(t *testing.T) {
 		inputPath  string
 		outputPath string
 		hostPort   string
-		Protocol   string
+		protocol   string
+		error      bool
 	}
 
 	cases := []testCase{
 		{
-			inputPath:  "testdata/no-necessary-port.yaml",
-			outputPath: "testdata/expected/no-necessary-port.yaml",
+			inputPath:  "testdata/no-port.yaml",
+			outputPath: "testdata/expected/no-port.yaml",
 			hostPort:   "8443",
-			Protocol:   "https",
+			protocol:   "https",
 		},
 		{
-			inputPath:  "testdata/necessary-port-present.yaml",
-			outputPath: "testdata/expected/necessary-port-present.yaml",
+			inputPath:  "testdata/port-only.yaml",
+			outputPath: "testdata/expected/port-only.yaml",
 			hostPort:   "80",
-			Protocol:   "http",
+			protocol:   "http",
+		},
+		{
+			inputPath:  "testdata/no-port-multi.yaml",
+			outputPath: "testdata/expected/no-port-multi.yaml",
+			hostPort:   "8443",
+			protocol:   "https",
+		},
+		{
+			inputPath:  "testdata/label-only.yaml",
+			outputPath: "testdata/expected/label-only.yaml",
+			hostPort:   "8443",
+			protocol:   "https",
+		},
+		{
+			inputPath: "testdata/no-node",
+			error:     true,
 		},
 	}
 
@@ -128,15 +145,18 @@ func TestGetConfigCustom(t *testing.T) {
 		c, _ := NewCluster("testcase", "v1.26.3", "", v.inputPath, "", util.CorePackageTemplateConfig{
 			Host:     "cnoe.localtest.me",
 			Port:     v.hostPort,
-			Protocol: v.Protocol,
+			Protocol: v.protocol,
 		})
 
 		b, err := c.getConfig()
+		if v.error {
+			assert.Error(t, err)
+			continue
+		}
 		assert.NoError(t, err)
 		expected, _ := os.ReadFile(v.outputPath)
 		assert.YAMLEq(t, string(expected), string(b))
 	}
-
 }
 
 // Mock provider for testing

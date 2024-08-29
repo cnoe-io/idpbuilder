@@ -19,6 +19,11 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const (
+	ingressNginxNodeLabelKey   = "ingress-ready"
+	ingressNginxNodeLabelValue = "true"
+)
+
 var (
 	setupLog = log.Log.WithName("setup")
 )
@@ -241,20 +246,43 @@ func (c *Cluster) ensureCorrectConfig(in []byte) (kindv1alpha4.Cluster, error) {
 	if err != nil {
 		return kindv1alpha4.Cluster{}, fmt.Errorf("parsing kind config: %w", err)
 	}
-
+	// the port and ingress-nginx label must be on the same node to ensure nginx runs on the node with the right port.
 	appendNecessaryPort := true
+	appendIngresNodeLabel := true
+	// pick the first node for the ingress-nginx if we need to configure node port.
+	nodePosition := 0
+
+	if parsedCluster.Nodes == nil || len(parsedCluster.Nodes) == 0 {
+		return kindv1alpha4.Cluster{}, fmt.Errorf("provided kind config does not have the node field defined")
+	}
+
 nodes:
 	for i := range parsedCluster.Nodes {
 		node := parsedCluster.Nodes[i]
 		for _, pm := range node.ExtraPortMappings {
 			if strconv.Itoa(int(pm.HostPort)) == c.cfg.Port {
 				appendNecessaryPort = false
+				nodePosition = i
+				if node.Labels != nil {
+					v, ok := node.Labels[ingressNginxNodeLabelKey]
+					if ok && v == ingressNginxNodeLabelValue {
+						appendIngresNodeLabel = false
+					}
+				}
+				break nodes
+			}
+		}
+		if node.Labels != nil {
+			v, ok := node.Labels[ingressNginxNodeLabelKey]
+			if ok && v == ingressNginxNodeLabelValue {
+				appendIngresNodeLabel = false
+				nodePosition = i
 				break nodes
 			}
 		}
 	}
 
-	if appendNecessaryPort && len(parsedCluster.Nodes) != 0 {
+	if appendNecessaryPort {
 		hp, err := strconv.Atoi(c.cfg.Port)
 		if err != nil {
 			return kindv1alpha4.Cluster{}, fmt.Errorf("converting port, %s, to int: %w", c.cfg.Port, err)
@@ -262,7 +290,17 @@ nodes:
 		// either "80" or "443". No need to check for err
 		cp, _ := strconv.Atoi(containerPort)
 
-		parsedCluster.Nodes[0].ExtraPortMappings = append(parsedCluster.Nodes[0].ExtraPortMappings, kindv1alpha4.PortMapping{ContainerPort: int32(cp), HostPort: int32(hp)})
+		if parsedCluster.Nodes[nodePosition].ExtraPortMappings == nil {
+			parsedCluster.Nodes[nodePosition].ExtraPortMappings = make([]kindv1alpha4.PortMapping, 0, 1)
+		}
+		parsedCluster.Nodes[nodePosition].ExtraPortMappings =
+			append(parsedCluster.Nodes[nodePosition].ExtraPortMappings, kindv1alpha4.PortMapping{ContainerPort: int32(cp), HostPort: int32(hp), Protocol: "TCP"})
+	}
+	if appendIngresNodeLabel {
+		if parsedCluster.Nodes[nodePosition].Labels == nil {
+			parsedCluster.Nodes[nodePosition].Labels = make(map[string]string)
+		}
+		parsedCluster.Nodes[nodePosition].Labels[ingressNginxNodeLabelKey] = ingressNginxNodeLabelValue
 	}
 
 	return parsedCluster, nil
