@@ -37,12 +37,8 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
   image: "kindest/node:v1.26.3"
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
+  labels:
+    ingress-ready: "true"
   extraPortMappings:
   - containerPort: 443
     hostPort: 8443
@@ -77,12 +73,8 @@ apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
   image: "kindest/node:v1.26.3"
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
+  labels:
+    ingress-ready: "true"
   extraPortMappings:
   - containerPort: 443
     hostPort: 8443
