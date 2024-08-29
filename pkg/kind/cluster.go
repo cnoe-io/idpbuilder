@@ -248,7 +248,7 @@ func (c *Cluster) ensureCorrectConfig(in []byte) (kindv1alpha4.Cluster, error) {
 	}
 	// the port and ingress-nginx label must be on the same node to ensure nginx runs on the node with the right port.
 	appendNecessaryPort := true
-	appendIngresNodeLabel := true
+	appendIngressNodeLabel := true
 	// pick the first node for the ingress-nginx if we need to configure node port.
 	nodePosition := 0
 
@@ -266,7 +266,7 @@ nodes:
 				if node.Labels != nil {
 					v, ok := node.Labels[ingressNginxNodeLabelKey]
 					if ok && v == ingressNginxNodeLabelValue {
-						appendIngresNodeLabel = false
+						appendIngressNodeLabel = false
 					}
 				}
 				break nodes
@@ -275,7 +275,7 @@ nodes:
 		if node.Labels != nil {
 			v, ok := node.Labels[ingressNginxNodeLabelKey]
 			if ok && v == ingressNginxNodeLabelValue {
-				appendIngresNodeLabel = false
+				appendIngressNodeLabel = false
 				nodePosition = i
 				break nodes
 			}
@@ -296,7 +296,7 @@ nodes:
 		parsedCluster.Nodes[nodePosition].ExtraPortMappings =
 			append(parsedCluster.Nodes[nodePosition].ExtraPortMappings, kindv1alpha4.PortMapping{ContainerPort: int32(cp), HostPort: int32(hp), Protocol: "TCP"})
 	}
-	if appendIngresNodeLabel {
+	if appendIngressNodeLabel {
 		if parsedCluster.Nodes[nodePosition].Labels == nil {
 			parsedCluster.Nodes[nodePosition].Labels = make(map[string]string)
 		}
