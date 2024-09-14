@@ -6,7 +6,7 @@ metadata:
   name: my-gitea-path-oci-root
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
   ingressClassName: nginx
   rules:
@@ -37,7 +37,7 @@ metadata:
   name: my-gitea-path-oci-repo
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /v2/$2
 spec:
@@ -70,7 +70,7 @@ metadata:
   name: my-gitea-path
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
@@ -104,7 +104,7 @@ metadata:
   name: my-gitea-custom
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
   ingressClassName: nginx
   rules:
@@ -125,7 +125,7 @@ kind: Ingress
 metadata:
   name: my-gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
   ingressClassName: nginx
   rules:
