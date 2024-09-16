@@ -41,6 +41,9 @@ stringData:
   session: |-
     PROVIDER=memory
     PROVIDER_CONFIG=
+  webhook:
+    ALLOWED_HOST_LIST=*
+    SKIP_TLS_VERIFY=true
 ---
 # Source: gitea/templates/gitea/config.yaml
 apiVersion: v1
