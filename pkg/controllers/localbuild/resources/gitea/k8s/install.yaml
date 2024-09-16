@@ -42,7 +42,7 @@ stringData:
     PROVIDER=memory
     PROVIDER_CONFIG=
   webhook: |-
-    ALLOWED_HOST_LIST=*
+    ALLOWED_HOST_LIST=private
     SKIP_TLS_VERIFY=true
 ---
 # Source: gitea/templates/gitea/config.yaml
