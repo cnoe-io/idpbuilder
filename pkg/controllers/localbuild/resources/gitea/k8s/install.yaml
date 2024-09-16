@@ -41,7 +41,7 @@ stringData:
   session: |-
     PROVIDER=memory
     PROVIDER_CONFIG=
-  webhook:
+  webhook: |-
     ALLOWED_HOST_LIST=*
     SKIP_TLS_VERIFY=true
 ---
