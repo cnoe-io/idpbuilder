@@ -27,6 +27,9 @@ gitea:
     server:
       DOMAIN: '{{- if .UsePathRouting -}} {{ .Host }} {{- else -}} gitea.{{- .Host }} {{- end }}'
       ROOT_URL: '{{- if .UsePathRouting }} {{- .Protocol }}://{{ .Host }}:{{ .Port }}/gitea {{- else }} {{- .Protocol }}://gitea.{{ .Host }}:{{ .Port }} {{- end }}'
+    webhook:
+      ALLOWED_HOST_LIST: private
+      SKIP_TLS_VERIFY: true
 
 service:
   ssh:
