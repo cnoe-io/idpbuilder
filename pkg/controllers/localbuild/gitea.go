@@ -2,19 +2,22 @@ package localbuild
 
 import (
 	"context"
-	"crypto/tls"
 	"embed"
+	"encoding/base64"
 	"fmt"
 	"net/http"
-	"time"
 
+	"code.gitea.io/sdk/gitea"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -22,8 +25,10 @@ import (
 
 const (
 	// hardcoded values from what we have in the yaml installation file.
-	giteaNamespace   = "gitea"
-	giteaAdminSecret = "gitea-credential"
+	giteaNamespace           = "gitea"
+	giteaAdminSecret         = "gitea-credential"
+	giteaAdminTokenName      = "admin"
+	giteaAdminTokenFieldName = "token"
 	// this is the URL accessible outside cluster. resolves to localhost
 	giteaIngressURL = "%s://gitea.cnoe.localtest.me:%s"
 	// this is the URL accessible within cluster for ArgoCD to fetch resources.
@@ -38,11 +43,7 @@ func RawGiteaInstallResources(templateData any, config v1alpha1.PackageCustomiza
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/gitea/k8s", installGiteaFS, scheme, templateData)
 }
 
-func newGiteaAdminSecret() (corev1.Secret, error) {
-	pass, err := util.GeneratePassword()
-	if err != nil {
-		return corev1.Secret{}, err
-	}
+func giteaAdminSecretObject() corev1.Secret {
 	return corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -52,11 +53,20 @@ func newGiteaAdminSecret() (corev1.Secret, error) {
 			Name:      giteaAdminSecret,
 			Namespace: giteaNamespace,
 		},
-		StringData: map[string]string{
-			"username": v1alpha1.GiteaAdminUserName,
-			"password": pass,
-		},
-	}, nil
+	}
+}
+
+func newGiteaAdminSecret() (corev1.Secret, error) {
+	pass, err := util.GeneratePassword()
+	if err != nil {
+		return corev1.Secret{}, err
+	}
+	obj := giteaAdminSecretObject()
+	obj.StringData = map[string]string{
+		"username": v1alpha1.GiteaAdminUserName,
+		"password": pass,
+	}
+	return obj, nil
 }
 
 func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
@@ -75,12 +85,24 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		},
 	}
 
-	giteCreds, err := newGiteaAdminSecret()
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
-	}
+	sec := giteaAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
 
-	gitea.unmanagedResources = []client.Object{&giteCreds}
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			giteaCreds, err := newGiteaAdminSecret()
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
+			}
+			gitea.unmanagedResources = []client.Object{&giteaCreds}
+			sec = giteaCreds
+		} else {
+			return ctrl.Result{}, fmt.Errorf("getting gitea secret: %w", err)
+		}
+	}
 
 	v, ok := resource.Spec.PackageConfigs.CorePackageCustomization[v1alpha1.GiteaPackageName]
 	if ok {
@@ -94,16 +116,8 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 	baseUrl := giteaBaseUrl(r.Config)
 	// need this to ensure gitrepository controller can reach the api endpoint.
 	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
-	c := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-		Timeout: 2 * time.Second,
-	}
+	c := util.GetHttpClient()
 	resp, err := c.Get(baseUrl)
-
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -115,12 +129,85 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		}
 	}
 
+	err = r.setGiteaToken(ctx, sec, baseUrl)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("creating gitea token: %w", err)
+	}
+
 	resource.Status.Gitea.ExternalURL = baseUrl
 	resource.Status.Gitea.InternalURL = giteaInternalBaseUrl(r.Config)
 	resource.Status.Gitea.AdminUserSecretName = giteaAdminSecret
 	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace
 	resource.Status.Gitea.Available = true
 	return ctrl.Result{}, nil
+}
+
+func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.Secret, baseUrl string) error {
+	_, ok := secret.Data[giteaAdminTokenFieldName]
+	if ok {
+		return nil
+	}
+
+	u := unstructured.Unstructured{}
+	u.SetName(giteaAdminSecret)
+	u.SetNamespace(giteaNamespace)
+	u.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Secret"))
+
+	user, ok := secret.Data["username"]
+	if !ok {
+		return fmt.Errorf("username field not found in gitea secret")
+	}
+
+	pass, ok := secret.Data["password"]
+	if !ok {
+		return fmt.Errorf("password field not found in gitea secret")
+	}
+
+	t, err := getGiteaToken(ctx, baseUrl, string(user), string(pass))
+	if err != nil {
+		return fmt.Errorf("getting gitea token: %w", err)
+	}
+
+	token := base64.StdEncoding.EncodeToString([]byte(t))
+	err = unstructured.SetNestedField(u.Object, token, "data", giteaAdminTokenFieldName)
+	if err != nil {
+		return fmt.Errorf("setting gitea token field: %w", err)
+	}
+
+	return r.Client.Patch(ctx, &u, client.Apply, client.ForceOwnership, client.FieldOwner(v1alpha1.FieldManager))
+}
+
+func getGiteaToken(ctx context.Context, baseUrl, username, password string) (string, error) {
+
+	giteaClient := gitea.NewClientWithHTTP(baseUrl, util.GetHttpClient())
+	giteaClient.SetBasicAuth(username, password)
+	giteaClient.SetContext(ctx)
+	tokens, resp, err := giteaClient.ListAccessTokens(gitea.ListAccessTokensOptions{})
+	if err != nil {
+		return "", fmt.Errorf("listing gitea access tokens. stauts: %s error : %w", resp.Status, err)
+	}
+
+	for i := range tokens {
+		if tokens[i].Name == giteaAdminTokenName {
+			resp, err := giteaClient.DeleteAccessToken(tokens[i].ID)
+			if err != nil {
+				return "", fmt.Errorf("deleting gitea access tokens. stauts: %s error : %w", resp.Status, err)
+			}
+			break
+		}
+	}
+
+	token, resp, err := giteaClient.CreateAccessToken(gitea.CreateAccessTokenOption{
+		Name: giteaAdminTokenName,
+		Scopes: []gitea.AccessTokenScope{
+			gitea.AccessTokenScopeAll,
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("deleting gitea access tokens. stauts: %s error : %w", resp.Status, err)
+	}
+
+	return token.Token, nil
 }
 
 func giteaBaseUrl(config util.CorePackageTemplateConfig) string {

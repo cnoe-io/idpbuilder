@@ -3,12 +3,16 @@ package util
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"math"
 	"math/big"
 	mathrand "math/rand"
+	"net"
+	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -132,4 +136,15 @@ func getRandElement(input string) (string, error) {
 func IsYamlFile(input string) bool {
 	extension := filepath.Ext(input)
 	return extension == ".yaml" || extension == ".yml"
+}
+
+func GetHttpClient() *http.Client {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second, // from http.DefaultTransport
+		}).DialContext,
+	}
+	return &http.Client{Transport: tr, Timeout: 30 * time.Second}
 }
