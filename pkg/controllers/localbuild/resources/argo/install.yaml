@@ -21157,7 +21157,7 @@ apiVersion: v1
 data:
   '{{.Host}}': |
     {{ .SelfSignedCert | indentNewLines 4 }}
-  gitea.cnoe.localtest.me: |
+  gitea.{{.Host}}: |
     {{ .SelfSignedCert | indentNewLines 4 }}
 kind: ConfigMap
 metadata:
