@@ -134,13 +134,13 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	setupLog.V(1).Info("Getting Kube config")
+	setupLog.Info("Getting Kube config")
 	kubeConfig, err := b.GetKubeConfig()
 	if err != nil {
 		return err
 	}
 
-	setupLog.V(1).Info("Getting Kube client")
+	setupLog.Info("Getting Kube client")
 	kubeClient, err := b.GetKubeClient(kubeConfig)
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	setupLog.V(1).Info("Creating controller manager")
+	setupLog.Info("Creating controller manager")
 	// Create controller manager
 	mgr, err := ctrl.NewManager(kubeConfig, ctrl.Options{
 		Scheme: b.scheme,
@@ -170,7 +170,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 	defer os.RemoveAll(dir)
-	setupLog.V(1).Info("Created temp directory for cloning repositories", "dir", dir)
+	setupLog.Info("Created temp directory for cloning repositories", "dir", dir)
 
 	setupLog.Info("Setting up CoreDNS")
 	err = setupCoreDNS(ctx, kubeClient, b.scheme, b.cfg)
@@ -185,7 +185,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	}
 	b.cfg.SelfSignedCert = string(cert)
 
-	setupLog.V(1).Info("Running controllers")
+	setupLog.Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {
 		setupLog.Error(err, "Error running controllers")
 		return err
