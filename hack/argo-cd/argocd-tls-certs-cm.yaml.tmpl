@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: argocd-tls-certs-cm
     app.kubernetes.io/part-of: argocd
 data:
-  'gitea.cnoe.localtest.me': |
+  'gitea.{{.Host}}': |
     {{ .SelfSignedCert | indentNewLines 4 }}
   '{{.Host}}': |
     {{ .SelfSignedCert | indentNewLines 4 }}
