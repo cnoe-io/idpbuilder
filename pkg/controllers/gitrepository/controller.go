@@ -2,7 +2,6 @@ package gitrepository
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -73,15 +72,7 @@ func getFallbackRepositoryURL(repo *v1alpha1.GitRepository, info repoInfo) strin
 func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
 	switch repo.Spec.Provider.Name {
 	case v1alpha1.GitProviderGitea:
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			DialContext: (&net.Dialer{
-				Timeout:   gitTCPTimeout,
-				KeepAlive: 30 * time.Second, // from http.DefaultTransport
-			}).DialContext,
-		}
-		c := &http.Client{Transport: tr, Timeout: gitHTTPTimeout}
-		giteaClient, err := NewGiteaClient(repo.Spec.Provider.GitURL, gitea.SetHTTPClient(c))
+		giteaClient, err := NewGiteaClient(repo.Spec.Provider.GitURL, gitea.SetHTTPClient(util.GetHttpClient()))
 		if err != nil {
 			return nil, err
 		}
