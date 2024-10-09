@@ -184,14 +184,14 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	giteaClient.SetContext(ctx)
 	tokens, resp, err := giteaClient.ListAccessTokens(gitea.ListAccessTokensOptions{})
 	if err != nil {
-		return "", fmt.Errorf("listing gitea access tokens. stauts: %s error : %w", resp.Status, err)
+		return "", fmt.Errorf("listing gitea access tokens. status: %s error : %w", resp.Status, err)
 	}
 
 	for i := range tokens {
 		if tokens[i].Name == giteaAdminTokenName {
 			resp, err := giteaClient.DeleteAccessToken(tokens[i].ID)
 			if err != nil {
-				return "", fmt.Errorf("deleting gitea access tokens. stauts: %s error : %w", resp.Status, err)
+				return "", fmt.Errorf("deleting gitea access tokens. status: %s error : %w", resp.Status, err)
 			}
 			break
 		}
@@ -204,7 +204,7 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("deleting gitea access tokens. stauts: %s error : %w", resp.Status, err)
+		return "", fmt.Errorf("deleting gitea access tokens. status: %s error : %w", resp.Status, err)
 	}
 
 	return token.Token, nil
