@@ -16,4 +16,9 @@ jobs:
       - name: Run tests
         run: |
           make build
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "git is in dirty state";
+            git status --porcelain=2 --branch
+            exit 1
+          fi
           make test
