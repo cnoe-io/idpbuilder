@@ -7,8 +7,6 @@
 
 Internal development platform binary launcher.
 
-> **WORK IN PROGRESS**: This tool is in a pre-release stage and is under active development.
-
 ## About
 
 Spin up a complete internal developer platform using industry standard technologies like Kubernetes, Argo, and backstage with only Docker required as a dependency.
@@ -20,7 +18,25 @@ This can be useful in several ways:
 
 ## Getting Started
 
-Checkout our [documentation website](https://cnoe.io/docs/reference-implementation/installations/idpbuilder) for getting started with idpbuilder.
+The easiest way to get started is to grab the idpbuilder binary for your platform and run it. You can visit our [nightly releases](https://github.com/cnoe-io/idpbuilder/releases/latest) page to download the version for your system, or run the following commands:
+
+```bash
+arch=$(if [[ "$(uname -m)" == "x86_64" ]]; then echo "amd64"; else uname -m; fi)
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+
+idpbuilder_latest_tag=$(curl --silent "https://api.github.com/repos/cnoe-io/idpbuilder/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -LO  https://github.com/cnoe-io/idpbuilder/releases/download/$idpbuilder_latest_tag/idpbuilder-$os-$arch.tar.gz
+tar xvzf idpbuilder-$os-$arch.tar.gz
+```
+
+You can then run idpbuilder with the create argument to spin up your CNOE IDP:
+
+```bash
+./idpbuilder create
+```
+
+For more detailed information, Cceckout our [documentation website](https://cnoe.io/docs/reference-implementation/installations/idpbuilder) on getting started with idpbuilder.
 
 ## Community
 
