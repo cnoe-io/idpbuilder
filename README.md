@@ -36,7 +36,7 @@ You can then run idpbuilder with the create argument to spin up your CNOE IDP:
 ./idpbuilder create
 ```
 
-For more detailed information, Cceckout our [documentation website](https://cnoe.io/docs/reference-implementation/installations/idpbuilder) on getting started with idpbuilder.
+For more detailed information, checkout our [documentation website](https://cnoe.io/docs/reference-implementation/installations/idpbuilder) on getting started with idpbuilder.
 
 ## Community
 
