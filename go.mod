@@ -11,6 +11,7 @@ require (
 	github.com/go-logr/logr v1.4.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v61 v61.0.0
+	github.com/kevinburke/ssh_config v1.2.1-0.20231022042432-1d09c0b50564
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
 	k8s.io/api v0.29.1
@@ -65,7 +66,6 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect

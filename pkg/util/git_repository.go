@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -17,7 +19,10 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/kevinburke/ssh_config"
 )
 
 type RepoMap struct {
@@ -142,26 +147,57 @@ func CloneRemoteRepoToDir(ctx context.Context, remote v1alpha1.RemoteRepositoryS
 	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryNotExists) {
+			ep, eErr := transport.NewEndpoint(remote.Url)
+			if eErr != nil {
+				return nil, nil, fmt.Errorf("reading endpoint %s: %w", remote.Url, eErr)
+			}
+
+			var auth transport.AuthMethod
+			if ep.Protocol == "ssh" {
+				a, aErr := ssh.DefaultAuthBuilder(ep.User)
+				if aErr != nil {
+					// go-git default auth relies on ssh agent. if not available, get from ~/.ssh/config.
+					if strings.Contains(aErr.Error(), "SSH agent requested but SSH_AUTH_SOCK not-specified") {
+						sshConfigPath, sErr := getSSHConfigAbsPath()
+						if sErr != nil {
+							return nil, nil, fmt.Errorf("getting ssh config file: %w", sErr)
+						}
+
+						au, sErr := getSSHKeyAuth(sshConfigPath, ep.Host, ep.User)
+						if sErr != nil {
+							return nil, nil, fmt.Errorf("ssh key auth: %w", sErr)
+						}
+
+						auth = au
+					} else {
+						return nil, nil, aErr
+					}
+				} else {
+					auth = a
+				}
+			}
+
 			cloneOptions := &git.CloneOptions{
 				URL:               remote.Url,
 				Depth:             depth,
 				ShallowSubmodules: true,
 				Tags:              git.AllTags,
 				InsecureSkipTLS:   insecureSkipTLS,
+				Auth:              auth,
 			}
 			if remote.CloneSubmodules {
 				cloneOptions.RecurseSubmodules = git.DefaultSubmoduleRecursionDepth
 			}
-			repo, err = git.PlainCloneContext(ctx, dir, false, cloneOptions)
-			if err != nil {
+			repo, eErr = git.PlainCloneContext(ctx, dir, false, cloneOptions)
+			if eErr != nil {
 				if fallbackUrl != "" {
 					cloneOptions.URL = fallbackUrl
-					repo, err = git.PlainCloneContext(ctx, dir, false, cloneOptions)
-					if err != nil {
-						return nil, nil, fmt.Errorf("cloning repo with fall back url: %w", err)
+					repo, eErr = git.PlainCloneContext(ctx, dir, false, cloneOptions)
+					if eErr != nil {
+						return nil, nil, fmt.Errorf("cloning repo with fall back url: %w", eErr)
 					}
 				}
-				return nil, nil, fmt.Errorf("cloning repo: %w", err)
+				return nil, nil, fmt.Errorf("cloning repo: %w", eErr)
 			}
 		} else {
 			return nil, nil, fmt.Errorf("opening repo at %s %w", dir, err)
@@ -268,4 +304,100 @@ func checkoutCommitOrRef(ctx context.Context, wt *git.Worktree, ref string) erro
 	}
 
 	return nil
+}
+
+func getKeyfileAbsPath(relativePath string) (string, error) {
+	var absPath string
+	if strings.HasPrefix(relativePath, "~/") {
+		usr, err := user.Current()
+		if err != nil {
+			return "", err
+		}
+		keyFileAbs, err := filepath.Abs(filepath.Join(usr.HomeDir, relativePath[2:]))
+		if err != nil {
+			return "", err
+		}
+		absPath = keyFileAbs
+	} else {
+		keyFileAbs, err := filepath.Abs(relativePath)
+		if err != nil {
+			return "", err
+		}
+		absPath = keyFileAbs
+	}
+	return absPath, nil
+}
+
+func getSSHKeyAuth(configPath, host, user string) (transport.AuthMethod, error) {
+	f, err := os.Open(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	conf, err := ssh_config.Decode(f)
+	if err != nil {
+		return nil, err
+	}
+
+	keyFileRelativePath, err := conf.Get(host, "IdentityFile")
+	if err != nil {
+		return nil, err
+	}
+
+	// no key specified in config, find the default key
+	if keyFileRelativePath == "" {
+		homeDir, hErr := getHomeDir()
+		if hErr != nil {
+			return nil, hErr
+		}
+		// from `man ssh` on Mac OpenSSH_9.7p1, LibreSSL 3.3.6
+		keyFiles := []string{
+			"id_rsa",
+			"id_ecdsa",
+			"id_ecdsa_sk",
+			"id_ed25519",
+			"id_ed25519_sk",
+			"id_dsa",
+		}
+		for _, file := range keyFiles {
+			path := filepath.Join(homeDir, ".ssh", file)
+			if _, sErr := os.Stat(path); sErr == nil {
+				keyFileRelativePath = path
+				break
+			}
+		}
+		if keyFileRelativePath == "" {
+			return nil, fmt.Errorf("private key not speficied for %s. could not find default key", host)
+		}
+	}
+
+	absPath, err := getKeyfileAbsPath(keyFileRelativePath)
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := ssh.NewPublicKeysFromFile(user, absPath, "")
+	if err != nil {
+		return nil, err
+	}
+	return auth, nil
+}
+
+func getSSHConfigAbsPath() (string, error) {
+	homeDir, err := getHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Abs(filepath.Join(homeDir, ".ssh/config"))
+}
+
+func getHomeDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	if homeDir == "" {
+		return "", fmt.Errorf("user does not have the home direcotry")
+	}
+	return homeDir, nil
 }
