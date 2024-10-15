@@ -21,6 +21,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/get"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -362,4 +363,33 @@ func GetKubeClient() (client.Client, error) {
 		return nil, err
 	}
 	return client.New(conf, client.Options{Scheme: k8s.GetScheme()})
+}
+
+// login, build a test image, push, then pull.
+func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaPort string) {
+	t.Log("testing gitea container registry")
+	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	assert.NoError(t, err)
+
+	secs := make([]get.TemplateData, 2)
+	err = json.Unmarshal(b, &secs)
+	assert.NoError(t, err)
+
+	sec := secs[0]
+	user := sec.Data["username"]
+	pass := sec.Data["password"]
+
+	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
+	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
+
+	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
+
+	build, err := RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s build err: %s", cmd, build)
+
+	push, err := RunCommand(ctx, fmt.Sprintf("%s push %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s push err: %s", cmd, push)
+
+	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
 }
