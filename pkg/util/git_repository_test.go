@@ -2,6 +2,11 @@ package util
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +16,7 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/stretchr/testify/assert"
 )
@@ -113,4 +119,86 @@ func TestGetWorktreeYamlFiles(t *testing.T) {
 	paths, err = GetWorktreeYamlFiles("./pkg", wt, false)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 0, len(paths))
+}
+
+func TestGetKeyfileAbsPath(t *testing.T) {
+	homeDir, _ := getHomeDir()
+	cwd, _ := os.Getwd()
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		hasError bool
+	}{
+		{"Relative path", "testkey", filepath.Join(cwd, "testkey"), false},
+		{"Home directory", "~/testkey", filepath.Join(homeDir, "testkey"), false},
+		{"Absolute path", "/tmp/testkey", "/tmp/testkey", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := getKeyfileAbsPath(tt.input)
+			if tt.hasError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestGetSSHKeyAuth(t *testing.T) {
+	// Create a temporary SSH config file
+	sshConfFile, err := os.CreateTemp("", "sshconfig")
+	assert.NoError(t, err)
+	defer os.Remove(sshConfFile.Name())
+
+	keyPath, err := createTestPrivateKey()
+	assert.NoError(t, err)
+	defer os.Remove(keyPath)
+
+	_, _ = sshConfFile.Write([]byte(fmt.Sprintf("Host testhost\nIdentityFile %s", keyPath)))
+	sshConfFile.Close()
+
+	auth, err := getSSHKeyAuth(sshConfFile.Name(), "testhost", "git")
+	assert.NoError(t, err)
+	assert.IsType(t, &ssh.PublicKeys{}, auth)
+
+	_, err = getSSHKeyAuth("/nonexistent/path", "testhost", "git")
+	assert.Error(t, err)
+
+	_, err = getSSHKeyAuth(sshConfFile.Name(), "not-in-config", "git")
+	assert.Error(t, err)
+}
+
+func TestGetSSHConfigAbsPath(t *testing.T) {
+	expected, err := filepath.Abs(filepath.Join(os.Getenv("HOME"), ".ssh/config"))
+	assert.NoError(t, err)
+
+	result, err := getSSHConfigAbsPath()
+	assert.NoError(t, err)
+	assert.True(t, filepath.IsAbs(result))
+	assert.Equal(t, expected, result)
+}
+
+func createTestPrivateKey() (string, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", err
+	}
+
+	privKeyPEM := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	}
+
+	keyfile, err := os.CreateTemp("", "key")
+	if err != nil {
+		return "", err
+	}
+	defer keyfile.Close()
+
+	pem.Encode(keyfile, privKeyPEM)
+	return keyfile.Name(), nil
 }
