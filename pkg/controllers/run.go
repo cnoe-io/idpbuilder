@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 
@@ -18,7 +19,7 @@ func RunControllers(
 	exitCh chan error,
 	ctxCancel context.CancelFunc,
 	exitOnSync bool,
-	cfg util.CorePackageTemplateConfig,
+	cfg v1alpha1.BuildCustomizationSpec,
 	tmpDir string,
 ) error {
 	logger := log.FromContext(ctx)

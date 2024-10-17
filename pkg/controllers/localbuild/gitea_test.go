@@ -3,12 +3,12 @@ package localbuild
 import (
 	"testing"
 
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGiteaInternalBaseUrl(t *testing.T) {
-	c := util.CorePackageTemplateConfig{
+	c := v1alpha1.BuildCustomizationSpec{
 		Protocol:       "http",
 		Port:           "8080",
 		Host:           "cnoe.localtest.me",

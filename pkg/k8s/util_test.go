@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,7 +38,7 @@ func TestBuildCustomizedManifests(t *testing.T) {
 
 	for key := range cases {
 		c := cases[key]
-		b, err := BuildCustomizedManifests(c.filePath, c.fsPath, testDataFS, GetScheme(), util.CorePackageTemplateConfig{
+		b, err := BuildCustomizedManifests(c.filePath, c.fsPath, testDataFS, GetScheme(), v1alpha1.BuildCustomizationSpec{
 			Protocol:       "http",
 			Host:           "cnoe.localtest.me",
 			IngressHost:    "localhost",

@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	runtime "github.com/cnoe-io/idpbuilder/pkg/runtime"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +78,7 @@ containerdConfigPatches:
 
 	for i := range tcs {
 		c := tcs[i]
-		cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", util.CorePackageTemplateConfig{
+		cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", v1alpha1.BuildCustomizationSpec{
 			Host:           c.host,
 			Port:           c.port,
 			UsePathRouting: c.usePathRouting,
@@ -93,7 +93,7 @@ containerdConfigPatches:
 
 func TestExtraPortMappings(t *testing.T) {
 
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", util.CorePackageTemplateConfig{
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", v1alpha1.BuildCustomizationSpec{
 		Host: "cnoe.localtest.me",
 		Port: "8443",
 	})
@@ -173,7 +173,7 @@ func TestGetConfigCustom(t *testing.T) {
 	}
 
 	for _, v := range cases {
-		c, _ := NewCluster("testcase", "v1.26.3", "", v.inputPath, "", util.CorePackageTemplateConfig{
+		c, _ := NewCluster("testcase", "v1.26.3", "", v.inputPath, "", v1alpha1.BuildCustomizationSpec{
 			Host:     "cnoe.localtest.me",
 			Port:     v.hostPort,
 			Protocol: v.protocol,
@@ -274,7 +274,7 @@ func TestRunsOnWrongPort(t *testing.T) {
 	cluster := &Cluster{
 		name:     "test-cluster",
 		provider: mockProvider,
-		cfg: util.CorePackageTemplateConfig{
+		cfg: v1alpha1.BuildCustomizationSpec{
 			Port: "8080",
 		},
 	}

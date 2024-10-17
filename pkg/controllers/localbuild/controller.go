@@ -45,7 +45,7 @@ type LocalbuildReconciler struct {
 	CancelFunc     context.CancelFunc
 	ExitOnSync     bool
 	shouldShutdown bool
-	Config         util.CorePackageTemplateConfig
+	Config         v1alpha1.BuildCustomizationSpec
 	TempDir        string
 	RepoMap        *util.RepoMap
 }

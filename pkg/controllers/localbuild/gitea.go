@@ -210,12 +210,12 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	return token.Token, nil
 }
 
-func giteaBaseUrl(config util.CorePackageTemplateConfig) string {
+func giteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
 	return fmt.Sprintf(giteaIngressURL, config.Protocol, config.Port)
 }
 
 // gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
-func giteaInternalBaseUrl(config util.CorePackageTemplateConfig) string {
+func giteaInternalBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
 	if config.UsePathRouting {
 		return fmt.Sprintf(giteaSvcURL, config.Protocol, "", config.Host, config.Port, "/gitea")
 	}

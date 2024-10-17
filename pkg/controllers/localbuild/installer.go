@@ -10,7 +10,6 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,7 +52,7 @@ func (e *EmbeddedInstallation) newNamespace(namespace string) *corev1.Namespace 
 	}
 }
 
-func (e *EmbeddedInstallation) Install(ctx context.Context, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg util.CorePackageTemplateConfig) (ctrl.Result, error) {
+func (e *EmbeddedInstallation) Install(ctx context.Context, resource *v1alpha1.Localbuild, cli client.Client, sc *runtime.Scheme, cfg v1alpha1.BuildCustomizationSpec) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	nsClient := client.NewNamespacedClient(cli, e.namespace)
