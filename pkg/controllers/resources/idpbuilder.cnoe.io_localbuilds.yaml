@@ -37,6 +37,23 @@ spec:
             type: object
           spec:
             properties:
+              buildCustomization:
+                description: BuildCustomizationSpec fields cannot change once a cluster
+                  is created
+                properties:
+                  host:
+                    type: string
+                  ingressHost:
+                    type: string
+                  port:
+                    type: string
+                  protocol:
+                    type: string
+                  selfSignedCert:
+                    type: string
+                  usePathRouting:
+                    type: boolean
+                type: object
               packageConfigs:
                 properties:
                   argoPackageConfigs:

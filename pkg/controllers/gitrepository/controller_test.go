@@ -63,7 +63,7 @@ type testCase struct {
 	expect      expect
 }
 
-func (t testCase) giteaProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
+func (t testCase) giteaProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig v1alpha1.BuildCustomizationSpec) (gitProvider, error) {
 	return &giteaProvider{
 		Client:      kubeClient,
 		Scheme:      scheme,

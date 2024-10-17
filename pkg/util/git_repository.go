@@ -160,8 +160,9 @@ func CloneRemoteRepoToDir(ctx context.Context, remote v1alpha1.RemoteRepositoryS
 					if err != nil {
 						return nil, nil, fmt.Errorf("cloning repo with fall back url: %w", err)
 					}
+				} else {
+					return nil, nil, fmt.Errorf("cloning repo: %w", err)
 				}
-				return nil, nil, fmt.Errorf("cloning repo: %w", err)
 			}
 		} else {
 			return nil, nil, fmt.Errorf("opening repo at %s %w", dir, err)

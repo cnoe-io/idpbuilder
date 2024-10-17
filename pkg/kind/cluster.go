@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -36,7 +37,7 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
-	cfg               util.CorePackageTemplateConfig
+	cfg               v1alpha1.BuildCustomizationSpec
 }
 
 type PortMapping struct {
@@ -54,7 +55,7 @@ type IProvider interface {
 }
 
 type TemplateConfig struct {
-	util.CorePackageTemplateConfig
+	v1alpha1.BuildCustomizationSpec
 	KubernetesVersion string
 	ExtraPortsMapping []PortMapping
 }
@@ -94,9 +95,9 @@ func (c *Cluster) getConfig() ([]byte, error) {
 
 	var retBuff []byte
 	if retBuff, err = util.ApplyTemplate(rawConfigTempl, TemplateConfig{
-		CorePackageTemplateConfig: c.cfg,
-		KubernetesVersion:         c.kubeVersion,
-		ExtraPortsMapping:         portMappingPairs,
+		BuildCustomizationSpec: c.cfg,
+		KubernetesVersion:      c.kubeVersion,
+		ExtraPortsMapping:      portMappingPairs,
 	}); err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg util.CorePackageTemplateConfig) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec) (*Cluster, error) {
 	detectOpt, err := cluster.DetectNodeProvider()
 
 	if err != nil {

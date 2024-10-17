@@ -12,7 +12,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -117,7 +116,7 @@ func create(cmd *cobra.Command, args []string) error {
 		KindConfigPath:    kindConfigPath,
 		ExtraPortsMapping: extraPortsMapping,
 
-		TemplateData: util.CorePackageTemplateConfig{
+		TemplateData: v1alpha1.BuildCustomizationSpec{
 			Protocol:       protocol,
 			Host:           host,
 			IngressHost:    ingressHost,

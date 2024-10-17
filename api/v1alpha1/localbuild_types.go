@@ -45,8 +45,19 @@ type PackageConfigsSpec struct {
 	CorePackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
+// BuildCustomizationSpec fields cannot change once a cluster is created
+type BuildCustomizationSpec struct {
+	Protocol       string `json:"protocol,omitempty"`
+	Host           string `json:"host,omitempty"`
+	IngressHost    string `json:"ingressHost,omitempty"`
+	Port           string `json:"port,omitempty"`
+	UsePathRouting bool   `json:"usePathRouting,omitempty"`
+	SelfSignedCert string `json:"selfSignedCert,omitempty"`
+}
+
 type LocalbuildSpec struct {
-	PackageConfigs PackageConfigsSpec `json:"packageConfigs,omitempty"`
+	PackageConfigs     PackageConfigsSpec     `json:"packageConfigs,omitempty"`
+	BuildCustomization BuildCustomizationSpec `json:"buildCustomization,omitempty"`
 }
 
 // PackageCustomization defines how packages are customized
