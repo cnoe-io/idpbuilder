@@ -45,7 +45,7 @@ type PackageConfigsSpec struct {
 	CorePackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
-// BuildCustomizationSpec fields cannot change once
+// BuildCustomizationSpec fields cannot change once a cluster is created
 type BuildCustomizationSpec struct {
 	Protocol       string `json:"protocol,omitempty"`
 	Host           string `json:"host,omitempty"`

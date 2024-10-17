@@ -38,7 +38,8 @@ spec:
           spec:
             properties:
               buildCustomization:
-                description: BuildCustomizationSpec fields cannot change once
+                description: BuildCustomizationSpec fields cannot change once a cluster
+                  is created
                 properties:
                   host:
                     type: string
