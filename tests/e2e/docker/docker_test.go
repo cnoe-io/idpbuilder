@@ -69,6 +69,8 @@ func testCreate(t *testing.T) {
 	argoBaseUrl := fmt.Sprintf("https://argocd.%s:%s", e2e.DefaultBaseDomain, e2e.DefaultPort)
 	giteaBaseUrl := fmt.Sprintf("https://gitea.%s:%s", e2e.DefaultBaseDomain, e2e.DefaultPort)
 	e2e.TestCoreEndpoints(ctx, t, argoBaseUrl, giteaBaseUrl)
+
+	e2e.TestGiteaRegistry(ctx, t, "docker", fmt.Sprintf("gitea.%s", e2e.DefaultBaseDomain), e2e.DefaultPort)
 }
 
 // test idpbuilder create --use-path-routing
@@ -90,6 +92,8 @@ func testCreatePath(t *testing.T) {
 	argoBaseUrl := fmt.Sprintf("https://%s:%s/argocd", e2e.DefaultBaseDomain, e2e.DefaultPort)
 	giteaBaseUrl := fmt.Sprintf("https://%s:%s/gitea", e2e.DefaultBaseDomain, e2e.DefaultPort)
 	e2e.TestCoreEndpoints(ctx, t, argoBaseUrl, giteaBaseUrl)
+
+	e2e.TestGiteaRegistry(ctx, t, "docker", e2e.DefaultBaseDomain, e2e.DefaultPort)
 }
 
 func testCreatePort(t *testing.T) {

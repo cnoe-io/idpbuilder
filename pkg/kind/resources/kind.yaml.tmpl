@@ -1,4 +1,3 @@
-# Kind kubernetes release images https://github.com/kubernetes-sigs/kind/releases
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -17,7 +16,14 @@ nodes:
   {{ end }}
 containerdConfigPatches:
 - |-
+  {{ if .UsePathRouting -}}
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ .Host }}:{{ .Port }}"]
+    endpoint = ["https://{{ .Host }}"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ .Host }}".tls]
+    insecure_skip_verify = true
+  {{- else -}}
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.{{ .Host }}:{{ .Port }}"]
     endpoint = ["https://gitea.{{ .Host }}"]
   [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.{{ .Host }}".tls]
     insecure_skip_verify = true
+  {{- end -}}
