@@ -178,10 +178,12 @@ func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.
 }
 
 func getGiteaToken(ctx context.Context, baseUrl, username, password string) (string, error) {
-
-	giteaClient := gitea.NewClientWithHTTP(baseUrl, util.GetHttpClient())
-	giteaClient.SetBasicAuth(username, password)
-	giteaClient.SetContext(ctx)
+	giteaClient, err := gitea.NewClient(baseUrl, gitea.SetHTTPClient(util.GetHttpClient()),
+		gitea.SetBasicAuth(username, password), gitea.SetContext(ctx),
+	)
+	if err != nil {
+		return "", fmt.Errorf("creating gitea client: %w", err)
+	}
 	tokens, resp, err := giteaClient.ListAccessTokens(gitea.ListAccessTokensOptions{})
 	if err != nil {
 		return "", fmt.Errorf("listing gitea access tokens. status: %s error : %w", resp.Status, err)
