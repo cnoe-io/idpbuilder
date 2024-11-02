@@ -253,30 +253,46 @@ func TestArgoCDEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 }
 
 func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
+	var lastErr error
 
-	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
-	if err != nil {
-		return BasicAuth{}, err
-	}
-	out := BasicAuth{}
+	for attempt := 0; attempt < 5; attempt++ {
+		select {
+		case <-ctx.Done():
+			return BasicAuth{}, ctx.Err()
+		default:
+			b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
+			if err != nil {
+				lastErr = err
+				time.Sleep(httpRetryDelay)
+				continue
+			}
 
-	secs := make([]get.TemplateData, 2)
-	err = json.Unmarshal(b, &secs)
-	if err != nil {
-		return BasicAuth{}, err
-	}
+			out := BasicAuth{}
+			secs := make([]get.TemplateData, 2)
+			if err = json.Unmarshal(b, &secs); err != nil {
+				lastErr = err
+				time.Sleep(httpRetryDelay)
+				continue
+			}
 
-	for i := range secs {
-		if secs[i].Name == name {
-			out.Password = secs[i].Data["password"]
-			out.Username = secs[i].Data["username"]
-			break
+			for i := range secs {
+				if secs[i].Name == name {
+					out.Password = secs[i].Data["password"]
+					out.Username = secs[i].Data["username"]
+					break
+				}
+			}
+
+			if out.Password == "" || out.Username == "" {
+				time.Sleep(httpRetryDelay)
+				continue
+			}
+
+			return out, nil
 		}
 	}
-	if out.Password == "" || out.Username == "" {
-		return BasicAuth{}, fmt.Errorf("could not find argocd or gitea credentials: %s", b)
-	}
-	return out, nil
+
+	return BasicAuth{}, fmt.Errorf("failed after 5 attempts: %w", lastErr)
 }
 
 func GetArgoCDSessionToken(ctx context.Context, endpoint string) (string, error) {
@@ -350,11 +366,7 @@ func isArgoAppSyncedAndHealthy(ctx context.Context, kubeClient client.Client, na
 		return false, err
 	}
 
-	if app.Status.Health.Status == "Healthy" && app.Status.Sync.Status == "Synced" {
-		return true, nil
-	}
-
-	return false, nil
+	return app.Status.Health.Status == "Healthy" && app.Status.Sync.Status == "Synced", nil
 }
 
 func GetKubeClient() (client.Client, error) {
