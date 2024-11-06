@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
+	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/kind/pkg/cluster"
 )
@@ -32,11 +34,12 @@ func preDeleteE(cmd *cobra.Command, args []string) error {
 func deleteE(cmd *cobra.Command, args []string) error {
 	logger := helpers.CmdLogger
 	logger.Info("deleting cluster", "clusterName", name)
-	detectOpt, err := cluster.DetectNodeProvider()
+	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
 		return err
 	}
-	provider := cluster.NewProvider(detectOpt)
+
+	provider := cluster.NewProvider(cluster.ProviderWithLogger(kind.KindLoggerFromLogr(&logger)), detectOpt)
 	if err := provider.Delete(name, ""); err != nil {
 		return fmt.Errorf("failed to delete cluster %s: %w", name, err)
 	}
