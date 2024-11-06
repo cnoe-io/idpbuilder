@@ -17,6 +17,25 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+const (
+	recreateClusterUsage   = "Delete cluster first if it already exists."
+	buildNameUsage         = "Name for build (Prefix for kind cluster name, pod names, etc)."
+	kubeVersionUsage       = "Version of the kind kubernetes cluster to create."
+	extraPortsMappingUsage = "List of extra ports to expose on the docker container and kubernetes cluster as nodePort " +
+		"(e.g. \"22:32222,9090:39090,etc\")."
+	kindConfigPathUsage = "Path of the kind config file to be used instead of the default."
+	hostUsage           = "Host name to access resources in this cluster."
+	ingressHostUsage    = "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions."
+	protocolUsage       = "Protocol to use to access web UIs. http or https."
+	portUsage           = "Port number to use to access web UIs."
+	pathRoutingUsage    = "When set to true, web UIs are exposed under single domain name. " +
+		"e.g. \"https://cnoe.localtest.me/argocd\" instead of \"https://argocd.cnoe.localtest.me\""
+	extraPackagesUsage             = "Paths to locations containing custom packages"
+	packageCustomizationFilesUsage = "Name of the package and the path to file to customize the core packages with. " +
+		"valid package names are: argocd, nginx, and gitea. e.g. argocd:/tmp/argocd.yaml"
+	noExitUsage = "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories."
+)
+
 var (
 	// Flags
 	recreateCluster           bool
@@ -44,22 +63,24 @@ var CreateCmd = &cobra.Command{
 
 func init() {
 	// cluster related flags
-	CreateCmd.PersistentFlags().BoolVar(&recreateCluster, "recreate", false, "Delete cluster first if it already exists.")
-	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", "Name for build (Prefix for kind cluster name, pod names, etc).")
-	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.30.3", "Version of the kind kubernetes cluster to create.")
-	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", "List of extra ports to expose on the docker container and kubernetes cluster as nodePort (e.g. \"22:32222,9090:39090,etc\").")
-	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", "Path of the kind config file to be used instead of the default.")
+	CreateCmd.PersistentFlags().BoolVar(&recreateCluster, "recreate", false, recreateClusterUsage)
+	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", buildNameUsage)
+	CreateCmd.PersistentFlags().MarkDeprecated("build-name", "use --name instead.")
+	CreateCmd.PersistentFlags().StringVar(&buildName, "name", "localdev", buildNameUsage)
+	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.30.3", kubeVersionUsage)
+	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", extraPortsMappingUsage)
+	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", kindConfigPathUsage)
 
 	// in-cluster resources related flags
-	CreateCmd.PersistentFlags().StringVar(&host, "host", globals.DefaultHostName, "Host name to access resources in this cluster.")
-	CreateCmd.PersistentFlags().StringVar(&ingressHost, "ingress-host-name", "", "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions.")
-	CreateCmd.PersistentFlags().StringVar(&protocol, "protocol", "https", "Protocol to use to access web UIs. http or https.")
-	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", "Port number under which idpBuilder tools are accessible.")
-	CreateCmd.PersistentFlags().BoolVar(&pathRouting, "use-path-routing", false, "When set to true, web UIs are exposed under single domain name.")
-	CreateCmd.Flags().StringSliceVarP(&extraPackages, "package", "p", []string{}, "Paths to locations containing custom packages")
-	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, "Name of the package and the path to file to customize the package with. e.g. argocd:/tmp/argocd.yaml")
+	CreateCmd.PersistentFlags().StringVar(&host, "host", globals.DefaultHostName, hostUsage)
+	CreateCmd.PersistentFlags().StringVar(&ingressHost, "ingress-host-name", "", ingressHostUsage)
+	CreateCmd.PersistentFlags().StringVar(&protocol, "protocol", "https", protocolUsage)
+	CreateCmd.PersistentFlags().StringVar(&port, "port", "8443", portUsage)
+	CreateCmd.PersistentFlags().BoolVar(&pathRouting, "use-path-routing", false, pathRoutingUsage)
+	CreateCmd.Flags().StringSliceVarP(&extraPackages, "package", "p", []string{}, extraPackagesUsage)
+	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, packageCustomizationFilesUsage)
 	// idpbuilder related flags
-	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories.")
+	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, noExitUsage)
 }
 
 func preCreateE(cmd *cobra.Command, args []string) error {
