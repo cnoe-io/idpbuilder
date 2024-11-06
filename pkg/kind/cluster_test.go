@@ -10,6 +10,7 @@ import (
 	runtime "github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"sigs.k8s.io/kind/pkg/cluster/constants"
@@ -82,7 +83,7 @@ containerdConfigPatches:
 			Host:           c.host,
 			Port:           c.port,
 			UsePathRouting: c.usePathRouting,
-		})
+		}, logr.Discard())
 		assert.NoError(t, err)
 
 		cfg, err := cluster.getConfig()
@@ -96,7 +97,7 @@ func TestExtraPortMappings(t *testing.T) {
 	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", v1alpha1.BuildCustomizationSpec{
 		Host: "cnoe.localtest.me",
 		Port: "8443",
-	})
+	}, logr.Discard())
 	if err != nil {
 		t.Fatalf("Initializing cluster resource: %v", err)
 	}
@@ -177,7 +178,7 @@ func TestGetConfigCustom(t *testing.T) {
 			Host:     "cnoe.localtest.me",
 			Port:     v.hostPort,
 			Protocol: v.protocol,
-		})
+		}, logr.Discard())
 
 		b, err := c.getConfig()
 		if v.error {

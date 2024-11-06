@@ -3,6 +3,7 @@ package kind
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -12,11 +13,13 @@ import (
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	kindv1alpha4 "sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
 	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
+	kindexec "sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/yaml"
 )
 
@@ -118,13 +121,13 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
 	detectOpt, err := cluster.DetectNodeProvider()
-
 	if err != nil {
 		return nil, err
 	}
-	provider := cluster.NewProvider(detectOpt)
+
+	provider := cluster.NewProvider(detectOpt, cluster.ProviderWithLogger(kindLoggerFromLogr(&cliLogger)))
 
 	rt, err := runtime.DetectRuntime()
 	if err != nil {
@@ -219,13 +222,17 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	fmt.Print("\n#########################   config end    ############################\n")
 
 	setupLog.Info("Creating kind cluster", "cluster", c.name)
+
 	if err = c.provider.Create(
 		c.name,
 		cluster.CreateWithRawConfig(rawConfig),
 	); err != nil {
+		t := &kindexec.RunError{}
+		if errors.As(err, &t) {
+			return fmt.Errorf("%w: %s", err, t.Output)
+		}
 		return err
 	}
-
 	setupLog.Info("Done creating cluster", "cluster", c.name)
 
 	return nil
