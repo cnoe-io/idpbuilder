@@ -11,14 +11,12 @@ import (
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/runtime"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	kindv1alpha4 "sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
-	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
 	kindexec "sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/yaml"
 )
@@ -34,7 +32,6 @@ var (
 
 type Cluster struct {
 	provider          IProvider
-	runtime           runtime.IRuntime
 	name              string
 	kubeVersion       string
 	kubeConfigPath    string
@@ -122,22 +119,15 @@ func (c *Cluster) getConfig() ([]byte, error) {
 }
 
 func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
-	detectOpt, err := cluster.DetectNodeProvider()
+	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	provider := cluster.NewProvider(detectOpt, cluster.ProviderWithLogger(kindLoggerFromLogr(&cliLogger)))
-
-	rt, err := runtime.DetectRuntime()
-	if err != nil {
-		return nil, err
-	}
-	setupLog.Info("Runtime detected", "provider", rt.Name())
+	provider := cluster.NewProvider(cluster.ProviderWithLogger(KindLoggerFromLogr(&cliLogger)), detectOpt)
 
 	return &Cluster{
 		provider:          provider,
-		runtime:           rt,
 		name:              name,
 		kindConfigPath:    kindConfigPath,
 		kubeVersion:       kubeVersion,
@@ -161,31 +151,6 @@ func (c *Cluster) Exists() (bool, error) {
 	return false, nil
 }
 
-func (c *Cluster) RunsOnRightPort(ctx context.Context) (bool, error) {
-	allNodes, err := c.provider.ListNodes(c.name)
-	if err != nil {
-		return false, err
-	}
-
-	cpNodes, err := nodeutils.ControlPlaneNodes(allNodes)
-	if err != nil {
-		return false, err
-	}
-
-	var cpNodeName string
-	for _, cpNode := range cpNodes {
-		if strings.Contains(cpNode.String(), c.name) {
-			cpNodeName = cpNode.String()
-		}
-	}
-	if cpNodeName == "" {
-		return false, nil
-	}
-
-	return c.runtime.ContainerWithPort(ctx, cpNodeName, c.cfg.Port)
-
-}
-
 func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	clusterExitsts, err := c.Exists()
 	if err != nil {
@@ -195,18 +160,11 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	if clusterExitsts {
 		if recreate {
 			setupLog.Info("Existing cluster found. Deleting.", "cluster", c.name)
-			c.provider.Delete(c.name, "")
-		} else {
-			rightPort, err := c.RunsOnRightPort(ctx)
+			err := c.provider.Delete(c.name, "")
 			if err != nil {
-				return err
+				return fmt.Errorf("deleting cluster %w", err)
 			}
-
-			if !rightPort {
-				return fmt.Errorf("can't serve port %s. cluster %s is already running on a different port", c.cfg.Port, c.name)
-			}
-
-			// reuse if there is no port conflict
+		} else {
 			setupLog.Info("Cluster already exists", "cluster", c.name)
 			return nil
 		}

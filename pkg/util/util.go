@@ -10,6 +10,7 @@ import (
 	mathrand "math/rand"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/kind/pkg/cluster"
 )
 
 const (
@@ -147,4 +149,21 @@ func GetHttpClient() *http.Client {
 		}).DialContext,
 	}
 	return &http.Client{Transport: tr, Timeout: 30 * time.Second}
+}
+
+// DetectKindNodeProvider follows the kind CLI convention where:
+// 1. if KIND_EXPERIMENTAL_PROVIDER env var is specified, it uses the value:
+// 2. if env var is not specified, use the first available supported engine.
+// https://github.com/kubernetes-sigs/kind/blob/ac81e7b64e06670132dae3486e64e531953ad58c/pkg/cluster/provider.go#L100-L114
+func DetectKindNodeProvider() (cluster.ProviderOption, error) {
+	switch p := os.Getenv("KIND_EXPERIMENTAL_PROVIDER"); p {
+	case "podman":
+		return cluster.ProviderWithPodman(), nil
+	case "docker":
+		return cluster.ProviderWithDocker(), nil
+	case "nerdctl", "finch", "nerdctl.lima":
+		return cluster.ProviderWithNerdctl(p), nil
+	default:
+		return cluster.DetectNodeProvider()
+	}
 }

@@ -35,9 +35,9 @@ func (l *kindLogger) V(level kindlog.Level) kindlog.InfoLogger {
 	return newKindInfoLogger(l.cliLogger, int(level))
 }
 
-// this is a wrapper of logr.Logger made specifically for kind's InfoLogger.
+// KindLoggerFromLogr is a wrapper of logr.Logger made specifically for kind's InfoLogger.
 // https://github.com/kubernetes-sigs/kind/blob/1a8f0473a0785e0975e26739524513e8ee696be3/pkg/log/types.go
-func kindLoggerFromLogr(logrLogger *logr.Logger) *kindLogger {
+func KindLoggerFromLogr(logrLogger *logr.Logger) *kindLogger {
 	return &kindLogger{
 		cliLogger: logrLogger,
 	}
