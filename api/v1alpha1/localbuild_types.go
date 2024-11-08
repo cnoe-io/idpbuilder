@@ -53,6 +53,7 @@ type BuildCustomizationSpec struct {
 	Port           string `json:"port,omitempty"`
 	UsePathRouting bool   `json:"usePathRouting,omitempty"`
 	SelfSignedCert string `json:"selfSignedCert,omitempty"`
+	DevMode        bool   `json:"devMode,omitempty"`
 }
 
 type LocalbuildSpec struct {

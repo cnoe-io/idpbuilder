@@ -24,6 +24,7 @@ import (
 )
 
 const (
+	giteaDevModePassword = "developer"
 	// hardcoded values from what we have in the yaml installation file.
 	giteaNamespace           = "gitea"
 	giteaAdminSecret         = "gitea-credential"
@@ -56,11 +57,17 @@ func giteaAdminSecretObject() corev1.Secret {
 	}
 }
 
-func newGiteaAdminSecret() (corev1.Secret, error) {
-	pass, err := util.GeneratePassword()
-	if err != nil {
-		return corev1.Secret{}, err
+func newGiteaAdminSecret(devMode bool) (corev1.Secret, error) {
+	// Reuse the same password when dev mode is enabled
+	pass := giteaDevModePassword
+	if !devMode {
+		var err error
+		pass, err = util.GeneratePassword()
+		if err != nil {
+			return corev1.Secret{}, err
+		}
 	}
+
 	obj := giteaAdminSecretObject()
 	obj.StringData = map[string]string{
 		"username": v1alpha1.GiteaAdminUserName,
@@ -93,7 +100,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			giteaCreds, err := newGiteaAdminSecret()
+			giteaCreds, err := newGiteaAdminSecret(resource.Spec.BuildCustomization.DevMode)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
 			}
