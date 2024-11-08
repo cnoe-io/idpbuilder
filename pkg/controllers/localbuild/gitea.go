@@ -58,7 +58,7 @@ func giteaAdminSecretObject() corev1.Secret {
 }
 
 func newGiteaAdminSecret(devMode bool) (corev1.Secret, error) {
-	// Reuse the same password when dev mode is enabled
+	// Use a default password when dev mode is enabled to avoid to recreate a new one each time
 	pass := giteaDevModePassword
 	if !devMode {
 		var err error
@@ -100,7 +100,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			giteaCreds, err := newGiteaAdminSecret(resource.Spec.BuildCustomization.DevMode)
+			giteaCreds, err := newGiteaAdminSecret(r.Config.DevMode)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
 			}
