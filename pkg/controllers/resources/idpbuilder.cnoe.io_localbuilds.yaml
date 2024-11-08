@@ -41,6 +41,8 @@ spec:
                 description: BuildCustomizationSpec fields cannot change once a cluster
                   is created
                 properties:
+                  devMode:
+                    type: boolean
                   host:
                     type: string
                   ingressHost:

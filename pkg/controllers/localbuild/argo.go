@@ -79,19 +79,18 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("Error hashing password: %w", err)
 		}
-		passwordMtime := time.Now().Format(time.RFC3339)
 
 		// Prepare the patch for the Secret's `stringData` field
 		patchData := map[string]interface{}{
 			"stringData": map[string]string{
 				"admin.password":      string(hashedPassword),
-				"admin.passwordMtime": passwordMtime,
+				"admin.passwordMtime": time.Now().Format(time.RFC3339),
 			},
 		}
 		// Convert patch data to JSON
 		patchBytes, err := json.Marshal(patchData)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error marshalling patch data:", err)
+			return ctrl.Result{}, fmt.Errorf("Error marshalling patch data: %w", err)
 		}
 
 		kubeClient, err := k8s.GetKubeClient()
@@ -109,7 +108,7 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		// Patching the argocd-secret with the hashed password
 		err = kubeClient.Patch(ctx, &s, client.RawPatch(types.StrategicMergePatchType, patchBytes))
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error patching the Secret:", err)
+			return ctrl.Result{}, fmt.Errorf("Error patching the Secret: %w", err)
 		}
 
 		adminSecret := v1.Secret{
@@ -129,7 +128,9 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		// Re-creating the initial admin password secret: argocd-initial-admin-secret as used with "idpbuilder get secrets -p argocd"
 		err = kubeClient.Create(ctx, &adminSecret)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error creating the initial admin secret:", err)
+			return ctrl.Result{}, fmt.Errorf("Error creating the initial admin secret: %w", err)
+		} else {
+			return ctrl.Result{}, nil
 		}
 
 	}
