@@ -135,7 +135,6 @@ func create(cmd *cobra.Command, args []string) error {
 
 	opts := build.NewBuildOptions{
 		Name:              buildName,
-		DevMode:           devMode,
 		KubeVersion:       kubeVersion,
 		KubeConfigPath:    kubeConfigPath,
 		KindConfigPath:    kindConfigPath,
@@ -147,6 +146,7 @@ func create(cmd *cobra.Command, args []string) error {
 			IngressHost:    ingressHost,
 			Port:           port,
 			UsePathRouting: pathRouting,
+			DevMode:        devMode,
 		},
 
 		CustomPackageDirs:    absDirPaths,

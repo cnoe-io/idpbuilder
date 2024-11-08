@@ -44,7 +44,6 @@ type Build struct {
 
 type NewBuildOptions struct {
 	Name                 string
-	DevMode              bool
 	TemplateData         v1alpha1.BuildCustomizationSpec
 	KindConfigPath       string
 	KubeConfigPath       string
@@ -61,7 +60,6 @@ type NewBuildOptions struct {
 func NewBuild(opts NewBuildOptions) *Build {
 	return &Build{
 		name:                 opts.Name,
-		devMode:              opts.DevMode,
 		kindConfigPath:       opts.KindConfigPath,
 		kubeConfigPath:       opts.KubeConfigPath,
 		kubeVersion:          opts.KubeVersion,
