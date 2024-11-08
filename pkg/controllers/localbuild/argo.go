@@ -81,7 +81,7 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 
 		// Hash password using bcrypt
 		password := argocdDevModePassword
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 0)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("Error hashing password: %w", err)
 		}
