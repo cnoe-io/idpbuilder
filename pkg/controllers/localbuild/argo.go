@@ -82,8 +82,8 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		// Prepare the patch for the Secret's `stringData` field
 		patchData := map[string]interface{}{
 			"stringData": map[string]string{
-				"account.developer.password":      string(hashedPassword),
-				"account.developer.passwordMtime": time.Now().Format(time.RFC3339),
+				"accounts.developer.password":      string(hashedPassword),
+				"accounts.developer.passwordMtime": time.Now().Format(time.RFC3339),
 			},
 		}
 		// Convert patch data to JSON
