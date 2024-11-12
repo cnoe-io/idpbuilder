@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
@@ -83,8 +82,8 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		// Prepare the patch for the Secret's `stringData` field
 		patchData := map[string]interface{}{
 			"stringData": map[string]string{
-				"admin.password":      string(hashedPassword),
-				"admin.passwordMtime": time.Now().Format(time.RFC3339),
+				"account.developer.password":      string(hashedPassword),
+				"account.developer.passwordMtime": time.Now().Format(time.RFC3339),
 			},
 		}
 		// Convert patch data to JSON
@@ -105,33 +104,36 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, fmt.Errorf("getting argocd secret: %w", err)
 		}
 
-		// Patching the argocd-secret with the hashed password
+		// Patching the argocd-secret with the user's hashed password
 		err = kubeClient.Patch(ctx, &s, client.RawPatch(types.StrategicMergePatchType, patchBytes))
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("Error patching the Secret: %w", err)
 		}
 
-		adminSecret := v1.Secret{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Secret",
-				APIVersion: "v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      argocdInitialAdminSecretName,
-				Namespace: argocdNamespace,
-			},
-			StringData: map[string]string{
-				argocdInitialAdminPasswordKey: argocdDevModePassword,
-			},
-		}
+		/*
+			   This is not needed as we will not generate a new admin password
 
-		// Re-creating the initial admin password secret: argocd-initial-admin-secret as used with "idpbuilder get secrets -p argocd"
-		err = kubeClient.Create(ctx, &adminSecret)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error creating the initial admin secret: %w", err)
-		} else {
-			return ctrl.Result{}, nil
-		}
+			   adminSecret := v1.Secret{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Secret",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      argocdInitialAdminSecretName,
+						Namespace: argocdNamespace,
+					},
+					StringData: map[string]string{
+						argocdInitialAdminPasswordKey: argocdDevModePassword,
+					},
+				}
+
+				// Re-creating the initial admin password secret: argocd-initial-admin-secret as used with "idpbuilder get secrets -p argocd"
+				err = kubeClient.Create(ctx, &adminSecret)
+				if err != nil {
+					return ctrl.Result{}, fmt.Errorf("Error creating the initial admin secret: %w", err)
+				} else {
+					return ctrl.Result{}, nil
+				}*/
 
 	}
 
