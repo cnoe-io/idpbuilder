@@ -60,7 +60,8 @@ func giteaAdminSecretObject() corev1.Secret {
 
 func newGiteaAdminSecret(devMode bool) (corev1.Secret, error) {
 	pass := giteaDevModePassword
-	userName := v1alpha1.GiteaDeveloperUserName
+	// TODO: Reverting to giteaAdmin till we know why a different user - developer fails
+	userName := v1alpha1.GiteaAdminUserName
 
 	if !devMode {
 		var err error
