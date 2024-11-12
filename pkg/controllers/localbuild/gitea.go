@@ -25,6 +25,7 @@ import (
 
 const (
 	giteaDevModePassword = "developer"
+
 	// hardcoded values from what we have in the yaml installation file.
 	giteaNamespace           = "gitea"
 	giteaAdminSecret         = "gitea-credential"
@@ -58,19 +59,22 @@ func giteaAdminSecretObject() corev1.Secret {
 }
 
 func newGiteaAdminSecret(devMode bool) (corev1.Secret, error) {
-	// Use a default password when dev mode is enabled to avoid to recreate a new one each time
 	pass := giteaDevModePassword
+	userName := v1alpha1.GiteaDeveloperUserName
+
 	if !devMode {
 		var err error
 		pass, err = util.GeneratePassword()
 		if err != nil {
 			return corev1.Secret{}, err
 		}
+
+		userName = v1alpha1.GiteaAdminUserName
 	}
 
 	obj := giteaAdminSecretObject()
 	obj.StringData = map[string]string{
-		"username": v1alpha1.GiteaAdminUserName,
+		"username": userName,
 		"password": pass,
 	}
 	return obj, nil
