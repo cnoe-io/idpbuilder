@@ -89,24 +89,29 @@ func list(cmd *cobra.Command, args []string) error {
 		if !found {
 			fmt.Printf("Cluster not found: %s\n", cluster)
 		} else {
-			fmt.Printf("URL of the kube API server: %s\n", c.Server)
-			fmt.Printf("TLS Verify: %t\n", c.InsecureSkipTLSVerify)
-
 			cli, err := GetClientForCluster(manager, cluster)
 			if err != nil {
 				logger.Error(err, "failed to get the cluster/context for the cluster: %s.", cluster)
 			}
-			// Print the external port that users can access using the ingress nginx proxy
-			service := corev1.Service{}
-			namespacedName := types.NamespacedName{
-				Name:      "ingress-nginx-controller",
-				Namespace: "ingress-nginx",
-			}
-			err = cli.Get(context.TODO(), namespacedName, &service)
+
+			// Print the external port mounted on the container and available also as ingress host port
+			targetPort, err := findExternalHTTPSPort(cli)
 			if err != nil {
-				logger.Error(err, "failed to get the ingress service on the cluster.")
+				logger.Error(err, "failed to get the kubernetes ingress service.")
+			} else {
+				fmt.Printf("External Ingress Port: %d\n", targetPort)
 			}
-			fmt.Printf("External Port: %d", findExternalHTTPSPort(service))
+
+			fmt.Printf("Host URL of the kube API server: %s\n", c.Server)
+			//fmt.Printf("TLS Verify: %t\n", c.InsecureSkipTLSVerify)
+
+			// Print the internal port running the Kuber API service
+			targetPort, err = findInternalKubeApiPort(cli)
+			if err != nil {
+				logger.Error(err, "failed to get the kubernetes default service.")
+			} else {
+				fmt.Printf("Internal Kubernetes API Port: %d\n", targetPort)
+			}
 
 			// Let's check what the current node reports
 			var nodeList corev1.NodeList
@@ -117,7 +122,7 @@ func list(cmd *cobra.Command, args []string) error {
 
 			for _, node := range nodeList.Items {
 				nodeName := node.Name
-				fmt.Printf("\n\n")
+				fmt.Printf("\n")
 				fmt.Printf("Node: %s\n", nodeName)
 
 				for _, addr := range node.Status.Addresses {
@@ -198,7 +203,17 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 	return nil
 }
 
-func findExternalHTTPSPort(service corev1.Service) int32 {
+func findExternalHTTPSPort(cli client.Client) (int32, error) {
+	service := corev1.Service{}
+	namespacedName := types.NamespacedName{
+		Name:      "ingress-nginx-controller",
+		Namespace: "ingress-nginx",
+	}
+	err := cli.Get(context.TODO(), namespacedName, &service)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get the ingress service on the cluster. %w", err)
+	}
+
 	var targetPort corev1.ServicePort
 	for _, port := range service.Spec.Ports {
 		if port.Name != "" && strings.HasPrefix(port.Name, "https-") {
@@ -206,7 +221,28 @@ func findExternalHTTPSPort(service corev1.Service) int32 {
 			break
 		}
 	}
-	return targetPort.Port
+	return targetPort.Port, nil
+}
+
+func findInternalKubeApiPort(cli client.Client) (int32, error) {
+	service := corev1.Service{}
+	namespacedName := types.NamespacedName{
+		Name:      "kubernetes",
+		Namespace: "default",
+	}
+	err := cli.Get(context.TODO(), namespacedName, &service)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get the kubernetes default service on the cluster. %w", err)
+	}
+
+	var targetPort corev1.ServicePort
+	for _, port := range service.Spec.Ports {
+		if port.Name != "" && strings.HasPrefix(port.Name, "https") {
+			targetPort = port
+			break
+		}
+	}
+	return targetPort.TargetPort.IntVal, nil
 }
 
 // GetClientForCluster returns the client for the specified cluster/context name
