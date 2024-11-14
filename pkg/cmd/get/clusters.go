@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,8 +79,21 @@ func list(cmd *cobra.Command, args []string) error {
 			fmt.Printf("URL of the kube API server: %s\n", c.Server)
 			fmt.Printf("TLS Verify: %t\n", c.InsecureSkipTLSVerify)
 		}
+
 		fmt.Println("----------------------------------------")
 	}
+
+	// Print the external port that users can access using the ingress nginx proxy
+	service := corev1.Service{}
+	namespacedName := types.NamespacedName{
+		Name:      "ingress-nginx-controller",
+		Namespace: "ingress-nginx",
+	}
+	err = cli.Get(context.TODO(), namespacedName, &service)
+	if err != nil {
+		logger.Error(err, "failed to get the ingress service on the cluster.")
+	}
+	fmt.Printf("External Port: %d\n", findExternalHTTPSPort(service))
 
 	// Let's check what the current node reports
 	var nodeList corev1.NodeList
@@ -166,4 +180,15 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 	fmt.Printf("  Memory Requests: %s\n", totalMemory.String())
 
 	return nil
+}
+
+func findExternalHTTPSPort(service corev1.Service) int32 {
+	var targetPort corev1.ServicePort
+	for _, port := range service.Spec.Ports {
+		if port.Name != "" && strings.HasPrefix(port.Name, "https-") {
+			targetPort = port
+			break
+		}
+	}
+	return targetPort.Port
 }
