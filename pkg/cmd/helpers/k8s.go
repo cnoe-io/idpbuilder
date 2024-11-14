@@ -5,6 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/homedir"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,15 @@ func GetKubeConfigPath() string {
 		return filepath.Join(homedir.HomeDir(), ".kube", "config")
 	} else {
 		return KubeConfigPath
+	}
+}
+
+func LoadKubeConfig() (*api.Config, error) {
+	config, err := clientcmd.LoadFromFile(GetKubeConfigPath())
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load kubeconfig file: %w", err)
+	} else {
+		return config, nil
 	}
 }
 
