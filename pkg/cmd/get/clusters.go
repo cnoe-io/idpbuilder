@@ -24,8 +24,6 @@ var ClustersCmd = &cobra.Command{
 	PreRunE: preClustersE,
 }
 
-var kubeCfgPath string
-
 func preClustersE(cmd *cobra.Command, args []string) error {
 	return helpers.SetLogger()
 }
@@ -73,12 +71,12 @@ func list(cmd *cobra.Command, args []string) error {
 		}
 
 		// Search about the idp cluster within the kubeconfig file and show information
-		cluster, found := findClusterByName(config, "kind-"+cluster)
+		c, found := findClusterByName(config, "kind-"+cluster)
 		if !found {
-			fmt.Printf("Cluster %q not found\n", cluster)
+			fmt.Printf("Cluster not found: %s\n", cluster)
 		} else {
-			fmt.Printf("URL of the kube API server: %s\n", cluster.Server)
-			fmt.Printf("TLS Verify: %t\n", cluster.InsecureSkipTLSVerify)
+			fmt.Printf("URL of the kube API server: %s\n", c.Server)
+			fmt.Printf("TLS Verify: %t\n", c.InsecureSkipTLSVerify)
 		}
 		fmt.Println("----------------------------------------")
 	}
