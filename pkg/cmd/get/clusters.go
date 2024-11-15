@@ -362,7 +362,7 @@ func CreateKubeClientForEachIDPCluster(config *api.Config, clusterList []string)
 
 			cl, err := client.New(cfg, client.Options{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to create client for context %s", contextName)
+				fmt.Errorf("Failed to create client for context %s", contextName)
 				continue
 			}
 
