@@ -125,12 +125,13 @@ func populateClusterList() ([]Cluster, error) {
 		// Search about the idp cluster within the kubeconfig file and show information
 		c, found := findClusterByName(config, "kind-"+cluster)
 		if !found {
-			fmt.Printf("Cluster not found: %s\n", cluster)
+			logger.Error(nil, fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
 		} else {
 			cli, err := GetClientForCluster(manager, cluster)
 			if err != nil {
-				logger.Error(err, "failed to get the cluster/context for the cluster: %s.", cluster)
+				logger.Error(err, fmt.Sprintf("failed to get the context for the cluster: %s.", cluster))
 			}
+			logger.V(1).Info(fmt.Sprintf("Got the context for the cluster: %s.", cluster))
 
 			// Print the external port mounted on the container and available also as ingress host port
 			targetPort, err := findExternalHTTPSPort(cli)
@@ -215,11 +216,12 @@ func generateClusterTable(clusterTable []Cluster) metav1.Table {
 }
 
 func printTable(opts printers.PrintOptions, table metav1.Table) {
+	logger := helpers.CmdLogger
 	out := bytes.NewBuffer([]byte{})
 	printer := printers.NewTablePrinter(opts)
 	err := printer.PrintObj(&table, out)
 	if err != nil {
-		fmt.Println("Error:", err)
+		logger.Error(err, "failed to print the table.")
 		return
 	}
 	fmt.Println(out.String())
@@ -254,7 +256,7 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 	// List all pods on the specified node
 	var podList corev1.PodList
 	if err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": nodeName}); err != nil {
-		return Allocated{}, fmt.Errorf("failed to list pods on node %s: %w", nodeName, err)
+		return Allocated{}, fmt.Errorf("failed to list pods on node %s.", nodeName)
 	}
 
 	// Initialize counters for CPU and memory requests
@@ -354,18 +356,17 @@ func CreateKubeClientForEachIDPCluster(config *api.Config, clusterList []string)
 		if slices.Contains(clusterList, contextName[5:]) {
 			cfg, err := clientcmd.NewNonInteractiveClientConfig(*config, contextName, &clientcmd.ConfigOverrides{}, nil).ClientConfig()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to build client for context %q: %v\n", contextName, err)
+				fmt.Errorf("Failed to build client for context %s.", contextName)
 				continue
 			}
 
 			cl, err := client.New(cfg, client.Options{})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to create client for context %q: %v\n", contextName, err)
+				fmt.Fprintf(os.Stderr, "Failed to create client for context %s", contextName)
 				continue
 			}
 
 			manager.clients[contextName] = cl
-			// fmt.Printf("Client created for context %q\n", contextName)
 		}
 
 	}
