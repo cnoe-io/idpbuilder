@@ -15,7 +15,6 @@ import (
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"slices"
@@ -83,27 +82,26 @@ func populateClusterList() ([]Cluster, error) {
 
 	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
-		logger.Error(err, "failed to detect the provider.")
-		os.Exit(1)
+		//logger.Error(err, "failed to detect the provider.")
+		return nil, err
 	}
 
 	kubeConfig, err := helpers.GetKubeConfig()
 	if err != nil {
-		logger.Error(err, "failed to create the kube config.")
-		os.Exit(1)
+		return nil, err
 	}
 
 	// TODO: Check if we need it or not like also if the new code handle the kubeconfig path passed as parameter
 	_, err = helpers.GetKubeClient(kubeConfig)
 	if err != nil {
-		logger.Error(err, "failed to create the kube client.")
-		os.Exit(1)
+		//logger.Error(err, "failed to create the kube client.")
+		return nil, err
 	}
 
 	config, err := helpers.LoadKubeConfig()
 	if err != nil {
-		logger.Error(err, "failed to load the kube config.")
-		os.Exit(1)
+		//logger.Error(err, "failed to load the kube config.")
+		return nil, err
 	}
 
 	// Create an empty array of clusters to collect the information
@@ -113,7 +111,8 @@ func populateClusterList() ([]Cluster, error) {
 	provider := cluster.NewProvider(cluster.ProviderWithLogger(kind.KindLoggerFromLogr(&logger)), detectOpt)
 	clusters, err := provider.List()
 	if err != nil {
-		logger.Error(err, "failed to list clusters.")
+		//logger.Error(err, "failed to list clusters.")
+		return nil, err
 	}
 
 	// Populate a list of Kube client for each cluster/context matching a idpbuilder cluster
@@ -125,18 +124,21 @@ func populateClusterList() ([]Cluster, error) {
 		// Search about the idp cluster within the kubeconfig file and show information
 		c, found := findClusterByName(config, "kind-"+cluster)
 		if !found {
-			logger.Error(nil, fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
+			//logger.Error(nil, fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
+			return nil, err
 		} else {
 			cli, err := GetClientForCluster(manager, cluster)
 			if err != nil {
-				logger.Error(err, fmt.Sprintf("failed to get the context for the cluster: %s.", cluster))
+				//logger.Error(err, fmt.Sprintf("failed to get the context for the cluster: %s.", cluster))
+				return nil, err
 			}
 			logger.V(1).Info(fmt.Sprintf("Got the context for the cluster: %s.", cluster))
 
 			// Print the external port mounted on the container and available also as ingress host port
 			targetPort, err := findExternalHTTPSPort(cli)
 			if err != nil {
-				logger.Error(err, "failed to get the kubernetes ingress service.")
+				//logger.Error(err, "failed to get the kubernetes ingress service.")
+				return nil, err
 			} else {
 				aCluster.ExternalPort = targetPort
 			}
@@ -147,7 +149,8 @@ func populateClusterList() ([]Cluster, error) {
 			// Print the internal port running the Kuber API service
 			kubeApiPort, err := findInternalKubeApiPort(cli)
 			if err != nil {
-				logger.Error(err, "failed to get the kubernetes default service.")
+				//logger.Error(err, "failed to get the kubernetes default service.")
+				return nil, err
 			} else {
 				aCluster.KubePort = kubeApiPort
 			}
@@ -156,7 +159,8 @@ func populateClusterList() ([]Cluster, error) {
 			var nodeList corev1.NodeList
 			err = cli.List(context.TODO(), &nodeList)
 			if err != nil {
-				logger.Error(err, "failed to list nodes for the current kube cluster.")
+				//logger.Error(err, "failed to list nodes for the current kube cluster.")
+				return nil, err
 			}
 
 			for _, node := range nodeList.Items {
@@ -180,7 +184,8 @@ func populateClusterList() ([]Cluster, error) {
 				// Get Node Allocated resources
 				allocated, err := printAllocatedResources(context.Background(), cli, node.Name)
 				if err != nil {
-					logger.Error(err, "failed to get the allocated resources.")
+					//logger.Error(err, "failed to get the allocated resources.")
+					return nil, err
 				}
 				aNode.Allocated = allocated
 			}
