@@ -1,6 +1,7 @@
 package get
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
@@ -9,7 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"os"
@@ -24,6 +27,34 @@ type ClusterManager struct {
 	clients map[string]client.Client // map of cluster name to client
 }
 
+type Cluster struct {
+	Name         string
+	URLKubeApi   string
+	KubePort     int32
+	TlsCheck     bool
+	ExternalPort int32
+	Nodes        []Node
+}
+
+type Node struct {
+	Name       string
+	InternalIP string
+	ExternalIP string
+	Capacity   Capacity
+	Allocated  Allocated
+}
+
+type Capacity struct {
+	Memory float64
+	Pods   int64
+	Cpu    int64
+}
+
+type Allocated struct {
+	Cpu    string
+	Memory string
+}
+
 var ClustersCmd = &cobra.Command{
 	Use:     "clusters",
 	Short:   "Get idp clusters",
@@ -36,13 +67,18 @@ func preClustersE(cmd *cobra.Command, args []string) error {
 	return helpers.SetLogger()
 }
 
-// findClusterByName searches for a cluster by name in the kubeconfig
-func findClusterByName(config *api.Config, name string) (*api.Cluster, bool) {
-	cluster, exists := config.Clusters[name]
-	return cluster, exists
+func list(cmd *cobra.Command, args []string) error {
+	clusters, err := populateClusterList()
+	if err != nil {
+		return err
+	} else {
+		// Convert the list of the clusters to Table of clusters
+		printTable(printers.PrintOptions{}, generateClusterTable(clusters))
+		return nil
+	}
 }
 
-func list(cmd *cobra.Command, args []string) error {
+func populateClusterList() ([]Cluster, error) {
 	logger := helpers.CmdLogger
 
 	detectOpt, err := util.DetectKindNodeProvider()
@@ -70,6 +106,9 @@ func list(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
+	// Create an empty array of clusters to collect the information
+	clusterList := []Cluster{}
+
 	// List the idp builder clusters according to the provider: podman or docker
 	provider := cluster.NewProvider(cluster.ProviderWithLogger(kind.KindLoggerFromLogr(&logger)), detectOpt)
 	clusters, err := provider.List()
@@ -80,9 +119,8 @@ func list(cmd *cobra.Command, args []string) error {
 	// Populate a list of Kube client for each cluster/context matching a idpbuilder cluster
 	manager, _ := CreateKubeClientForEachIDPCluster(config, clusters)
 
-	fmt.Printf("\n")
 	for _, cluster := range clusters {
-		fmt.Printf("Cluster: %s\n", cluster)
+		aCluster := Cluster{Name: cluster}
 
 		// Search about the idp cluster within the kubeconfig file and show information
 		c, found := findClusterByName(config, "kind-"+cluster)
@@ -99,18 +137,18 @@ func list(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				logger.Error(err, "failed to get the kubernetes ingress service.")
 			} else {
-				fmt.Printf("External Ingress Port: %d\n", targetPort)
+				aCluster.ExternalPort = targetPort
 			}
 
-			fmt.Printf("Host URL of the kube API server: %s\n", c.Server)
-			//fmt.Printf("TLS Verify: %t\n", c.InsecureSkipTLSVerify)
+			aCluster.URLKubeApi = c.Server
+			aCluster.TlsCheck = c.InsecureSkipTLSVerify
 
 			// Print the internal port running the Kuber API service
-			targetPort, err = findInternalKubeApiPort(cli)
+			kubeApiPort, err := findInternalKubeApiPort(cli)
 			if err != nil {
 				logger.Error(err, "failed to get the kubernetes default service.")
 			} else {
-				fmt.Printf("Internal Kubernetes API Port: %d\n", targetPort)
+				aCluster.KubePort = kubeApiPort
 			}
 
 			// Let's check what the current node reports
@@ -122,61 +160,101 @@ func list(cmd *cobra.Command, args []string) error {
 
 			for _, node := range nodeList.Items {
 				nodeName := node.Name
-				fmt.Printf("\n")
-				fmt.Printf("Node: %s\n", nodeName)
+
+				aNode := Node{}
+				aNode.Name = nodeName
 
 				for _, addr := range node.Status.Addresses {
 					switch addr.Type {
 					case corev1.NodeInternalIP:
-						fmt.Printf("Internal IP: %s\n", addr.Address)
+						aNode.InternalIP = addr.Address
 					case corev1.NodeExternalIP:
-						fmt.Printf("External IP: %s\n", addr.Address)
+						aNode.ExternalIP = addr.Address
 					}
 				}
 
-				// Show node capacity
-				fmt.Printf("Capacity of the node: \n")
-				printFormattedResourceList(node.Status.Capacity)
+				// Get Node capacity
+				aNode.Capacity = populateNodeCapacity(node.Status.Capacity)
 
-				// Show node allocated resources
-				err = printAllocatedResources(context.Background(), cli, node.Name)
+				// Get Node Allocated resources
+				allocated, err := printAllocatedResources(context.Background(), cli, node.Name)
 				if err != nil {
-					logger.Error(err, "Failed to get the node's allocated resources.")
+					logger.Error(err, "failed to get the allocated resources.")
 				}
+				aNode.Allocated = allocated
 			}
 		}
-		fmt.Println("----------------------------------------")
+		clusterList = append(clusterList, aCluster)
 	}
 
-	return nil
+	return clusterList, nil
 }
 
-func printFormattedResourceList(resources corev1.ResourceList) {
-	// Define the fixed width for the resource name column (adjust as needed)
-	nameWidth := 20
+func generateClusterTable(clusterTable []Cluster) metav1.Table {
+	table := &metav1.Table{}
+	table.ColumnDefinitions = []metav1.TableColumnDefinition{
+		{Name: "Name", Type: "string"},
+		{Name: "External-Port", Type: "string"},
+		{Name: "Kube-Api", Type: "string"},
+		{Name: "TLS", Type: "string"},
+		{Name: "Kube-Port", Type: "string"},
+	}
+	for _, cluster := range clusterTable {
+		row := metav1.TableRow{
+			Cells: []interface{}{
+				cluster.Name,
+				cluster.ExternalPort,
+				cluster.URLKubeApi,
+				cluster.TlsCheck,
+				cluster.KubePort,
+			},
+		}
+		table.Rows = append(table.Rows, row)
+	}
+	return *table
+}
 
+func printTable(opts printers.PrintOptions, table metav1.Table) {
+	out := bytes.NewBuffer([]byte{})
+	printer := printers.NewTablePrinter(opts)
+	err := printer.PrintObj(&table, out)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println(out.String())
+}
+
+func populateNodeCapacity(resources corev1.ResourceList) Capacity {
+	capacity := Capacity{}
 	for name, quantity := range resources {
 		if strings.HasPrefix(string(name), "hugepages-") {
 			continue
 		}
 
 		if name == corev1.ResourceMemory {
-			// Convert memory from bytes to gigabytes (GB)
 			memoryInBytes := quantity.Value()                           // .Value() gives the value in bytes
 			memoryInGB := float64(memoryInBytes) / (1024 * 1024 * 1024) // Convert to GB
-			fmt.Printf("  %-*s %.2f GB\n", nameWidth, name, memoryInGB)
-		} else {
-			// Format each line with the fixed name width and quantity
-			fmt.Printf("  %-*s %s\n", nameWidth, name, quantity.String())
+			capacity.Memory = memoryInGB
 		}
+
+		if name == corev1.ResourceCPU {
+			capacity.Cpu = quantity.Value()
+		}
+
+		if name == corev1.ResourcePods {
+			capacity.Pods = quantity.Value()
+		}
+
 	}
+	return capacity
 }
 
-func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) error {
+func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (Allocated, error) {
 	// List all pods on the specified node
 	var podList corev1.PodList
 	if err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": nodeName}); err != nil {
-		return fmt.Errorf("failed to list pods on node %s: %w", nodeName, err)
+		return Allocated{}, fmt.Errorf("failed to list pods on node %s: %w", nodeName, err)
 	}
 
 	// Initialize counters for CPU and memory requests
@@ -196,11 +274,15 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 	}
 
 	// Display the total allocated resources
-	fmt.Printf("Allocated resources on node:\n")
-	fmt.Printf("  CPU Requests: %s\n", totalCPU.String())
-	fmt.Printf("  Memory Requests: %s\n", totalMemory.String())
+	//fmt.Printf("  CPU Requests: %s\n", totalCPU.String())
+	//fmt.Printf("  Memory Requests: %s\n", totalMemory.String())
 
-	return nil
+	allocated := Allocated{
+		Memory: totalMemory.String(),
+		Cpu:    totalCPU.String(),
+	}
+
+	return allocated, nil
 }
 
 func findExternalHTTPSPort(cli client.Client) (int32, error) {
@@ -243,6 +325,12 @@ func findInternalKubeApiPort(cli client.Client) (int32, error) {
 		}
 	}
 	return targetPort.TargetPort.IntVal, nil
+}
+
+// findClusterByName searches for a cluster by name in the kubeconfig
+func findClusterByName(config *api.Config, name string) (*api.Cluster, bool) {
+	cluster, exists := config.Clusters[name]
+	return cluster, exists
 }
 
 // GetClientForCluster returns the client for the specified cluster/context name
