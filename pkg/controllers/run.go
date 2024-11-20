@@ -63,15 +63,12 @@ func RunControllers(
 	if err != nil {
 		logger.Error(err, "unable to create custom package controller")
 	}
-
 	// Start our manager in another goroutine
 	logger.V(1).Info("starting manager")
+
 	go func() {
-		if err := mgr.Start(ctx); err != nil {
-			logger.Error(err, "problem running manager")
-			exitCh <- err
-		}
-		exitCh <- nil
+		exitCh <- mgr.Start(ctx)
+		close(exitCh)
 	}()
 
 	return nil

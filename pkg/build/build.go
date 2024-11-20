@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -266,9 +268,17 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return fmt.Errorf("creating localbuild resource: %w", err)
 	}
 
-	err = <-managerExit
-	close(managerExit)
-	return err
+	interrupted := make(chan os.Signal, 1)
+	defer close(interrupted)
+	signal.Notify(interrupted, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case mgrErr := <-managerExit:
+		return mgrErr
+	case <-interrupted:
+		b.CancelFunc()
+		return fmt.Errorf("command interrupted")
+	}
 }
 
 func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool {
