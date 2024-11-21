@@ -23,11 +23,9 @@ import (
 var installArgoFS embed.FS
 
 const (
-	argocdDevModePassword         = "developer"
-	argocdAdminSecretName         = "argocd-secret"
-	argocdInitialAdminSecretName  = "argocd-initial-admin-secret"
-	argocdInitialAdminPasswordKey = "argocd-initial-admin-secret"
-	argocdNamespace               = "argocd"
+	argocdDevModePassword = "developer"
+	argocdAdminSecretName = "argocd-secret"
+	argocdNamespace       = "argocd"
 )
 
 func RawArgocdInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
