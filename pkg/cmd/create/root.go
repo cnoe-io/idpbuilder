@@ -15,7 +15,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -89,8 +88,9 @@ func preCreateE(cmd *cobra.Command, args []string) error {
 }
 
 func create(cmd *cobra.Command, args []string) error {
-	ctx, ctxCancel := context.WithCancel(ctrl.SetupSignalHandler())
-	defer ctxCancel()
+
+	ctx, cancel := context.WithCancel(cmd.Context())
+	defer cancel()
 
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
@@ -152,13 +152,17 @@ func create(cmd *cobra.Command, args []string) error {
 		PackageCustomization: o,
 
 		Scheme:     k8s.GetScheme(),
-		CancelFunc: ctxCancel,
+		CancelFunc: cancel,
 	}
 
 	b := build.NewBuild(opts)
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err
+	}
+
+	if cmd.Context().Err() != nil {
+		return context.Cause(cmd.Context())
 	}
 
 	printSuccessMsg()
