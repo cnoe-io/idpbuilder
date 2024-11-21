@@ -3,11 +3,12 @@ package localbuild
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 
@@ -74,8 +75,21 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		password := argocdDevModePassword
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 0)
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error hashing password: %w", err)
+			return ctrl.Result{}, fmt.Errorf("error hashing password: %w", err)
 		}
+
+		// Getting the argocd-secret
+		obj := v1.Secret{}
+		err = r.Client.Get(ctx, client.ObjectKey{Name: argocdAdminSecretName, Namespace: argocdNamespace}, &obj)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("getting argocd secret: %w", err)
+		}
+
+		// Using an unstructured object to avoid managing fields we do not care about.
+		u := unstructured.Unstructured{}
+		u.SetName(obj.GetName())
+		u.SetNamespace(obj.GetNamespace())
+		u.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
 
 		// Prepare the patch for the Secret's `stringData` field
 		patchData := map[string]interface{}{
@@ -85,23 +99,17 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 			},
 		}
 		// Convert patch data to JSON
-		patchBytes, err := json.Marshal(patchData)
+		patch, err := json.Marshal(patchData)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("Error marshalling patch data: %w", err)
 		}
 
-		// Getting the argocd-secret
-		s := v1.Secret{}
-		err = r.Client.Get(ctx, client.ObjectKey{Name: argocdAdminSecretName, Namespace: argocdNamespace}, &s)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("getting argocd secret: %w", err)
-		}
-
 		// Patching the argocd-secret with the user's hashed password
-		err = r.Client.Patch(ctx, &s, client.RawPatch(types.StrategicMergePatchType, patchBytes))
+		err = r.Client.Patch(ctx, &u, client.RawPatch(types.MergePatchType, patch))
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error patching the Secret: %w", err)
+			return ctrl.Result{}, fmt.Errorf("error patching the Secret: %w", err)
 		}
+		return ctrl.Result{}, nil
 
 		/*
 			   This is not needed as we will not generate a new admin password
