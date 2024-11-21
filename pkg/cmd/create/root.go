@@ -69,7 +69,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", buildNameUsage)
 	CreateCmd.PersistentFlags().MarkDeprecated("build-name", "use --name instead.")
 	CreateCmd.PersistentFlags().StringVar(&buildName, "name", "localdev", buildNameUsage)
-	CreateCmd.PersistentFlags().BoolVar(&devMode, "dev", false, devModeUsage)
+	CreateCmd.PersistentFlags().BoolVar(&devMode, "dev-mode", false, devModeUsage)
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.30.3", kubeVersionUsage)
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", extraPortsMappingUsage)
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", kindConfigPathUsage)
