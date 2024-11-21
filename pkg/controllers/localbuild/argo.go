@@ -90,20 +90,15 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 			return ctrl.Result{}, fmt.Errorf("Error marshalling patch data: %w", err)
 		}
 
-		kubeClient, err := k8s.GetKubeClient()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("getting kube client: %w", err)
-		}
-
 		// Getting the argocd-secret
 		s := v1.Secret{}
-		err = kubeClient.Get(ctx, client.ObjectKey{Name: argocdAdminSecretName, Namespace: argocdNamespace}, &s)
+		err = r.Client.Get(ctx, client.ObjectKey{Name: argocdAdminSecretName, Namespace: argocdNamespace}, &s)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("getting argocd secret: %w", err)
 		}
 
 		// Patching the argocd-secret with the user's hashed password
-		err = kubeClient.Patch(ctx, &s, client.RawPatch(types.StrategicMergePatchType, patchBytes))
+		err = r.Client.Patch(ctx, &s, client.RawPatch(types.StrategicMergePatchType, patchBytes))
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("Error patching the Secret: %w", err)
 		}
