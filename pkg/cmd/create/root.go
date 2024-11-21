@@ -89,8 +89,8 @@ func preCreateE(cmd *cobra.Command, args []string) error {
 
 func create(cmd *cobra.Command, args []string) error {
 
-	ctx, cancel := context.WithCancel(cmd.Context())
-	defer cancel()
+	ctx, ctxCancel := context.WithCancel(cmd.Context())
+	defer ctxCancel()
 
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
@@ -152,7 +152,7 @@ func create(cmd *cobra.Command, args []string) error {
 		PackageCustomization: o,
 
 		Scheme:     k8s.GetScheme(),
-		CancelFunc: cancel,
+		CancelFunc: ctxCancel,
 	}
 
 	b := build.NewBuild(opts)
