@@ -125,7 +125,7 @@ func populateClusterList() ([]Cluster, error) {
 		c, found := findClusterByName(config, "kind-"+cluster)
 		if !found {
 			//logger.Error(nil, fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
-			return nil, err
+			logger.Info(fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
 		} else {
 			cli, err := GetClientForCluster(manager, cluster)
 			if err != nil {
@@ -361,14 +361,12 @@ func CreateKubeClientForEachIDPCluster(config *api.Config, clusterList []string)
 		if slices.Contains(clusterList, contextName[5:]) {
 			cfg, err := clientcmd.NewNonInteractiveClientConfig(*config, contextName, &clientcmd.ConfigOverrides{}, nil).ClientConfig()
 			if err != nil {
-				fmt.Errorf("Failed to build client for context %s.", contextName)
-				continue
+				return nil, fmt.Errorf("Failed to build client for context %s.", contextName)
 			}
 
 			cl, err := client.New(cfg, client.Options{})
 			if err != nil {
-				fmt.Errorf("Failed to create client for context %s", contextName)
-				continue
+				return nil, fmt.Errorf("failed to create client for context %s", contextName)
 			}
 
 			manager.clients[contextName] = cl
