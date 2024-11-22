@@ -179,7 +179,17 @@ func populateClusterList() ([]Cluster, error) {
 				}
 
 				// Get Node capacity
-				aNode.Capacity = populateNodeCapacity(node.Status.Capacity)
+				resources := node.Status.Capacity
+
+				memory := resources[corev1.ResourceMemory]
+				cpu := resources[corev1.ResourceCPU]
+				pods := resources[corev1.ResourcePods]
+
+				aNode.Capacity = Capacity{
+					Memory: float64(memory.Value()) / (1024 * 1024 * 1024),
+					Cpu:    cpu.Value(),
+					Pods:   pods.Value(),
+				}
 
 				// Get Node Allocated resources
 				allocated, err := printAllocatedResources(context.Background(), cli, node.Name)
@@ -230,31 +240,6 @@ func printTable(opts printers.PrintOptions, table metav1.Table) {
 		return
 	}
 	fmt.Println(out.String())
-}
-
-func populateNodeCapacity(resources corev1.ResourceList) Capacity {
-	capacity := Capacity{}
-	for name, quantity := range resources {
-		if strings.HasPrefix(string(name), "hugepages-") {
-			continue
-		}
-
-		if name == corev1.ResourceMemory {
-			memoryInBytes := quantity.Value()                           // .Value() gives the value in bytes
-			memoryInGB := float64(memoryInBytes) / (1024 * 1024 * 1024) // Convert to GB
-			capacity.Memory = memoryInGB
-		}
-
-		if name == corev1.ResourceCPU {
-			capacity.Cpu = quantity.Value()
-		}
-
-		if name == corev1.ResourcePods {
-			capacity.Pods = quantity.Value()
-		}
-
-	}
-	return capacity
 }
 
 func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (Allocated, error) {
