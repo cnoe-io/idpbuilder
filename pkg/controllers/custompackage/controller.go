@@ -93,6 +93,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 		if !ok {
 			return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application %s", resource.Spec.ArgoCD.ApplicationFile)
 		}
+		util.SetPackageLabels(app)
 
 		res, err := r.reconcileArgoCDApp(ctx, resource, app)
 		if err != nil {
@@ -112,7 +113,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 			}
 			return ctrl.Result{}, fmt.Errorf("getting argocd application object: %w", err)
 		}
-
+		util.SetPackageLabels(&foundAppObj)
 		foundAppObj.Spec = app.Spec
 		foundAppObj.ObjectMeta.Annotations = app.GetAnnotations()
 		foundAppObj.ObjectMeta.Labels = app.GetLabels()
@@ -128,10 +129,14 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 		if !ok {
 			return ctrl.Result{}, fmt.Errorf("object is not an ArgoCD application set %s", resource.Spec.ArgoCD.ApplicationFile)
 		}
+
+		util.SetPackageLabels(appSet)
+
 		res, err := r.reconcileArgoCDAppSet(ctx, resource, appSet)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+
 		foundAppSetObj := argov1alpha1.ApplicationSet{}
 		err = r.Client.Get(ctx, client.ObjectKeyFromObject(appSet), &foundAppSetObj)
 		if err != nil {
@@ -145,6 +150,7 @@ func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alp
 			return ctrl.Result{}, fmt.Errorf("getting argocd application set object: %w", err)
 		}
 
+		util.SetPackageLabels(&foundAppSetObj)
 		foundAppSetObj.Spec = appSet.Spec
 		foundAppSetObj.ObjectMeta.Annotations = appSet.GetAnnotations()
 		foundAppSetObj.ObjectMeta.Labels = appSet.GetLabels()

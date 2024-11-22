@@ -167,3 +167,19 @@ func DetectKindNodeProvider() (cluster.ProviderOption, error) {
 		return cluster.DetectNodeProvider()
 	}
 }
+
+func SetPackageLabels(obj client.Object) {
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+		obj.SetLabels(labels)
+	}
+	labels[v1alpha1.PackageNameLabelKey] = obj.GetName()
+
+	switch n := obj.GetName(); n {
+	case v1alpha1.ArgoCDPackageName, v1alpha1.GiteaPackageName, v1alpha1.IngressNginxPackageName:
+		labels[v1alpha1.PackageTypeLabelKey] = v1alpha1.PackageTypeLabelCore
+	default:
+		labels[v1alpha1.PackageTypeLabelKey] = v1alpha1.PackageTypeLabelCustom
+	}
+}

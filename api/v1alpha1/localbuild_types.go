@@ -14,9 +14,12 @@ const (
 	CliStartTimeAnnotation = "cnoe.io/cli-start-time"
 	FieldManager           = "idpbuilder"
 	// If GetSecretLabelKey is set to GetSecretLabelValue on a kubernetes secret, secret key and values can be used by the get command.
-	CLISecretLabelKey   = "cnoe.io/cli-secret"
-	CLISecretLabelValue = "true"
-	PackageNameLabelKey = "cnoe.io/package-name"
+	CLISecretLabelKey      = "cnoe.io/cli-secret"
+	CLISecretLabelValue    = "true"
+	PackageNameLabelKey    = "cnoe.io/package-name"
+	PackageTypeLabelKey    = "cnoe.io/package-type"
+	PackageTypeLabelCore   = "core"
+	PackageTypeLabelCustom = "custom"
 
 	ArgoCDPackageName       = "argocd"
 	GiteaPackageName        = "gitea"

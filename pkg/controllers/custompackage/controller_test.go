@@ -14,6 +14,7 @@ import (
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -48,17 +49,13 @@ func TestReconcileCustomPkg(t *testing.T) {
 	}
 
 	cfg, err := testEnv.Start()
-	if err != nil {
-		t.Fatalf("Starting testenv: %v", err)
-	}
+	require.NoError(t, err)
 	defer testEnv.Stop()
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: s,
 	})
-	if err != nil {
-		t.Fatalf("getting manager: %v", err)
-	}
+	require.NoError(t, err)
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	stoppedCh := make(chan error)
@@ -82,9 +79,8 @@ func TestReconcileCustomPkg(t *testing.T) {
 		Recorder: mgr.GetEventRecorderFor("test-custompkg-controller"),
 	}
 	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getting cwd %v", err)
-	}
+	require.NoError(t, err)
+
 	customPkgs := []v1alpha1.CustomPackage{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -191,45 +187,58 @@ func TestReconcileCustomPkg(t *testing.T) {
 	}
 	assert.Equal(t, repo.Spec, expectedRepo.Spec)
 	ok := reflect.DeepEqual(repo.Spec, expectedRepo.Spec)
-	if !ok {
-		t.Fatalf("expected spec does not match")
-	}
+	assert.True(t, ok)
 
-	// verify argocd apps
-	localApp := argov1alpha1.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-app",
-			Namespace: "argocd",
+	tcs := []struct {
+		name string
+	}{
+		{
+			name: "my-app",
+		},
+		{
+			name: "my-app2",
+		},
+		{
+			name: "guestbook",
 		},
 	}
-	err = c.Get(context.Background(), client.ObjectKeyFromObject(&localApp), &localApp)
-	if err != nil {
-		t.Fatalf("failed getting my-app %v", err)
-	}
-	if strings.HasPrefix(localApp.Spec.Source.RepoURL, v1alpha1.CNOEURIScheme) {
-		t.Fatalf("%s prefix should be removed", v1alpha1.CNOEURIScheme)
-	}
 
-	for _, n := range []string{"guestbook", "guestbook2"} {
-		err = c.Get(context.Background(), client.ObjectKeyFromObject(&localApp), &localApp)
-		if err != nil {
-			t.Fatalf("expected %s arogapp : %v", n, err)
+	for _, tc := range tcs {
+		app := argov1alpha1.Application{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      tc.name,
+				Namespace: "argocd",
+			},
 		}
-	}
+		err = c.Get(context.Background(), client.ObjectKeyFromObject(&app), &app)
+		assert.NoError(t, err)
 
-	localApp2 := argov1alpha1.Application{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-app2",
-			Namespace: "argocd",
-		},
-	}
-	err = c.Get(context.Background(), client.ObjectKeyFromObject(&localApp2), &localApp2)
-	if err != nil {
-		t.Fatalf("failed getting my-app2 %v", err)
-	}
+		if app.ObjectMeta.Labels == nil {
+			t.Fatalf("labels not set")
+		}
 
-	if strings.HasPrefix(localApp2.Spec.Sources[0].RepoURL, v1alpha1.CNOEURIScheme) {
-		t.Fatalf("%s prefix should be removed", v1alpha1.CNOEURIScheme)
+		_, ok := app.ObjectMeta.Labels[v1alpha1.PackageNameLabelKey]
+		if !ok {
+			t.Fatalf("label %s not set", v1alpha1.PackageTypeLabelKey)
+		}
+
+		_, ok = app.ObjectMeta.Labels[v1alpha1.PackageNameLabelKey]
+		if !ok {
+			t.Fatalf("label %s not set", v1alpha1.PackageNameLabelKey)
+		}
+
+		if app.Spec.Sources == nil {
+			if strings.HasPrefix(app.Spec.Source.RepoURL, v1alpha1.CNOEURIScheme) {
+				t.Fatalf("%s prefix should be removed", v1alpha1.CNOEURIScheme)
+			}
+			continue
+		}
+		for _, s := range app.Spec.Sources {
+			if strings.HasPrefix(s.RepoURL, v1alpha1.CNOEURIScheme) {
+				t.Fatalf("%s prefix should be removed", v1alpha1.CNOEURIScheme)
+			}
+		}
+
 	}
 }
 
