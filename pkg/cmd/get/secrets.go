@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -206,6 +207,18 @@ func secretToTemplateData(s v1.Secret) TemplateData {
 	for k, v := range s.Data {
 		data.Data[k] = string(v)
 	}
+
+	// TODO: The following code should be reviewed and improved as the secret containing the developer username/password is argocd-secret
+	// where the password has been bcrypted and by consequence we cannot get and decode it from the secret
+	// This is why we are going to add it here BUT it will be displayed every time no matter if --dev-mode has been used or not
+	if strings.Contains(s.Name, "gitea") {
+		data.Data["username-developer"] = "giteAdmin"
+		data.Data["password-developer"] = "developer"
+	} else if strings.Contains(s.Name, "argocd") {
+		data.Data["username-developer"] = "developer"
+		data.Data["password-developer"] = "developer"
+	}
+
 	return data
 }
 
