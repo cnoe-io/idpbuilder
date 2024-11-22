@@ -9,11 +9,12 @@ import (
 )
 
 var ClustersCmd = &cobra.Command{
-	Use:     "clusters",
-	Short:   "Get idp clusters",
-	Long:    ``,
-	RunE:    list,
-	PreRunE: preClustersE,
+	Use:          "clusters",
+	Short:        "Get idp clusters",
+	Long:         ``,
+	RunE:         list,
+	PreRunE:      preClustersE,
+	SilenceUsage: true,
 }
 
 func preClustersE(cmd *cobra.Command, args []string) error {

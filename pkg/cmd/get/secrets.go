@@ -35,10 +35,11 @@ const (
 var templates embed.FS
 
 var SecretsCmd = &cobra.Command{
-	Use:   "secrets",
-	Short: "retrieve secrets from the cluster",
-	Long:  ``,
-	RunE:  getSecretsE,
+	Use:          "secrets",
+	Short:        "retrieve secrets from the cluster",
+	Long:         ``,
+	RunE:         getSecretsE,
+	SilenceUsage: true,
 }
 
 // well known secrets that are part of the core packages

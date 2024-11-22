@@ -55,11 +55,12 @@ var (
 )
 
 var CreateCmd = &cobra.Command{
-	Use:     "create",
-	Short:   "(Re)Create an IDP cluster",
-	Long:    ``,
-	RunE:    create,
-	PreRunE: preCreateE,
+	Use:          "create",
+	Short:        "(Re)Create an IDP cluster",
+	Long:         ``,
+	RunE:         create,
+	PreRunE:      preCreateE,
+	SilenceUsage: true,
 }
 
 func init() {
