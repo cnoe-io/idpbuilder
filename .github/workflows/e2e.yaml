@@ -8,6 +8,8 @@ on:
       - '**.go'
       - 'go.sum'
       - 'go.mod'
+  repository_dispatch:
+    types: [e2e-command]
 jobs:
   e2e:
     runs-on: ubuntu-22.04

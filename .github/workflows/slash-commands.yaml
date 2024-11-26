@@ -1,0 +1,24 @@
+name: slash-commands
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  slash_command_dispatch:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.CNOE_GH_WORKFLOW_TOKEN_APP_ID }}
+          private-key: ${{ secrets.CNOE_GH_WORKFLOW_TOKEN_PRIVATE_KEY }}
+      - name: Slash Command Dispatch
+        uses: peter-evans/slash-command-dispatch@v4
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          commands: |
+            e2e
+          permission: write
+          issue-type: pull-request
