@@ -8,11 +8,17 @@ on:
       - '**.go'
       - 'go.sum'
       - 'go.mod'
+  repository_dispatch:
+    types: [e2e-command]
+
 jobs:
   e2e:
     runs-on: ubuntu-22.04
+    if: ${{ github.event.ref != '' }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0
       - name: Setup Go
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
@@ -20,3 +26,21 @@ jobs:
       - name: Run tests
         run: |
           make e2e
+  # invoked by slash command workflow
+  e2e-slash-command:
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.action == 'e2e-command' }}
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          repository: ${{ github.event.client_payload.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.client_payload.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        with:
+          go-version: '1.22'
+      - name: Run tests
+        run: |
+          make e2e
+
