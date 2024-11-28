@@ -82,7 +82,6 @@ func populateClusterList() ([]Cluster, error) {
 
 	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
-		//logger.Error(err, "failed to detect the provider.")
 		return nil, err
 	}
 
@@ -94,7 +93,6 @@ func populateClusterList() ([]Cluster, error) {
 	// TODO: Check if we need it or not like also if the new code handle the kubeconfig path passed as parameter
 	_, err = helpers.GetKubeClient(kubeConfig)
 	if err != nil {
-		//logger.Error(err, "failed to create the kube client.")
 		return nil, err
 	}
 
@@ -111,12 +109,14 @@ func populateClusterList() ([]Cluster, error) {
 	provider := cluster.NewProvider(cluster.ProviderWithLogger(kind.KindLoggerFromLogr(&logger)), detectOpt)
 	clusters, err := provider.List()
 	if err != nil {
-		//logger.Error(err, "failed to list clusters.")
 		return nil, err
 	}
 
-	// Populate a list of Kube client for each cluster/context matching a idpbuilder cluster
-	manager, _ := CreateKubeClientForEachIDPCluster(config, clusters)
+	// Populate a list of Kube client for each cluster/context matching an idpbuilder cluster
+	manager, err := CreateKubeClientForEachIDPCluster(config, clusters)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, cluster := range clusters {
 		aCluster := Cluster{Name: cluster}
@@ -124,12 +124,10 @@ func populateClusterList() ([]Cluster, error) {
 		// Search about the idp cluster within the kubeconfig file and show information
 		c, found := findClusterByName(config, "kind-"+cluster)
 		if !found {
-			//logger.Error(nil, fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
 			logger.Info(fmt.Sprintf("Cluster not found: %s within kube config file\n", cluster))
 		} else {
 			cli, err := GetClientForCluster(manager, cluster)
 			if err != nil {
-				//logger.Error(err, fmt.Sprintf("failed to get the context for the cluster: %s.", cluster))
 				return nil, err
 			}
 			logger.V(1).Info(fmt.Sprintf("Got the context for the cluster: %s.", cluster))
@@ -137,7 +135,6 @@ func populateClusterList() ([]Cluster, error) {
 			// Print the external port mounted on the container and available also as ingress host port
 			targetPort, err := findExternalHTTPSPort(cli)
 			if err != nil {
-				//logger.Error(err, "failed to get the kubernetes ingress service.")
 				return nil, err
 			} else {
 				aCluster.ExternalPort = targetPort
@@ -146,10 +143,9 @@ func populateClusterList() ([]Cluster, error) {
 			aCluster.URLKubeApi = c.Server
 			aCluster.TlsCheck = c.InsecureSkipTLSVerify
 
-			// Print the internal port running the Kuber API service
+			// Print the internal port running the Kube API service
 			kubeApiPort, err := findInternalKubeApiPort(cli)
 			if err != nil {
-				//logger.Error(err, "failed to get the kubernetes default service.")
 				return nil, err
 			} else {
 				aCluster.KubePort = kubeApiPort
@@ -159,7 +155,6 @@ func populateClusterList() ([]Cluster, error) {
 			var nodeList corev1.NodeList
 			err = cli.List(context.TODO(), &nodeList)
 			if err != nil {
-				//logger.Error(err, "failed to list nodes for the current kube cluster.")
 				return nil, err
 			}
 
@@ -194,11 +189,13 @@ func populateClusterList() ([]Cluster, error) {
 				// Get Node Allocated resources
 				allocated, err := printAllocatedResources(context.Background(), cli, node.Name)
 				if err != nil {
-					//logger.Error(err, "failed to get the allocated resources.")
 					return nil, err
 				}
 				aNode.Allocated = allocated
+
+				aCluster.Nodes = append(aCluster.Nodes, aNode)
 			}
+
 		}
 		clusterList = append(clusterList, aCluster)
 	}
@@ -214,6 +211,7 @@ func generateClusterTable(clusterTable []Cluster) metav1.Table {
 		{Name: "Kube-Api", Type: "string"},
 		{Name: "TLS", Type: "string"},
 		{Name: "Kube-Port", Type: "string"},
+		{Name: "Nodes", Type: "string"},
 	}
 	for _, cluster := range clusterTable {
 		row := metav1.TableRow{
@@ -223,6 +221,7 @@ func generateClusterTable(clusterTable []Cluster) metav1.Table {
 				cluster.URLKubeApi,
 				cluster.TlsCheck,
 				cluster.KubePort,
+				generateNodeData(cluster.Nodes),
 			},
 		}
 		table.Rows = append(table.Rows, row)
@@ -240,6 +239,17 @@ func printTable(opts printers.PrintOptions, table metav1.Table) {
 		return
 	}
 	fmt.Println(out.String())
+}
+
+func generateNodeData(nodes []Node) string {
+	var result string
+	for i, aNode := range nodes {
+		result += aNode.Name
+		if i < len(nodes)-1 {
+			result += ","
+		}
+	}
+	return result
 }
 
 func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (Allocated, error) {
@@ -264,10 +274,6 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 			}
 		}
 	}
-
-	// Display the total allocated resources
-	//fmt.Printf("  CPU Requests: %s\n", totalCPU.String())
-	//fmt.Printf("  Memory Requests: %s\n", totalMemory.String())
 
 	allocated := Allocated{
 		Memory: totalMemory.String(),
