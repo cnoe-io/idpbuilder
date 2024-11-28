@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
@@ -133,7 +134,7 @@ func populateClusterList() ([]Cluster, error) {
 			logger.V(1).Info(fmt.Sprintf("Got the context for the cluster: %s.", cluster))
 
 			// Print the external port mounted on the container and available also as ingress host port
-			targetPort, err := findExternalHTTPSPort(cli)
+			targetPort, err := findExternalHTTPSPort(cli, cluster)
 			if err != nil {
 				return nil, err
 			} else {
@@ -283,7 +284,7 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 	return allocated, nil
 }
 
-func findExternalHTTPSPort(cli client.Client) (int32, error) {
+func findExternalHTTPSPort(cli client.Client, clusterName string) (int32, error) {
 	service := corev1.Service{}
 	namespacedName := types.NamespacedName{
 		Name:      "ingress-nginx-controller",
@@ -294,9 +295,20 @@ func findExternalHTTPSPort(cli client.Client) (int32, error) {
 		return 0, fmt.Errorf("failed to get the ingress service on the cluster. %w", err)
 	}
 
+	localBuild := v1alpha1.Localbuild{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: clusterName,
+		},
+	}
+	err = cli.Get(context.TODO(), client.ObjectKeyFromObject(&localBuild), &localBuild)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get the localbuild on the cluster. %w", err)
+	}
+
 	var targetPort corev1.ServicePort
+	protocol := localBuild.Spec.BuildCustomization.Protocol + "-"
 	for _, port := range service.Spec.Ports {
-		if port.Name != "" && strings.HasPrefix(port.Name, "https-") {
+		if port.Name != "" && strings.HasPrefix(port.Name, protocol) {
 			targetPort = port
 			break
 		}
