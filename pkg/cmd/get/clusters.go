@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
@@ -367,7 +368,7 @@ func CreateKubeClientForEachIDPCluster(config *api.Config, clusterList []string)
 				return nil, fmt.Errorf("Failed to build client for context %s.", contextName)
 			}
 
-			cl, err := client.New(cfg, client.Options{})
+			cl, err := client.New(cfg, client.Options{Scheme: k8s.GetScheme()})
 			if err != nil {
 				return nil, fmt.Errorf("failed to create client for context %s", contextName)
 			}
