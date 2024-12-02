@@ -16,6 +16,7 @@ require (
 	k8s.io/api v0.30.5
 	k8s.io/apiextensions-apiserver v0.30.5
 	k8s.io/apimachinery v0.30.5
+	k8s.io/cli-runtime v0.30.5
 	k8s.io/client-go v0.30.5
 	k8s.io/klog/v2 v2.120.1
 	sigs.k8s.io/controller-runtime v0.18.5
@@ -26,6 +27,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
@@ -69,6 +71,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
+	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
