@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -27,8 +28,8 @@ func init() {
 	rootCmd.AddCommand(version.VersionCmd)
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+func Execute(ctx context.Context) {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

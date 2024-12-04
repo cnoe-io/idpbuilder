@@ -157,8 +157,6 @@ func (b *Build) isCompatible(ctx context.Context, kubeClient client.Client) (boo
 }
 
 func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
-	managerExit := make(chan error)
-
 	setupLog.Info("Creating kind cluster")
 	if err := b.ReconcileKindCluster(ctx, recreateCluster); err != nil {
 		return err
@@ -225,6 +223,8 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
+	managerExit := make(chan error)
+
 	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {
 		setupLog.Error(err, "Error running controllers")
@@ -266,9 +266,15 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return fmt.Errorf("creating localbuild resource: %w", err)
 	}
 
-	err = <-managerExit
-	close(managerExit)
-	return err
+	select {
+	case mgrErr := <-managerExit:
+		if mgrErr != nil {
+			return mgrErr
+		}
+	case <-ctx.Done():
+		return nil
+	}
+	return nil
 }
 
 func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool {

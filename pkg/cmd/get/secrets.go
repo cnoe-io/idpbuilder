@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/util/homedir"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
@@ -55,7 +54,7 @@ type TemplateData struct {
 }
 
 func getSecretsE(cmd *cobra.Command, args []string) error {
-	ctx, ctxCancel := context.WithCancel(ctrl.SetupSignalHandler())
+	ctx, ctxCancel := context.WithCancel(cmd.Context())
 	defer ctxCancel()
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
