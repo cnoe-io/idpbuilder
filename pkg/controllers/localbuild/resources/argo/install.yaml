@@ -21081,6 +21081,20 @@ subjects:
 ---
 apiVersion: v1
 data:
+  policy.csv: |-
+    p, role:developer, applications, *, *, allow
+    g, developer, role:developer
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+  name: argocd-rbac-cm
+  namespace: argocd
+---
+apiVersion: v1
+data:
+  accounts.developer: apiKey, login
   application.resourceTrackingMethod: annotation
   resource.exclusions: |
     - kinds:
