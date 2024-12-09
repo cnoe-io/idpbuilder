@@ -1,8 +1,13 @@
 package localbuild
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"k8s.io/apimachinery/pkg/types"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,6 +43,14 @@ const (
 	argoCDApplicationSetAnnotationKeyRefresh      = "argocd.argoproj.io/application-set-refresh"
 	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
 )
+
+var (
+	status = "failed"
+)
+
+type ArgocdSession struct {
+	Token string `json:"token"`
+}
 
 type LocalbuildReconciler struct {
 	client.Client
@@ -86,6 +99,28 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// likely due to ingress-nginx admission hook not ready. debug log and try again.
 			logger.V(1).Info("failed installing core package. likely not fatal. will try again", "error", instErr)
 			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
+		}
+	}
+
+	if r.Config.DevMode {
+		logger.Info("DevMode is enabled")
+		initialPassword, err := r.extractArgocdInitialAdminSecret(ctx)
+		if err != nil {
+			// Argocd initial admin secret is not yet available ...
+			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+		}
+
+		logger.Info("Initial argocd admin secret found ...")
+
+		// Secret containing the initial argocd password exists
+		// Lets try to update the password
+		if initialPassword != "" && status == "failed" {
+			err, status = r.updateDevPassword(ctx, initialPassword)
+			if err != nil {
+				return ctrl.Result{}, err
+			} else {
+				logger.Info(fmt.Sprintf("Argocd admin password change %s !", status))
+			}
 		}
 	}
 
@@ -579,6 +614,130 @@ func (r *LocalbuildReconciler) requestArgoCDAppSetRefresh(ctx context.Context) e
 		}
 	}
 	return nil
+}
+
+func (r *LocalbuildReconciler) extractArgocdInitialAdminSecret(ctx context.Context) (string, error) {
+	sec := r.ArgocdInitialAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("initial admin secret not found")
+		}
+	}
+	return string(sec.Data["password"]), nil
+}
+
+func (r *LocalbuildReconciler) updateDevPassword(ctx context.Context, adminPassword string) (error, string) {
+	argocdEndpoint := r.ArgocdBaseUrl(r.Config) + "/api/v1"
+
+	payload := map[string]string{
+		"username": "admin",
+		"password": adminPassword,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
+	}
+
+	// Create an HTTP POST request to get the Session token
+	req, err := http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("Error creating HTTP request: %v\n", err), "failed"
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Create an HTTP client and disable TLS verification
+	client := &http.Client{}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	client.Transport = transport
+
+	// Send the request
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("Error sending request: %v\n", err), "failed"
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Error reading response body: %v\n", err), "failed"
+	}
+
+	if resp.StatusCode == 200 {
+		var argocdSession ArgocdSession
+
+		err := json.Unmarshal([]byte(body), &argocdSession)
+		if err != nil {
+			fmt.Errorf("Error unmarshalling JSON: %v", err)
+		}
+
+		payload := map[string]string{
+			"name":            "admin",
+			"currentPassword": adminPassword,
+			"newPassword":     argocdDevModePassword,
+		}
+
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
+		}
+
+		req, err := http.NewRequest("PUT", argocdEndpoint+"/account/password", bytes.NewBuffer(payloadBytes))
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", argocdSession.Token))
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("Error sending request: %v\n", err), "failed"
+		}
+		defer resp.Body.Close()
+
+		// Lets checking the new admin password
+		payload = map[string]string{
+			"username": "admin",
+			"password": argocdDevModePassword,
+		}
+		payloadBytes, err = json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
+		}
+
+		req, err = http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			return fmt.Errorf("Error creating HTTP request: %v\n", err), "failed"
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		// Create an HTTP client and disable TLS verification
+		client := &http.Client{}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig.InsecureSkipVerify = true
+		client.Transport = transport
+
+		// Send the request
+		resp, err = client.Do(req)
+		if err != nil {
+			return fmt.Errorf("Error sending request: %v\n", err), "failed"
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == 200 {
+			// Password verification succeeded !
+			return nil, "succeeded"
+		} else {
+			return fmt.Errorf("### New password verification failed: %s", body), "failed"
+		}
+
+	} else {
+		return fmt.Errorf("HTTP Error: %d", resp.StatusCode), "failed"
+	}
+	return nil, "failed"
 }
 
 func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj client.Object, argoCDType, annotationKey, annotationValue string) error {

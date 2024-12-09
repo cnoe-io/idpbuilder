@@ -4,17 +4,11 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/json"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -24,9 +18,10 @@ import (
 var installArgoFS embed.FS
 
 const (
-	argocdDevModePassword = "developer"
-	argocdAdminSecretName = "argocd-secret"
-	argocdNamespace       = "argocd"
+	argocdDevModePassword        = "developer"
+	argocdInitialAdminSecretName = "argocd-initial-admin-secret"
+	argocdNamespace              = "argocd"
+	argocdIngressURL             = "%s://argocd.cnoe.localtest.me:%s"
 )
 
 func RawArgocdInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
@@ -67,76 +62,24 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 	if result, err := argocd.Install(ctx, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
+
 	resource.Status.ArgoCD.Available = true
-
-	// Let's patch the existing argocd admin secret if devmode is enabled to set the default password
-	if r.Config.DevMode {
-		// Hash password using bcrypt
-		password := argocdDevModePassword
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 0)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("error hashing password: %w", err)
-		}
-
-		// Getting the argocd-secret
-		obj := v1.Secret{}
-		err = r.Client.Get(ctx, client.ObjectKey{Name: argocdAdminSecretName, Namespace: argocdNamespace}, &obj)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("getting argocd secret: %w", err)
-		}
-
-		// Using an unstructured object to avoid managing fields we do not care about.
-		u := unstructured.Unstructured{}
-		u.SetName(obj.GetName())
-		u.SetNamespace(obj.GetNamespace())
-		u.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
-
-		// Prepare the patch for the Secret's `stringData` field
-		patchData := map[string]interface{}{
-			"stringData": map[string]string{
-				"accounts.developer.password":      string(hashedPassword),
-				"accounts.developer.passwordMtime": time.Now().Format(time.RFC3339),
-			},
-		}
-		// Convert patch data to JSON
-		patch, err := json.Marshal(patchData)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("Error marshalling patch data: %w", err)
-		}
-
-		// Patching the argocd-secret with the user's hashed password
-		err = r.Client.Patch(ctx, &u, client.RawPatch(types.MergePatchType, patch))
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("error patching the Secret: %w", err)
-		}
-		return ctrl.Result{}, nil
-
-		/*
-			   This is not needed as we will not generate a new admin password
-
-			   adminSecret := v1.Secret{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "Secret",
-						APIVersion: "v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      argocdInitialAdminSecretName,
-						Namespace: argocdNamespace,
-					},
-					StringData: map[string]string{
-						argocdInitialAdminPasswordKey: argocdDevModePassword,
-					},
-				}
-
-				// Re-creating the initial admin password secret: argocd-initial-admin-secret as used with "idpbuilder get secrets -p argocd"
-				err = kubeClient.Create(ctx, &adminSecret)
-				if err != nil {
-					return ctrl.Result{}, fmt.Errorf("Error creating the initial admin secret: %w", err)
-				} else {
-					return ctrl.Result{}, nil
-				}*/
-
-	}
-
 	return ctrl.Result{}, nil
+}
+
+func (r *LocalbuildReconciler) ArgocdInitialAdminSecretObject() corev1.Secret {
+	return corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      argocdInitialAdminSecretName,
+			Namespace: argocdNamespace,
+		},
+	}
+}
+
+func (r *LocalbuildReconciler) ArgocdBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
+	return fmt.Sprintf(argocdIngressURL, config.Protocol, config.Port)
 }
