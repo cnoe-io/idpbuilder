@@ -4,6 +4,7 @@ metadata:
   name: argocd-cm
 data:
   application.resourceTrackingMethod: annotation
+  accounts.developer: apiKey, login
   timeout.reconciliation: 60s
   resource.exclusions: |
     - kinds:
