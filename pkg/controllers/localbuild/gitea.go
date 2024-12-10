@@ -45,7 +45,7 @@ func RawGiteaInstallResources(templateData any, config v1alpha1.PackageCustomiza
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/gitea/k8s", installGiteaFS, scheme, templateData)
 }
 
-func giteaAdminSecretObject() corev1.Secret {
+func (r *LocalbuildReconciler) GiteaAdminSecretObject() corev1.Secret {
 	return corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -58,27 +58,13 @@ func giteaAdminSecretObject() corev1.Secret {
 	}
 }
 
-func newGiteaAdminSecret(devMode bool) (corev1.Secret, error) {
-	pass := giteaDevModePassword
-	// TODO: Reverting to giteaAdmin till we know why a different user - developer fails
-	userName := v1alpha1.GiteaAdminUserName
-
-	if !devMode {
-		var err error
-		pass, err = util.GeneratePassword()
-		if err != nil {
-			return corev1.Secret{}, err
-		}
-
-		userName = v1alpha1.GiteaAdminUserName
-	}
-
-	obj := giteaAdminSecretObject()
+func (r *LocalbuildReconciler) newGiteaAdminSecret(password string) corev1.Secret {
+	obj := r.GiteaAdminSecretObject()
 	obj.StringData = map[string]string{
-		"username": userName,
-		"password": pass,
+		"username": v1alpha1.GiteaAdminUserName,
+		"password": password,
 	}
-	return obj, nil
+	return obj
 }
 
 func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
@@ -97,7 +83,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		},
 	}
 
-	sec := giteaAdminSecretObject()
+	sec := r.GiteaAdminSecretObject()
 	err := r.Client.Get(ctx, types.NamespacedName{
 		Namespace: sec.GetNamespace(),
 		Name:      sec.GetName(),
@@ -105,7 +91,12 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 
 	if err != nil {
 		if k8serrors.IsNotFound(err) {
-			giteaCreds, err := newGiteaAdminSecret(r.Config.DevMode)
+			genPassword, err := util.GeneratePassword()
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("generating gitea password: %w", err)
+			}
+
+			giteaCreds := r.newGiteaAdminSecret(genPassword)
 			if err != nil {
 				return ctrl.Result{}, fmt.Errorf("generating gitea admin secret: %w", err)
 			}
@@ -125,7 +116,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	baseUrl := giteaBaseUrl(r.Config)
+	baseUrl := r.GiteaBaseUrl(r.Config)
 	// need this to ensure gitrepository controller can reach the api endpoint.
 	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
 	c := util.GetHttpClient()
@@ -224,7 +215,7 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	return token.Token, nil
 }
 
-func giteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
+func (r *LocalbuildReconciler) GiteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
 	return fmt.Sprintf(giteaIngressURL, config.Protocol, config.Port)
 }
 

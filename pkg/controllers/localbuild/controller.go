@@ -2,6 +2,7 @@ package localbuild
 
 import (
 	"bytes"
+	"code.gitea.io/sdk/gitea"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -45,7 +46,8 @@ const (
 )
 
 var (
-	status = "failed"
+	argocdPasswordChangeStatus = "failed"
+	giteaPasswordChangeStatus  = "failed"
 )
 
 type ArgocdSession struct {
@@ -104,7 +106,9 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	if r.Config.DevMode {
 		logger.Info("DevMode is enabled")
-		initialPassword, err := r.extractArgocdInitialAdminSecret(ctx)
+
+		// Check if the Argocd Initial admin secret exists
+		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
 		if err != nil {
 			// Argocd initial admin secret is not yet available ...
 			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
@@ -114,12 +118,30 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// Secret containing the initial argocd password exists
 		// Lets try to update the password
-		if initialPassword != "" && status == "failed" {
-			err, status = r.updateDevPassword(ctx, initialPassword)
+		if argocdInitialAdminPassword != "" && argocdPasswordChangeStatus == "failed" {
+			err, argocdPasswordChangeStatus = r.updateArgocdDevPassword(ctx, argocdInitialAdminPassword)
 			if err != nil {
 				return ctrl.Result{}, err
 			} else {
-				logger.Info(fmt.Sprintf("Argocd admin password change %s !", status))
+				logger.Info(fmt.Sprintf("Argocd admin password change %s !", argocdPasswordChangeStatus))
+			}
+		}
+
+		// Check if the Gitea credentials secret exists
+		giteaAdminPassword, err := r.extractGiteaAdminSecret(ctx)
+		if err != nil {
+			// Gitea admin secret is not yet available ...
+			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+		}
+		logger.Info("Gitea admin secret found ...")
+		// Secret containing the gitea password exists
+		// Lets try to update the password
+		if giteaAdminPassword != "" && giteaPasswordChangeStatus == "failed" {
+			err, giteaPasswordChangeStatus = r.updateGiteaDevPassword(ctx, giteaAdminPassword)
+			if err != nil {
+				return ctrl.Result{}, err
+			} else {
+				logger.Info(fmt.Sprintf("Gitea admin password change %s !", giteaPasswordChangeStatus))
 			}
 		}
 	}
@@ -631,7 +653,42 @@ func (r *LocalbuildReconciler) extractArgocdInitialAdminSecret(ctx context.Conte
 	return string(sec.Data["password"]), nil
 }
 
-func (r *LocalbuildReconciler) updateDevPassword(ctx context.Context, adminPassword string) (error, string) {
+func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (string, error) {
+	sec := r.GiteaAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("gitea admin secret not found")
+		}
+	}
+	return string(sec.Data["password"]), nil
+}
+
+func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, adminPassword string) (error, string) {
+	client, err := gitea.NewClient(r.GiteaBaseUrl(r.Config), gitea.SetHTTPClient(util.GetHttpClient()),
+		gitea.SetBasicAuth("giteaAdmin", adminPassword), gitea.SetContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("cannot create gitea client: %w", err), "failed"
+	}
+
+	opts := gitea.EditUserOption{
+		LoginName: "giteaAdmin",
+		Password:  "developer",
+	}
+
+	resp, err := client.AdminEditUser("giteaAdmin", opts)
+	if err != nil {
+		return fmt.Errorf("cannot update gitea admin user: %w", resp.StatusCode, err), "failed"
+	}
+	return nil, "succeeded"
+}
+
+func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, adminPassword string) (error, string) {
 	argocdEndpoint := r.ArgocdBaseUrl(r.Config) + "/api/v1"
 
 	payload := map[string]string{

@@ -69,6 +69,7 @@ func (g *giteaProvider) getProviderCredentials(ctx context.Context, repo *v1alph
 	if !ok {
 		return gitProviderCredentials{}, fmt.Errorf("%s key not found in secret %s in %s ns", giteaAdminPasswordKey, repo.Spec.SecretRef.Name, repo.Spec.SecretRef.Namespace)
 	}
+
 	return gitProviderCredentials{
 		username: string(username),
 		password: string(password),
