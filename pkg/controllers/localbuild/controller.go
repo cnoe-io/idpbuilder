@@ -686,7 +686,7 @@ func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, admin
 		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err), "failed"
 	}
 
-	err = util.PatchPasswordSecret(ctx, r.Client, util.GiteaNamespace, util.GiteaAdminSecret, "developer")
+	err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.GiteaNamespace, util.GiteaAdminSecret, util.GiteaAdminName, "developer")
 	if err != nil {
 		return fmt.Errorf("patching the gitea credentials failed : %w", err), "failed"
 	}
@@ -787,7 +787,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		// Password verification succeeded !
 		if resp.StatusCode == 200 {
 			// Let's patch the existing secret now
-			err = util.PatchPasswordSecret(ctx, r.Client, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, "developer")
+			err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, util.ArgocdAdminName, "developer")
 			if err != nil {
 				return fmt.Errorf("patching the argocd initial secret failed : %w", err), "failed"
 			}

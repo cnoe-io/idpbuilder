@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"code.gitea.io/sdk/gitea"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
@@ -137,7 +136,7 @@ func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.
 		return fmt.Errorf("password field not found in gitea secret")
 	}
 
-	t, err := getGiteaToken(ctx, baseUrl, string(user), string(pass))
+	t, err := util.GetGiteaToken(ctx, baseUrl, string(user), string(pass))
 	if err != nil {
 		return fmt.Errorf("getting gitea token: %w", err)
 	}
@@ -149,41 +148,6 @@ func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.
 	}
 
 	return r.Client.Patch(ctx, &u, client.Apply, client.ForceOwnership, client.FieldOwner(v1alpha1.FieldManager))
-}
-
-func getGiteaToken(ctx context.Context, baseUrl, username, password string) (string, error) {
-	giteaClient, err := gitea.NewClient(baseUrl, gitea.SetHTTPClient(util.GetHttpClient()),
-		gitea.SetBasicAuth(username, password), gitea.SetContext(ctx),
-	)
-	if err != nil {
-		return "", fmt.Errorf("creating gitea client: %w", err)
-	}
-	tokens, resp, err := giteaClient.ListAccessTokens(gitea.ListAccessTokensOptions{})
-	if err != nil {
-		return "", fmt.Errorf("listing gitea access tokens. status: %s error : %w", resp.Status, err)
-	}
-
-	for i := range tokens {
-		if tokens[i].Name == util.GiteaAdminTokenName {
-			resp, err := giteaClient.DeleteAccessToken(tokens[i].ID)
-			if err != nil {
-				return "", fmt.Errorf("deleting gitea access tokens. status: %s error : %w", resp.Status, err)
-			}
-			break
-		}
-	}
-
-	token, resp, err := giteaClient.CreateAccessToken(gitea.CreateAccessTokenOption{
-		Name: util.GiteaAdminTokenName,
-		Scopes: []gitea.AccessTokenScope{
-			gitea.AccessTokenScopeAll,
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("deleting gitea access tokens. status: %s error : %w", resp.Status, err)
-	}
-
-	return token.Token, nil
 }
 
 // gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
