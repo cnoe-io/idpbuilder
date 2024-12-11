@@ -669,7 +669,7 @@ func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (str
 }
 
 func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, adminPassword string) (error, string) {
-	client, err := gitea.NewClient(r.GiteaBaseUrl(r.Config), gitea.SetHTTPClient(util.GetHttpClient()),
+	client, err := gitea.NewClient(util.GiteaBaseUrl(r.Config), gitea.SetHTTPClient(util.GetHttpClient()),
 		gitea.SetBasicAuth("giteaAdmin", adminPassword), gitea.SetContext(ctx),
 	)
 	if err != nil {
