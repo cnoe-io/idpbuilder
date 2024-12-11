@@ -5,10 +5,10 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -208,17 +208,6 @@ func secretToTemplateData(s v1.Secret) TemplateData {
 		data.Data[k] = string(v)
 	}
 
-	// TODO: The following code should be reviewed and improved as the secret containing the developer username/password is argocd-secret
-	// where the password has been bcrypted and by consequence we cannot get and decode it from the secret
-	// This is why we are going to add it here BUT it will be displayed every time no matter if --static-passwords has been used or not
-	if strings.Contains(s.Name, "gitea") {
-		data.Data["username-developer"] = "giteAdmin"
-		data.Data["password-developer"] = "developer"
-	} else if strings.Contains(s.Name, "argocd") {
-		data.Data["username-developer"] = "admin"
-		data.Data["password-developer"] = "developer"
-	}
-
 	return data
 }
 
@@ -236,13 +225,8 @@ func getSecretsByCNOELabel(ctx context.Context, kubeClient client.Client, l labe
 	return secrets, kubeClient.List(ctx, &secrets, &opts)
 }
 
-func getSecretByName(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s := v1.Secret{}
-	return s, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &s)
-}
-
 func getCorePackageSecret(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s, err := getSecretByName(ctx, kubeClient, ns, name)
+	s, err := util.GetSecretByName(ctx, kubeClient, ns, name)
 	if err != nil {
 		return v1.Secret{}, err
 	}

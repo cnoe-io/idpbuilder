@@ -685,11 +685,16 @@ func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, admin
 	if err != nil {
 		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err), "failed"
 	}
+
+	err = util.PatchPasswordSecret(ctx, r.Client, util.GiteaNamespace, util.GiteaAdminSecret, "developer")
+	if err != nil {
+		return fmt.Errorf("patching the gitea credentials failed : %w", err), "failed"
+	}
 	return nil, "succeeded"
 }
 
 func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, adminPassword string) (error, string) {
-	argocdEndpoint := r.ArgocdBaseUrl(r.Config) + "/api/v1"
+	argocdEndpoint := util.ArgocdBaseUrl(r.Config) + "/api/v1"
 
 	payload := map[string]string{
 		"username": "admin",
@@ -707,14 +712,11 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Create an HTTP httpClient and disable TLS verification
-	httpClient := &http.Client{}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig.InsecureSkipVerify = true
-	httpClient.Transport = transport
+	// Create an HTTP c and disable TLS verification
+	c := util.GetHttpClient()
 
 	// Send the request
-	resp, err := httpClient.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return fmt.Errorf("Error sending request: %v\n", err), "failed"
 	}
@@ -738,7 +740,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		payload := map[string]string{
 			"name":            "admin",
 			"currentPassword": adminPassword,
-			"newPassword":     argocdDevModePassword,
+			"newPassword":     util.ArgocdDevModePassword,
 		}
 
 		payloadBytes, err := json.Marshal(payload)
@@ -752,7 +754,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 			req.Header.Set("Content-Type", "application/json")
 		}
 
-		resp, err := httpClient.Do(req)
+		resp, err := c.Do(req)
 		if err != nil {
 			return fmt.Errorf("Error sending request: %v\n", err), "failed"
 		}
@@ -761,7 +763,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		// Lets checking the new admin password
 		payload = map[string]string{
 			"username": "admin",
-			"password": argocdDevModePassword,
+			"password": util.ArgocdDevModePassword,
 		}
 		payloadBytes, err = json.Marshal(payload)
 		if err != nil {
@@ -776,14 +778,19 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		req.Header.Set("Content-Type", "application/json")
 
 		// Send the request
-		resp, err = httpClient.Do(req)
+		resp, err = c.Do(req)
 		if err != nil {
 			return fmt.Errorf("Error sending request: %v\n", err), "failed"
 		}
 		defer resp.Body.Close()
 
+		// Password verification succeeded !
 		if resp.StatusCode == 200 {
-			// Password verification succeeded !
+			// Let's patch the existing secret now
+			err = util.PatchPasswordSecret(ctx, r.Client, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, "developer")
+			if err != nil {
+				return fmt.Errorf("patching the argocd initial secret failed : %w", err), "failed"
+			}
 			return nil, "succeeded"
 		}
 	}

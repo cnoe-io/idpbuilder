@@ -3,10 +3,10 @@ package localbuild
 import (
 	"context"
 	"embed"
-	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,13 +16,6 @@ import (
 
 //go:embed resources/argo/*
 var installArgoFS embed.FS
-
-const (
-	argocdDevModePassword        = "developer"
-	argocdInitialAdminSecretName = "argocd-initial-admin-secret"
-	argocdNamespace              = "argocd"
-	argocdIngressURL             = "%s://argocd.cnoe.localtest.me:%s"
-)
 
 func RawArgocdInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/argo", installArgoFS, scheme, templateData)
@@ -74,12 +67,8 @@ func (r *LocalbuildReconciler) ArgocdInitialAdminSecretObject() corev1.Secret {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      argocdInitialAdminSecretName,
-			Namespace: argocdNamespace,
+			Name:      util.ArgocdInitialAdminSecretName,
+			Namespace: util.ArgocdNamespace,
 		},
 	}
-}
-
-func (r *LocalbuildReconciler) ArgocdBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
-	return fmt.Sprintf(argocdIngressURL, config.Protocol, config.Port)
 }
