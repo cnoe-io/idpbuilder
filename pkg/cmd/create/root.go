@@ -20,7 +20,7 @@ import (
 const (
 	recreateClusterUsage   = "Delete cluster first if it already exists."
 	buildNameUsage         = "Name for build (Prefix for kind cluster name, pod names, etc)."
-	devModeUsage           = "When enabled, the platform will run the core packages with developer password."
+	staticPasswordsUsage   = "Set a static password: developer to the applications: argocd and gitea."
 	kubeVersionUsage       = "Version of the kind kubernetes cluster to create."
 	extraPortsMappingUsage = "List of extra ports to expose on the docker container and kubernetes cluster as nodePort " +
 		"(e.g. \"22:32222,9090:39090,etc\")."
@@ -41,7 +41,7 @@ var (
 	// Flags
 	recreateCluster           bool
 	buildName                 string
-	devMode                   bool
+	staticPasswords           bool
 	kubeVersion               string
 	extraPortsMapping         string
 	kindConfigPath            string
@@ -69,7 +69,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&buildName, "build-name", "localdev", buildNameUsage)
 	CreateCmd.PersistentFlags().MarkDeprecated("build-name", "use --name instead.")
 	CreateCmd.PersistentFlags().StringVar(&buildName, "name", "localdev", buildNameUsage)
-	CreateCmd.PersistentFlags().BoolVar(&devMode, "dev-mode", false, devModeUsage)
+	CreateCmd.PersistentFlags().BoolVar(&staticPasswords, "static-passwords", false, staticPasswordsUsage)
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.30.3", kubeVersionUsage)
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", extraPortsMappingUsage)
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", kindConfigPathUsage)
@@ -141,12 +141,12 @@ func create(cmd *cobra.Command, args []string) error {
 		ExtraPortsMapping: extraPortsMapping,
 
 		TemplateData: v1alpha1.BuildCustomizationSpec{
-			Protocol:       protocol,
-			Host:           host,
-			IngressHost:    ingressHost,
-			Port:           port,
-			UsePathRouting: pathRouting,
-			DevMode:        devMode,
+			Protocol:        protocol,
+			Host:            host,
+			IngressHost:     ingressHost,
+			Port:            port,
+			UsePathRouting:  pathRouting,
+			StaticPasswords: staticPasswords,
 		},
 
 		CustomPackageDirs:    absDirPaths,

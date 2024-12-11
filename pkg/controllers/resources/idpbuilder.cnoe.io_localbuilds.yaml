@@ -41,8 +41,6 @@ spec:
                 description: BuildCustomizationSpec fields cannot change once a cluster
                   is created
                 properties:
-                  devMode:
-                    type: boolean
                   host:
                     type: string
                   ingressHost:
@@ -53,6 +51,8 @@ spec:
                     type: string
                   selfSignedCert:
                     type: string
+                  staticPasswords:
+                    type: boolean
                   usePathRouting:
                     type: boolean
                 type: object

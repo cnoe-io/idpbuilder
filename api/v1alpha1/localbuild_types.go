@@ -47,13 +47,13 @@ type PackageConfigsSpec struct {
 
 // BuildCustomizationSpec fields cannot change once a cluster is created
 type BuildCustomizationSpec struct {
-	Protocol       string `json:"protocol,omitempty"`
-	Host           string `json:"host,omitempty"`
-	IngressHost    string `json:"ingressHost,omitempty"`
-	Port           string `json:"port,omitempty"`
-	UsePathRouting bool   `json:"usePathRouting,omitempty"`
-	SelfSignedCert string `json:"selfSignedCert,omitempty"`
-	DevMode        bool   `json:"devMode,omitempty"`
+	Protocol        string `json:"protocol,omitempty"`
+	Host            string `json:"host,omitempty"`
+	IngressHost     string `json:"ingressHost,omitempty"`
+	Port            string `json:"port,omitempty"`
+	UsePathRouting  bool   `json:"usePathRouting,omitempty"`
+	SelfSignedCert  string `json:"selfSignedCert,omitempty"`
+	StaticPasswords bool   `json:"staticPasswords,omitempty"`
 }
 
 type LocalbuildSpec struct {

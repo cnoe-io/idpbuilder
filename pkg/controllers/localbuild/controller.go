@@ -104,8 +104,8 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	if r.Config.DevMode {
-		logger.V(1).Info("DevMode is enabled")
+	if r.Config.StaticPasswords {
+		logger.V(1).Info("StaticPasswords is enabled")
 
 		// Check if the Argocd Initial admin secret exists
 		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
@@ -683,7 +683,7 @@ func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, admin
 
 	resp, err := client.AdminEditUser("giteaAdmin", opts)
 	if err != nil {
-		return fmt.Errorf("cannot update gitea admin user: %w", resp.StatusCode, err), "failed"
+		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err), "failed"
 	}
 	return nil, "succeeded"
 }
@@ -731,7 +731,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 
 		err := json.Unmarshal([]byte(body), &argocdSession)
 		if err != nil {
-			fmt.Errorf("Error unmarshalling JSON: %v", err)
+			return fmt.Errorf("Error unmarshalling JSON: %v", err), "failed"
 		}
 
 		payload := map[string]string{
@@ -794,7 +794,6 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 	} else {
 		return fmt.Errorf("HTTP Error: %d", resp.StatusCode), "failed"
 	}
-	return nil, "failed"
 }
 
 func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj client.Object, argoCDType, annotationKey, annotationValue string) error {
