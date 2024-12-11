@@ -707,14 +707,14 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// Create an HTTP client and disable TLS verification
-	client := &http.Client{}
+	// Create an HTTP httpClient and disable TLS verification
+	httpClient := &http.Client{}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig.InsecureSkipVerify = true
-	client.Transport = transport
+	httpClient.Transport = transport
 
 	// Send the request
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("Error sending request: %v\n", err), "failed"
 	}
@@ -747,10 +747,12 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		}
 
 		req, err := http.NewRequest("PUT", argocdEndpoint+"/account/password", bytes.NewBuffer(payloadBytes))
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", argocdSession.Token))
-		req.Header.Set("Content-Type", "application/json")
+		if req != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", argocdSession.Token))
+			req.Header.Set("Content-Type", "application/json")
+		}
 
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("Error sending request: %v\n", err), "failed"
 		}
@@ -774,7 +776,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		req.Header.Set("Content-Type", "application/json")
 
 		// Send the request
-		resp, err = client.Do(req)
+		resp, err = httpClient.Do(req)
 		if err != nil {
 			return fmt.Errorf("Error sending request: %v\n", err), "failed"
 		}
