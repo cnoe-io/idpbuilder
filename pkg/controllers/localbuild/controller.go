@@ -787,8 +787,6 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		if resp.StatusCode == 200 {
 			// Password verification succeeded !
 			return nil, "succeeded"
-		} else {
-			return fmt.Errorf("### New password verification failed: %s", body), "failed"
 		}
 
 	} else {
