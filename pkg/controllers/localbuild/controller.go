@@ -105,7 +105,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if r.Config.DevMode {
-		logger.Info("DevMode is enabled")
+		logger.V(1).Info("DevMode is enabled")
 
 		// Check if the Argocd Initial admin secret exists
 		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
@@ -114,7 +114,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 		}
 
-		logger.Info("Initial argocd admin secret found ...")
+		logger.V(1).Info("Initial argocd admin secret found ...")
 
 		// Secret containing the initial argocd password exists
 		// Lets try to update the password
