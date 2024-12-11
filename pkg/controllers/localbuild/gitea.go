@@ -87,7 +87,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	baseUrl := r.GiteaBaseUrl(r.Config)
+	baseUrl := util.GiteaBaseUrl(r.Config)
 	// need this to ensure gitrepository controller can reach the api endpoint.
 	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
 	c := util.GetHttpClient()
@@ -184,10 +184,6 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	}
 
 	return token.Token, nil
-}
-
-func (r *LocalbuildReconciler) GiteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
-	return fmt.Sprintf(util.GiteaIngressURL, config.Protocol, config.Port)
 }
 
 // gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
