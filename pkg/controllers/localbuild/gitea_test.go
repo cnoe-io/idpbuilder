@@ -2,6 +2,7 @@ package localbuild
 
 import (
 	"context"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,6 +34,6 @@ func TestGetGiteaToken(t *testing.T) {
 	}))
 	defer ts.Close()
 	ctx := context.Background()
-	_, err := getGiteaToken(ctx, ts.URL, "", "")
+	_, err := util.GetGiteaToken(ctx, ts.URL, "", "")
 	require.Error(t, err)
 }
