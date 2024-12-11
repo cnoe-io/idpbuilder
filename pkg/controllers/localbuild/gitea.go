@@ -13,7 +13,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,21 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	giteaDevModePassword = "developer"
-
-	// hardcoded values from what we have in the yaml installation file.
-	giteaNamespace           = "gitea"
-	giteaAdminSecret         = "gitea-credential"
-	giteaAdminTokenName      = "admin"
-	giteaAdminTokenFieldName = "token"
-	// this is the URL accessible outside cluster. resolves to localhost
-	giteaIngressURL = "%s://gitea.cnoe.localtest.me:%s"
-	// this is the URL accessible within cluster for ArgoCD to fetch resources.
-	// resolves to cluster ip
-	giteaSvcURL = "%s://%s%s:%s%s"
-)
-
 //go:embed resources/gitea/k8s/*
 var installGiteaFS embed.FS
 
@@ -45,21 +29,8 @@ func RawGiteaInstallResources(templateData any, config v1alpha1.PackageCustomiza
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/gitea/k8s", installGiteaFS, scheme, templateData)
 }
 
-func (r *LocalbuildReconciler) GiteaAdminSecretObject() corev1.Secret {
-	return corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      giteaAdminSecret,
-			Namespace: giteaNamespace,
-		},
-	}
-}
-
 func (r *LocalbuildReconciler) newGiteaAdminSecret(password string) corev1.Secret {
-	obj := r.GiteaAdminSecretObject()
+	obj := util.GiteaAdminSecretObject()
 	obj.StringData = map[string]string{
 		"username": v1alpha1.GiteaAdminUserName,
 		"password": password,
@@ -73,7 +44,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		name:         "Gitea",
 		resourcePath: "resources/gitea/k8s",
 		resourceFS:   installGiteaFS,
-		namespace:    giteaNamespace,
+		namespace:    util.GiteaNamespace,
 		monitoredResources: map[string]schema.GroupVersionKind{
 			"my-gitea": {
 				Group:   "apps",
@@ -83,7 +54,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		},
 	}
 
-	sec := r.GiteaAdminSecretObject()
+	sec := util.GiteaAdminSecretObject()
 	err := r.Client.Get(ctx, types.NamespacedName{
 		Namespace: sec.GetNamespace(),
 		Name:      sec.GetName(),
@@ -139,21 +110,21 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 
 	resource.Status.Gitea.ExternalURL = baseUrl
 	resource.Status.Gitea.InternalURL = giteaInternalBaseUrl(r.Config)
-	resource.Status.Gitea.AdminUserSecretName = giteaAdminSecret
-	resource.Status.Gitea.AdminUserSecretNamespace = giteaNamespace
+	resource.Status.Gitea.AdminUserSecretName = util.GiteaAdminSecret
+	resource.Status.Gitea.AdminUserSecretNamespace = util.GiteaNamespace
 	resource.Status.Gitea.Available = true
 	return ctrl.Result{}, nil
 }
 
 func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.Secret, baseUrl string) error {
-	_, ok := secret.Data[giteaAdminTokenFieldName]
+	_, ok := secret.Data[util.GiteaAdminTokenFieldName]
 	if ok {
 		return nil
 	}
 
 	u := unstructured.Unstructured{}
-	u.SetName(giteaAdminSecret)
-	u.SetNamespace(giteaNamespace)
+	u.SetName(util.GiteaAdminSecret)
+	u.SetNamespace(util.GiteaNamespace)
 	u.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Secret"))
 
 	user, ok := secret.Data["username"]
@@ -172,7 +143,7 @@ func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.
 	}
 
 	token := base64.StdEncoding.EncodeToString([]byte(t))
-	err = unstructured.SetNestedField(u.Object, token, "data", giteaAdminTokenFieldName)
+	err = unstructured.SetNestedField(u.Object, token, "data", util.GiteaAdminTokenFieldName)
 	if err != nil {
 		return fmt.Errorf("setting gitea token field: %w", err)
 	}
@@ -193,7 +164,7 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	}
 
 	for i := range tokens {
-		if tokens[i].Name == giteaAdminTokenName {
+		if tokens[i].Name == util.GiteaAdminTokenName {
 			resp, err := giteaClient.DeleteAccessToken(tokens[i].ID)
 			if err != nil {
 				return "", fmt.Errorf("deleting gitea access tokens. status: %s error : %w", resp.Status, err)
@@ -203,7 +174,7 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	}
 
 	token, resp, err := giteaClient.CreateAccessToken(gitea.CreateAccessTokenOption{
-		Name: giteaAdminTokenName,
+		Name: util.GiteaAdminTokenName,
 		Scopes: []gitea.AccessTokenScope{
 			gitea.AccessTokenScopeAll,
 		},
@@ -216,13 +187,13 @@ func getGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 }
 
 func (r *LocalbuildReconciler) GiteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
-	return fmt.Sprintf(giteaIngressURL, config.Protocol, config.Port)
+	return fmt.Sprintf(util.GiteaIngressURL, config.Protocol, config.Port)
 }
 
 // gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
 func giteaInternalBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
 	if config.UsePathRouting {
-		return fmt.Sprintf(giteaSvcURL, config.Protocol, "", config.Host, config.Port, "/gitea")
+		return fmt.Sprintf(util.GiteaSvcURL, config.Protocol, "", config.Host, config.Port, "/gitea")
 	}
-	return fmt.Sprintf(giteaSvcURL, config.Protocol, "gitea.", config.Host, config.Port, "")
+	return fmt.Sprintf(util.GiteaSvcURL, config.Protocol, "gitea.", config.Host, config.Port, "")
 }

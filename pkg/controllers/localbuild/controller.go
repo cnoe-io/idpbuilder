@@ -654,7 +654,7 @@ func (r *LocalbuildReconciler) extractArgocdInitialAdminSecret(ctx context.Conte
 }
 
 func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (string, error) {
-	sec := r.GiteaAdminSecretObject()
+	sec := util.GiteaAdminSecretObject()
 	err := r.Client.Get(ctx, types.NamespacedName{
 		Namespace: sec.GetNamespace(),
 		Name:      sec.GetName(),
