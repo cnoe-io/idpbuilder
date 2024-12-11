@@ -726,6 +726,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		return fmt.Errorf("Error reading response body: %v\n", err), "failed"
 	}
 
+	// We got a session Token, so we can update the Argocd admin password
 	if resp.StatusCode == 200 {
 		var argocdSession ArgocdSession
 
@@ -765,17 +766,12 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 			return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
 		}
 
+		// Define the request able to verify if the username and password changed works
 		req, err = http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
 		if err != nil {
 			return fmt.Errorf("Error creating HTTP request: %v\n", err), "failed"
 		}
 		req.Header.Set("Content-Type", "application/json")
-
-		// Create an HTTP client and disable TLS verification
-		client := &http.Client{}
-		transport := http.DefaultTransport.(*http.Transport).Clone()
-		transport.TLSClientConfig.InsecureSkipVerify = true
-		client.Transport = transport
 
 		// Send the request
 		resp, err = client.Do(req)
@@ -788,10 +784,9 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 			// Password verification succeeded !
 			return nil, "succeeded"
 		}
-
-	} else {
-		return fmt.Errorf("HTTP Error: %d", resp.StatusCode), "failed"
 	}
+	// No session token has been received and by consequence the admin password has not been changed
+	return nil, "failed"
 }
 
 func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj client.Object, argoCDType, annotationKey, annotationValue string) error {
