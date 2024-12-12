@@ -104,8 +104,8 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	if r.Config.StaticPasswords {
-		logger.V(1).Info("StaticPasswords is enabled")
+	if r.Config.StaticPassword {
+		logger.V(1).Info("Dev mode is enabled")
 
 		// Check if the Argocd Initial admin secret exists
 		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
@@ -123,7 +123,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if err != nil {
 				return ctrl.Result{}, err
 			} else {
-				logger.Info(fmt.Sprintf("Argocd admin password change %s !", argocdPasswordChangeStatus))
+				logger.V(1).Info(fmt.Sprintf("Argocd admin password change %s !", argocdPasswordChangeStatus))
 			}
 		}
 
@@ -141,7 +141,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			if err != nil {
 				return ctrl.Result{}, err
 			} else {
-				logger.Info(fmt.Sprintf("Gitea admin password change %s !", giteaPasswordChangeStatus))
+				logger.V(1).Info(fmt.Sprintf("Gitea admin password change %s !", giteaPasswordChangeStatus))
 			}
 		}
 	}

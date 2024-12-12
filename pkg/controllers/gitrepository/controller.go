@@ -143,7 +143,7 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 		return ctrl.Result{}, fmt.Errorf("getting git provider credentials: %w", err)
 	}
 
-	if r.Config.StaticPasswords {
+	if r.Config.StaticPassword {
 		creds.password = "developer"
 	}
 
