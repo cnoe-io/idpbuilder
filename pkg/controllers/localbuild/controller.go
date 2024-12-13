@@ -45,11 +45,6 @@ const (
 	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
 )
 
-var (
-	argocdPasswordChangeStatus = "failed"
-	giteaPasswordChangeStatus  = "failed"
-)
-
 type ArgocdSession struct {
 	Token string `json:"token"`
 }
@@ -105,7 +100,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if r.Config.StaticPassword {
-		logger.V(1).Info("Dev mode is enabled")
+		logger.V(1).Info("static password is enabled")
 
 		// Check if the Argocd Initial admin secret exists
 		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
@@ -118,12 +113,12 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// Secret containing the initial argocd password exists
 		// Lets try to update the password
-		if argocdInitialAdminPassword != "" && argocdPasswordChangeStatus == "failed" {
-			err, argocdPasswordChangeStatus = r.updateArgocdDevPassword(ctx, argocdInitialAdminPassword)
+		if argocdInitialAdminPassword != "" {
+			err = r.updateArgocdPassword(ctx, argocdInitialAdminPassword)
 			if err != nil {
 				return ctrl.Result{}, err
 			} else {
-				logger.V(1).Info(fmt.Sprintf("Argocd admin password change %s !", argocdPasswordChangeStatus))
+				logger.V(1).Info(fmt.Sprintf("Argocd admin password change succeeded !"))
 			}
 		}
 
@@ -133,15 +128,15 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// Gitea admin secret is not yet available ...
 			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 		}
-		logger.Info("Gitea admin secret found ...")
+		logger.V(1).Info("Gitea admin secret found ...")
 		// Secret containing the gitea password exists
 		// Lets try to update the password
-		if giteaAdminPassword != "" && giteaPasswordChangeStatus == "failed" {
-			err, giteaPasswordChangeStatus = r.updateGiteaDevPassword(ctx, giteaAdminPassword)
+		if giteaAdminPassword != "" {
+			err = r.updateGiteaPassword(ctx, giteaAdminPassword)
 			if err != nil {
 				return ctrl.Result{}, err
 			} else {
-				logger.V(1).Info(fmt.Sprintf("Gitea admin password change %s !", giteaPasswordChangeStatus))
+				logger.V(1).Info(fmt.Sprintf("Gitea admin password change succeeded !"))
 			}
 		}
 	}
@@ -668,12 +663,12 @@ func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (str
 	return string(sec.Data["password"]), nil
 }
 
-func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, adminPassword string) (error, string) {
+func (r *LocalbuildReconciler) updateGiteaPassword(ctx context.Context, adminPassword string) error {
 	client, err := gitea.NewClient(util.GiteaBaseUrl(r.Config), gitea.SetHTTPClient(util.GetHttpClient()),
 		gitea.SetBasicAuth("giteaAdmin", adminPassword), gitea.SetContext(ctx),
 	)
 	if err != nil {
-		return fmt.Errorf("cannot create gitea client: %w", err), "failed"
+		return fmt.Errorf("cannot create gitea client: %w", err)
 	}
 
 	opts := gitea.EditUserOption{
@@ -683,17 +678,17 @@ func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, admin
 
 	resp, err := client.AdminEditUser("giteaAdmin", opts)
 	if err != nil {
-		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err), "failed"
+		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err)
 	}
 
 	err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.GiteaNamespace, util.GiteaAdminSecret, util.GiteaAdminName, util.StaticPassword)
 	if err != nil {
-		return fmt.Errorf("patching the gitea credentials failed : %w", err), "failed"
+		return fmt.Errorf("patching the gitea credentials failed : %w", err)
 	}
-	return nil, "succeeded"
+	return nil
 }
 
-func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, adminPassword string) (error, string) {
+func (r *LocalbuildReconciler) updateArgocdPassword(ctx context.Context, adminPassword string) error {
 	argocdEndpoint := util.ArgocdBaseUrl(r.Config) + "/api/v1"
 
 	payload := map[string]string{
@@ -702,13 +697,13 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
+		return fmt.Errorf("Error creating JSON payload: %v\n", err)
 	}
 
 	// Create an HTTP POST request to get the Session token
 	req, err := http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
 	if err != nil {
-		return fmt.Errorf("Error creating HTTP request: %v\n", err), "failed"
+		return fmt.Errorf("Error creating HTTP request: %v\n", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -718,14 +713,14 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 	// Send the request
 	resp, err := c.Do(req)
 	if err != nil {
-		return fmt.Errorf("Error sending request: %v\n", err), "failed"
+		return fmt.Errorf("Error sending request: %v\n", err)
 	}
 	defer resp.Body.Close()
 
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("Error reading response body: %v\n", err), "failed"
+		return fmt.Errorf("Error reading response body: %v\n", err)
 	}
 
 	// We got a session Token, so we can update the Argocd admin password
@@ -734,7 +729,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 
 		err := json.Unmarshal([]byte(body), &argocdSession)
 		if err != nil {
-			return fmt.Errorf("Error unmarshalling JSON: %v", err), "failed"
+			return fmt.Errorf("Error unmarshalling JSON: %v", err)
 		}
 
 		payload := map[string]string{
@@ -745,7 +740,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
-			return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
+			return fmt.Errorf("Error creating JSON payload: %v\n", err)
 		}
 
 		req, err := http.NewRequest("PUT", argocdEndpoint+"/account/password", bytes.NewBuffer(payloadBytes))
@@ -756,7 +751,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 
 		resp, err := c.Do(req)
 		if err != nil {
-			return fmt.Errorf("Error sending request: %v\n", err), "failed"
+			return fmt.Errorf("Error sending request: %v\n", err)
 		}
 		defer resp.Body.Close()
 
@@ -767,20 +762,20 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		}
 		payloadBytes, err = json.Marshal(payload)
 		if err != nil {
-			return fmt.Errorf("Error creating JSON payload: %v\n", err), "failed"
+			return fmt.Errorf("Error creating JSON payload: %v\n", err)
 		}
 
 		// Define the request able to verify if the username and password changed works
 		req, err = http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
 		if err != nil {
-			return fmt.Errorf("Error creating HTTP request: %v\n", err), "failed"
+			return fmt.Errorf("Error creating HTTP request: %v\n", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 
 		// Send the request
 		resp, err = c.Do(req)
 		if err != nil {
-			return fmt.Errorf("Error sending request: %v\n", err), "failed"
+			return fmt.Errorf("Error sending request: %v\n", err)
 		}
 		defer resp.Body.Close()
 
@@ -789,13 +784,13 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 			// Let's patch the existing secret now
 			err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, util.ArgocdAdminName, util.StaticPassword)
 			if err != nil {
-				return fmt.Errorf("patching the argocd initial secret failed : %w", err), "failed"
+				return fmt.Errorf("patching the argocd initial secret failed : %w", err)
 			}
-			return nil, "succeeded"
+			return nil
 		}
 	}
 	// No session token has been received and by consequence the admin password has not been changed
-	return nil, "failed"
+	return nil
 }
 
 func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj client.Object, argoCDType, annotationKey, annotationValue string) error {
