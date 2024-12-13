@@ -3,7 +3,6 @@ package localbuild
 import (
 	"context"
 	"embed"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"

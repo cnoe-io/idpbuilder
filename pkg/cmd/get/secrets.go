@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"io"
 	"os"
 	"path/filepath"
@@ -206,6 +207,7 @@ func secretToTemplateData(s v1.Secret) TemplateData {
 	for k, v := range s.Data {
 		data.Data[k] = string(v)
 	}
+
 	return data
 }
 
@@ -223,13 +225,8 @@ func getSecretsByCNOELabel(ctx context.Context, kubeClient client.Client, l labe
 	return secrets, kubeClient.List(ctx, &secrets, &opts)
 }
 
-func getSecretByName(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s := v1.Secret{}
-	return s, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &s)
-}
-
 func getCorePackageSecret(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s, err := getSecretByName(ctx, kubeClient, ns, name)
+	s, err := util.GetSecretByName(ctx, kubeClient, ns, name)
 	if err != nil {
 		return v1.Secret{}, err
 	}
