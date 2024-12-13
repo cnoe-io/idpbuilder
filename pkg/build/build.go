@@ -28,7 +28,6 @@ var (
 
 type Build struct {
 	name                 string
-	devMode              bool
 	cfg                  v1alpha1.BuildCustomizationSpec
 	kindConfigPath       string
 	kubeConfigPath       string
