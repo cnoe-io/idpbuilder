@@ -639,7 +639,7 @@ func (r *LocalbuildReconciler) requestArgoCDAppSetRefresh(ctx context.Context) e
 }
 
 func (r *LocalbuildReconciler) extractArgocdInitialAdminSecret(ctx context.Context) (string, error) {
-	sec := r.ArgocdInitialAdminSecretObject()
+	sec := util.ArgocdInitialAdminSecretObject()
 	err := r.Client.Get(ctx, types.NamespacedName{
 		Namespace: sec.GetNamespace(),
 		Name:      sec.GetName(),
