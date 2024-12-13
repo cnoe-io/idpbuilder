@@ -144,7 +144,7 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 	}
 
 	if r.Config.StaticPassword {
-		creds.password = "developer"
+		creds.password = util.StaticPassword
 	}
 
 	err = provider.setProviderCredentials(ctx, repo, creds)

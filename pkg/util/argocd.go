@@ -6,7 +6,6 @@ import (
 )
 
 const (
-	ArgocdDevModePassword        = "developer"
 	ArgocdInitialAdminSecretName = "argocd-initial-admin-secret"
 	ArgocdAdminName              = "admin"
 	ArgocdNamespace              = "argocd"

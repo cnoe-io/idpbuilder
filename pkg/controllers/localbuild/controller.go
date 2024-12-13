@@ -678,7 +678,7 @@ func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, admin
 
 	opts := gitea.EditUserOption{
 		LoginName: "giteaAdmin",
-		Password:  "developer",
+		Password:  util.StaticPassword,
 	}
 
 	resp, err := client.AdminEditUser("giteaAdmin", opts)
@@ -686,7 +686,7 @@ func (r *LocalbuildReconciler) updateGiteaDevPassword(ctx context.Context, admin
 		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err), "failed"
 	}
 
-	err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.GiteaNamespace, util.GiteaAdminSecret, util.GiteaAdminName, "developer")
+	err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.GiteaNamespace, util.GiteaAdminSecret, util.GiteaAdminName, util.StaticPassword)
 	if err != nil {
 		return fmt.Errorf("patching the gitea credentials failed : %w", err), "failed"
 	}
@@ -740,7 +740,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		payload := map[string]string{
 			"name":            "admin",
 			"currentPassword": adminPassword,
-			"newPassword":     util.ArgocdDevModePassword,
+			"newPassword":     util.StaticPassword,
 		}
 
 		payloadBytes, err := json.Marshal(payload)
@@ -763,7 +763,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		// Lets checking the new admin password
 		payload = map[string]string{
 			"username": "admin",
-			"password": util.ArgocdDevModePassword,
+			"password": util.StaticPassword,
 		}
 		payloadBytes, err = json.Marshal(payload)
 		if err != nil {
@@ -787,7 +787,7 @@ func (r *LocalbuildReconciler) updateArgocdDevPassword(ctx context.Context, admi
 		// Password verification succeeded !
 		if resp.StatusCode == 200 {
 			// Let's patch the existing secret now
-			err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, util.ArgocdAdminName, "developer")
+			err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, util.ArgocdAdminName, util.StaticPassword)
 			if err != nil {
 				return fmt.Errorf("patching the argocd initial secret failed : %w", err), "failed"
 			}

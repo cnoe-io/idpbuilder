@@ -5,13 +5,12 @@ import (
 )
 
 const (
-	GitProviderGitea       = "gitea"
-	GitProviderGitHub      = "github"
-	GiteaAdminUserName     = "giteaAdmin"
-	GiteaDeveloperUserName = "developer"
-	SourceTypeLocal        = "local"
-	SourceTypeRemote       = "remote"
-	SourceTypeEmbedded     = "embedded"
+	GitProviderGitea   = "gitea"
+	GitProviderGitHub  = "github"
+	GiteaAdminUserName = "giteaAdmin"
+	SourceTypeLocal    = "local"
+	SourceTypeRemote   = "remote"
+	SourceTypeEmbedded = "embedded"
 )
 
 type GitRepositorySpec struct {
