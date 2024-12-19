@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"testing"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -97,7 +96,7 @@ func TestPrintPackageSecrets(t *testing.T) {
 			fClient.On("Get", ctx, c.getKeys[j], mock.Anything, mock.Anything).Return(c.err)
 		}
 
-		err := printPackageSecrets(ctx, io.Discard, fClient, "")
+		err := printPackageSecrets(ctx, fClient, "")
 		fClient.AssertExpectations(t)
 		assert.Nil(t, err)
 	}
@@ -134,7 +133,7 @@ func TestPrintAllPackageSecrets(t *testing.T) {
 		for j := range c.getKeys {
 			fClient.On("Get", ctx, c.getKeys[j], mock.Anything, mock.Anything).Return(c.err)
 		}
-		err := printAllPackageSecrets(ctx, io.Discard, fClient, "")
+		err := printAllPackageSecrets(ctx, fClient, "")
 		fClient.AssertExpectations(t)
 		assert.Nil(t, err)
 	}
@@ -212,7 +211,7 @@ func TestOutput(t *testing.T) {
 	var b []byte
 	buffer := bytes.NewBuffer(b)
 
-	err := printAllPackageSecrets(ctx, buffer, fClient, "json")
+	err := printAllPackageSecrets(ctx, fClient, "json")
 	fClient.AssertExpectations(t)
 	assert.Nil(t, err)
 

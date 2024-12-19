@@ -22,7 +22,7 @@ func init() {
 	GetCmd.AddCommand(ClustersCmd)
 	GetCmd.AddCommand(SecretsCmd)
 	GetCmd.PersistentFlags().StringSliceVarP(&packages, "packages", "p", []string{}, "names of packages.")
-	GetCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format. json or yaml.")
+	GetCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format. table or json.")
 	GetCmd.PersistentFlags().StringVarP(&helpers.KubeConfigPath, "kubeconfig", "", "", "kube config file Path.")
 }
 

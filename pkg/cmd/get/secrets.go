@@ -2,13 +2,10 @@ package get
 
 import (
 	"context"
-	"embed"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"path/filepath"
-	"text/template"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
@@ -20,18 +17,13 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/util/homedir"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 )
 
 const (
-	secretTemplatePath           = "templates/secrets.tmpl"
 	argoCDAdminUsername          = "admin"
 	argoCDInitialAdminSecretName = "argocd-initial-admin-secret"
 	giteaAdminSecretName         = "gitea-credential"
 )
-
-//go:embed templates
-var templates embed.FS
 
 var SecretsCmd = &cobra.Command{
 	Use:          "secrets",
@@ -42,15 +34,25 @@ var SecretsCmd = &cobra.Command{
 }
 
 // well known secrets that are part of the core packages
-var corePkgSecrets = map[string][]string{
-	"argocd": []string{argoCDInitialAdminSecretName},
-	"gitea":  []string{giteaAdminSecretName},
-}
+var (
+	corePkgSecrets = map[string][]string{
+		"argocd": []string{argoCDInitialAdminSecretName},
+		"gitea":  []string{giteaAdminSecretName},
+	}
+)
 
 type TemplateData struct {
 	Name      string            `json:"name"`
 	Namespace string            `json:"namespace"`
 	Data      map[string]string `json:"data"`
+}
+
+type Secret struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	Token     string `json:"token"`
 }
 
 func getSecretsE(cmd *cobra.Command, args []string) error {
@@ -77,15 +79,15 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(packages) == 0 {
-		return printAllPackageSecrets(ctx, os.Stdout, kubeClient, outputFormat)
+		return printAllPackageSecrets(ctx, kubeClient, outputFormat)
 	}
 
-	return printPackageSecrets(ctx, os.Stdout, kubeClient, outputFormat)
+	return printPackageSecrets(ctx, kubeClient, outputFormat)
 }
 
-func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
+func printAllPackageSecrets(ctx context.Context, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secretsToPrint := make([]any, 0, 2)
+	secrets := []Secret{}
 
 	for k, v := range corePkgSecrets {
 		for i := range v {
@@ -96,29 +98,29 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 				}
 				return fmt.Errorf("getting secret %s in %s: %w", v[i], k, sErr)
 			}
-			secretsToPrint = append(secretsToPrint, secretToTemplateData(secret))
+			secrets = append(secrets, generateSecret(secret))
 		}
 	}
 
-	secrets, err := getSecretsByCNOELabel(ctx, kubeClient, selector)
+	cnoeLabelSecrets, err := getSecretsByCNOELabel(ctx, kubeClient, selector)
 	if err != nil {
 		return fmt.Errorf("listing secrets: %w", err)
 	}
 
-	for i := range secrets.Items {
-		secretsToPrint = append(secretsToPrint, secretToTemplateData(secrets.Items[i]))
+	for i := range cnoeLabelSecrets.Items {
+		secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i]))
 	}
 
-	if len(secretsToPrint) == 0 {
+	if len(secrets) == 0 {
 		fmt.Println("no secrets found")
 		return nil
 	}
-	return printOutput(secretTemplatePath, outWriter, secretsToPrint, format)
+	return printSecretsOutput(secrets, format)
 }
 
-func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
+func printPackageSecrets(ctx context.Context, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secretsToPrint := make([]any, 0, 2)
+	secrets := []Secret{}
 
 	for i := range packages {
 		p := packages[i]
@@ -132,7 +134,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 					}
 					return fmt.Errorf("getting secret %s in %s: %w", secretNames[j], p, sErr)
 				}
-				secretsToPrint = append(secretsToPrint, secretToTemplateData(secret))
+				secrets = append(secrets, generateSecret(secret))
 			}
 			continue
 		}
@@ -144,69 +146,71 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 
 		pkgSelector := selector.Add(*req)
 
-		secrets, pErr := getSecretsByCNOELabel(ctx, kubeClient, pkgSelector)
-		if pErr != nil {
-			return fmt.Errorf("listing secrets: %w", pErr)
+		cnoeLabelSecrets, err := getSecretsByCNOELabel(ctx, kubeClient, pkgSelector)
+		if err != nil {
+			return fmt.Errorf("listing secrets: %w", err)
 		}
 
-		for j := range secrets.Items {
-			secretsToPrint = append(secretsToPrint, secretToTemplateData(secrets.Items[j]))
+		for i := range cnoeLabelSecrets.Items {
+			secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i]))
+		}
+
+		if len(secrets) == 0 {
+			fmt.Println("no secrets found")
+			return nil
 		}
 	}
 
-	return printOutput(secretTemplatePath, outWriter, secretsToPrint, format)
+	return printSecretsOutput(secrets, format)
 }
 
-func renderTemplate(templatePath string, outWriter io.Writer, data []any) error {
-	tmpl, err := templates.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("failed to read template: %w", err)
+func generateSecretTable(secretTable []Secret) metav1.Table {
+	table := &metav1.Table{}
+	table.ColumnDefinitions = []metav1.TableColumnDefinition{
+		{Name: "Name", Type: "string"},
+		{Name: "Namespace", Type: "string"},
+		{Name: "Username", Type: "string"},
+		{Name: "Password", Type: "string"},
+		{Name: "Token", Type: "string"},
 	}
-
-	t, err := template.New("secrets").Parse(string(tmpl))
-	if err != nil {
-		return fmt.Errorf("parsing template: %w", err)
-	}
-	for i := range data {
-		tErr := t.Execute(outWriter, data[i])
-		if tErr != nil {
-			return fmt.Errorf("executing template for data %s : %w", data[i], tErr)
+	for _, secret := range secretTable {
+		row := metav1.TableRow{
+			Cells: []interface{}{
+				secret.Name,
+				secret.Namespace,
+				secret.Username,
+				secret.Password,
+				secret.Token,
+			},
 		}
+		table.Rows = append(table.Rows, row)
 	}
-	return nil
+	return *table
 }
 
-func printOutput(templatePath string, outWriter io.Writer, data []any, format string) error {
+func printSecretsOutput(secrets []Secret, format string) error {
 	switch format {
 	case "json":
-		enc := json.NewEncoder(outWriter)
-		enc.SetEscapeHTML(false)
-		enc.SetIndent("", "  ")
-		return enc.Encode(data)
+		return util.PrintDataAsJson(secrets)
 	case "yaml":
-		b, err := yaml.Marshal(data)
-		if err != nil {
-			return err
-		}
-		_, err = outWriter.Write(b)
-		return err
+		return util.PrintDataAsYaml(secrets)
 	case "":
-		return renderTemplate(templatePath, outWriter, data)
+		return util.PrintTable(generateSecretTable(secrets))
 	default:
+
 		return fmt.Errorf("output format %s is not supported", format)
 	}
 }
 
-func secretToTemplateData(s v1.Secret) TemplateData {
-	data := TemplateData{
+func generateSecret(s v1.Secret) Secret {
+	secret := Secret{
 		Name:      s.Name,
 		Namespace: s.Namespace,
-		Data:      make(map[string]string),
+		Username:  string(s.Data["username"]),
+		Password:  string(s.Data["password"]),
+		Token:     string(s.Data["token"]),
 	}
-	for k, v := range s.Data {
-		data.Data[k] = string(v)
-	}
-	return data
+	return secret
 }
 
 func getSecretsByCNOELabel(ctx context.Context, kubeClient client.Client, l labels.Selector) (v1.SecretList, error) {
