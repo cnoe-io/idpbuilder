@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
@@ -50,11 +51,13 @@ type TemplateData struct {
 }
 
 type Secret struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	Token     string `json:"token"`
+	isCore    bool
+	Name      string            `json:"name"`
+	Namespace string            `json:"namespace"`
+	Username  string            `json:"username,omitempty"`
+	Password  string            `json:"password,omitempty"`
+	Token     string            `json:"token,omitempty"`
+	Data      map[string]string `json:"data,omitempty"`
 }
 
 func getSecretsE(cmd *cobra.Command, args []string) error {
@@ -100,7 +103,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 				}
 				return fmt.Errorf("getting secret %s in %s: %w", v[i], k, sErr)
 			}
-			secrets = append(secrets, generateSecret(secret))
+			secrets = append(secrets, generateSecret(secret, true))
 		}
 	}
 
@@ -110,7 +113,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 	}
 
 	for i := range cnoeLabelSecrets.Items {
-		secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i]))
+		secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i], false))
 	}
 
 	if len(secrets) == 0 {
@@ -136,7 +139,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 					}
 					return fmt.Errorf("getting secret %s in %s: %w", secretNames[j], p, sErr)
 				}
-				secrets = append(secrets, generateSecret(secret))
+				secrets = append(secrets, generateSecret(secret, true))
 			}
 			continue
 		}
@@ -154,7 +157,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		}
 
 		for i := range cnoeLabelSecrets.Items {
-			secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i]))
+			secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i], false))
 		}
 
 		if len(secrets) == 0 {
@@ -174,8 +177,17 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 		{Name: "Username", Type: "string"},
 		{Name: "Password", Type: "string"},
 		{Name: "Token", Type: "string"},
+		{Name: "Data", Type: "string"},
 	}
 	for _, secret := range secretTable {
+		var dataEntries []string
+
+		if !secret.isCore {
+			for key, value := range secret.Data {
+				dataEntries = append(dataEntries, fmt.Sprintf("%s=%s", key, value))
+			}
+		}
+		dataString := strings.Join(dataEntries, ", ")
 		row := metav1.TableRow{
 			Cells: []interface{}{
 				secret.Name,
@@ -183,6 +195,7 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 				secret.Username,
 				secret.Password,
 				secret.Token,
+				dataString,
 			},
 		}
 		table.Rows = append(table.Rows, row)
@@ -196,21 +209,35 @@ func printSecretsOutput(outWriter io.Writer, secrets []Secret, format string) er
 		return util.PrintDataAsJson(secrets, outWriter)
 	case "yaml":
 		return util.PrintDataAsYaml(secrets, outWriter)
-	case "":
+	case "", "table":
 		return util.PrintTable(generateSecretTable(secrets), outWriter)
 	default:
 		return fmt.Errorf("output format %s is not supported", format)
 	}
 }
 
-func generateSecret(s v1.Secret) Secret {
+func generateSecret(s v1.Secret, isCoreSecret bool) Secret {
 	secret := Secret{
 		Name:      s.Name,
 		Namespace: s.Namespace,
-		Username:  string(s.Data["username"]),
-		Password:  string(s.Data["password"]),
-		Token:     string(s.Data["token"]),
 	}
+
+	if isCoreSecret {
+		secret.isCore = true
+		secret.Username = string(s.Data["username"])
+		secret.Password = string(s.Data["password"])
+		secret.Token = string(s.Data["token"])
+		secret.Data = nil
+	} else {
+		newData := make(map[string]string)
+		for key, value := range s.Data {
+			newData[key] = string(value)
+		}
+		if len(newData) > 0 {
+			secret.Data = newData
+		}
+	}
+
 	return secret
 }
 
