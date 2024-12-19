@@ -1,7 +1,6 @@
 package get
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -10,13 +9,14 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"slices"
@@ -74,9 +74,27 @@ func list(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else {
-		// Convert the list of the clusters to Table of clusters
-		printTable(printers.PrintOptions{}, generateClusterTable(clusters))
-		return nil
+		// Convert the list of the clusters to a Table of clusters and print the table using the format selected
+		err := printClustersOutput(os.Stdout, clusters, outputFormat)
+		if err != nil {
+			return err
+		} else {
+			return nil
+		}
+	}
+}
+
+func printClustersOutput(outWriter io.Writer, clusters []Cluster, format string) error {
+	switch format {
+	case "json":
+		return util.PrintDataAsJson(clusters, outWriter)
+	case "yaml":
+		return util.PrintDataAsYaml(clusters, outWriter)
+	case "":
+		return util.PrintTable(generateClusterTable(clusters), outWriter)
+	default:
+
+		return fmt.Errorf("output format %s is not supported", format)
 	}
 }
 
@@ -230,18 +248,6 @@ func generateClusterTable(clusterTable []Cluster) metav1.Table {
 		table.Rows = append(table.Rows, row)
 	}
 	return *table
-}
-
-func printTable(opts printers.PrintOptions, table metav1.Table) {
-	logger := helpers.CmdLogger
-	out := bytes.NewBuffer([]byte{})
-	printer := printers.NewTablePrinter(opts)
-	err := printer.PrintObj(&table, out)
-	if err != nil {
-		logger.Error(err, "failed to print the table.")
-		return
-	}
-	fmt.Println(out.String())
 }
 
 func generateNodeData(nodes []Node) string {
