@@ -212,7 +212,7 @@ func TestOutput(t *testing.T) {
 	var b []byte
 	buffer := bytes.NewBuffer(b)
 
-	err := printAllPackageSecrets(ctx, io.Discard, fClient, "json")
+	err := printAllPackageSecrets(ctx, buffer, fClient, "json")
 	fClient.AssertExpectations(t)
 	assert.Nil(t, err)
 
