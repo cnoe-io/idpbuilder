@@ -9,12 +9,14 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"slices"
@@ -73,7 +75,7 @@ func list(cmd *cobra.Command, args []string) error {
 		return err
 	} else {
 		// Convert the list of the clusters to a Table of clusters and print the table using the format selected
-		err := printClustersOutput(clusters, outputFormat)
+		err := printClustersOutput(os.Stdout, clusters, outputFormat)
 		if err != nil {
 			return err
 		} else {
@@ -82,14 +84,14 @@ func list(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func printClustersOutput(clusters []Cluster, format string) error {
+func printClustersOutput(outWriter io.Writer, clusters []Cluster, format string) error {
 	switch format {
 	case "json":
-		return util.PrintDataAsJson(clusters)
+		return util.PrintDataAsJson(clusters, outWriter)
 	case "yaml":
-		return util.PrintDataAsYaml(clusters)
+		return util.PrintDataAsYaml(clusters, outWriter)
 	case "":
-		return util.PrintTable(generateClusterTable(clusters))
+		return util.PrintTable(generateClusterTable(clusters), outWriter)
 	default:
 
 		return fmt.Errorf("output format %s is not supported", format)

@@ -1,12 +1,12 @@
 package util
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"k8s.io/cli-runtime/pkg/printers"
 	"math"
 	"math/big"
@@ -189,42 +189,23 @@ func SetPackageLabels(obj client.Object) {
 	}
 }
 
-func PrintTable(table metav1.Table) error {
-	out := bytes.NewBuffer([]byte{})
+func PrintTable(table metav1.Table, outWriter io.Writer) error {
 	printer := printers.NewTablePrinter(printers.PrintOptions{})
-	err := printer.PrintObj(&table, out)
-	if err != nil {
-		return fmt.Errorf("failed to print the table %w", err)
-	}
-	fmt.Println(out)
-	return nil
+	return printer.PrintObj(&table, outWriter)
 }
 
-func PrintDataAsJson(data any) error {
-	out := bytes.NewBuffer([]byte{})
-	enc := json.NewEncoder(out)
+func PrintDataAsJson(data any, outWriter io.Writer) error {
+	enc := json.NewEncoder(outWriter)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(data); err != nil {
-		return err
-	} else {
-		fmt.Println(out)
-		return nil
-	}
-
+	return enc.Encode(data)
 }
 
-func PrintDataAsYaml(data any) error {
-	out := bytes.NewBuffer([]byte{})
+func PrintDataAsYaml(data any, outWriter io.Writer) error {
 	b, err := yaml.Marshal(data)
 	if err != nil {
 		return err
 	}
-	_, err = out.Write(b)
-	if err != nil {
-		return err
-	} else {
-		fmt.Println(out)
-		return nil
-	}
+	_, err = outWriter.Write(b)
+	return err
 }

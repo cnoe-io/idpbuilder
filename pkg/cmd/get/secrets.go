@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"path/filepath"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -79,13 +81,13 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(packages) == 0 {
-		return printAllPackageSecrets(ctx, kubeClient, outputFormat)
+		return printAllPackageSecrets(ctx, os.Stdout, kubeClient, outputFormat)
 	}
 
-	return printPackageSecrets(ctx, kubeClient, outputFormat)
+	return printPackageSecrets(ctx, os.Stdout, kubeClient, outputFormat)
 }
 
-func printAllPackageSecrets(ctx context.Context, kubeClient client.Client, format string) error {
+func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
 	secrets := []Secret{}
 
@@ -115,10 +117,10 @@ func printAllPackageSecrets(ctx context.Context, kubeClient client.Client, forma
 		fmt.Println("no secrets found")
 		return nil
 	}
-	return printSecretsOutput(secrets, format)
+	return printSecretsOutput(outWriter, secrets, format)
 }
 
-func printPackageSecrets(ctx context.Context, kubeClient client.Client, format string) error {
+func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
 	secrets := []Secret{}
 
@@ -161,7 +163,7 @@ func printPackageSecrets(ctx context.Context, kubeClient client.Client, format s
 		}
 	}
 
-	return printSecretsOutput(secrets, format)
+	return printSecretsOutput(outWriter, secrets, format)
 }
 
 func generateSecretTable(secretTable []Secret) metav1.Table {
@@ -188,16 +190,15 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 	return *table
 }
 
-func printSecretsOutput(secrets []Secret, format string) error {
+func printSecretsOutput(outWriter io.Writer, secrets []Secret, format string) error {
 	switch format {
 	case "json":
-		return util.PrintDataAsJson(secrets)
+		return util.PrintDataAsJson(secrets, outWriter)
 	case "yaml":
-		return util.PrintDataAsYaml(secrets)
+		return util.PrintDataAsYaml(secrets, outWriter)
 	case "":
-		return util.PrintTable(generateSecretTable(secrets))
+		return util.PrintTable(generateSecretTable(secrets), outWriter)
 	default:
-
 		return fmt.Errorf("output format %s is not supported", format)
 	}
 }
