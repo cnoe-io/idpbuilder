@@ -10,7 +10,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
-	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,6 +17,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"os"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"slices"
@@ -76,7 +76,7 @@ func list(cmd *cobra.Command, args []string) error {
 		return err
 	} else {
 		// Convert the list of the clusters to a Table of clusters and print the table using the format selected
-		err := printClustersOutput(os.Stdout, clusters, outputFormat)
+		err := printer.PrintOutput(os.Stdout, clusters, generateClusterTable(clusters), outputFormat)
 		if err != nil {
 			return err
 		} else {
@@ -85,18 +85,22 @@ func list(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func printClustersOutput(outWriter io.Writer, clusters []Cluster, format string) error {
-	switch format {
-	case "json":
-		return printer.PrintDataAsJson(clusters, outWriter)
-	case "yaml":
-		return printer.PrintDataAsYaml(clusters, outWriter)
-	case "table":
-		return printer.PrintTable(generateClusterTable(clusters), outWriter)
-	default:
+func ConvertTypeToAnySlice[T any](input []T) ([]any, error) {
+	var results []any
 
-		return fmt.Errorf("output format %s is not supported", format)
+	for _, item := range input {
+		itemValue := reflect.ValueOf(item)
+		itemType := reflect.TypeOf(item)
+
+		if itemValue.Type().ConvertibleTo(itemType) {
+			convertedValue := itemValue.Convert(itemType)
+			results = append(results, convertedValue.Interface())
+		} else {
+			return nil, fmt.Errorf("item of type %s is not convertible to %s", itemValue.Type(), itemType)
+		}
 	}
+
+	return results, nil
 }
 
 func populateClusterList() ([]Cluster, error) {
@@ -225,7 +229,7 @@ func populateClusterList() ([]Cluster, error) {
 	return clusterList, nil
 }
 
-func generateClusterTable(clusterTable []Cluster) metav1.Table {
+func generateClusterTable(input []Cluster) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},
@@ -235,7 +239,8 @@ func generateClusterTable(clusterTable []Cluster) metav1.Table {
 		{Name: "Kube-Port", Type: "string"},
 		{Name: "Nodes", Type: "string"},
 	}
-	for _, cluster := range clusterTable {
+
+	for _, cluster := range input {
 		row := metav1.TableRow{
 			Cells: []interface{}{
 				cluster.Name,
@@ -249,6 +254,17 @@ func generateClusterTable(clusterTable []Cluster) metav1.Table {
 		table.Rows = append(table.Rows, row)
 	}
 	return *table
+}
+
+func convertArrayAnyToClusters(input []any) []Cluster {
+	var clusters []Cluster
+	for _, item := range input {
+		cluster, ok := item.(Cluster)
+		if ok {
+			clusters = append(clusters, cluster)
+		}
+	}
+	return clusters
 }
 
 func generateNodeData(nodes []Node) string {

@@ -120,7 +120,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 		fmt.Println("no secrets found")
 		return nil
 	}
-	return printSecretsOutput(outWriter, secrets, format)
+	return printer.PrintOutput(outWriter, secrets, generateSecretTable(secrets), format)
 }
 
 func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
@@ -166,7 +166,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		}
 	}
 
-	return printSecretsOutput(outWriter, secrets, format)
+	return printer.PrintOutput(outWriter, secrets, generateSecretTable(secrets), format)
 }
 
 func generateSecretTable(secretTable []Secret) metav1.Table {
@@ -201,19 +201,6 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 		table.Rows = append(table.Rows, row)
 	}
 	return *table
-}
-
-func printSecretsOutput(outWriter io.Writer, secrets []Secret, format string) error {
-	switch format {
-	case "json":
-		return printer.PrintDataAsJson(secrets, outWriter)
-	case "yaml":
-		return printer.PrintDataAsYaml(secrets, outWriter)
-	case "table":
-		return printer.PrintTable(generateSecretTable(secrets), outWriter)
-	default:
-		return fmt.Errorf("output format %s is not supported", format)
-	}
 }
 
 func populateSecret(s v1.Secret, isCoreSecret bool) Secret {
