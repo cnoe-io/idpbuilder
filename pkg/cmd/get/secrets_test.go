@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
@@ -144,16 +145,16 @@ func TestOutput(t *testing.T) {
 	ctx := context.Background()
 	r, _ := labels.NewRequirement(v1alpha1.CLISecretLabelKey, selection.Equals, []string{v1alpha1.CLISecretLabelValue})
 
-	corePkgData := map[string]Secret{
+	corePkgData := map[string]entity.Secret{
 		argoCDInitialAdminSecretName: {
-			isCore:    true,
+			IsCore:    true,
 			Name:      argoCDInitialAdminSecretName,
 			Namespace: "argocd",
 			Username:  "admin",
 			Password:  "abc",
 		},
 		giteaAdminSecretName: {
-			isCore:    true,
+			IsCore:    true,
 			Name:      giteaAdminSecretName,
 			Namespace: "gitea",
 			Username:  "admin",
@@ -161,7 +162,7 @@ func TestOutput(t *testing.T) {
 		},
 	}
 
-	packageData := map[string]Secret{
+	packageData := map[string]entity.Secret{
 		"name1": {
 			Name:      "name1",
 			Namespace: "ns1",
@@ -215,7 +216,7 @@ func TestOutput(t *testing.T) {
 	assert.Nil(t, err)
 
 	// verify received json data
-	var received []Secret
+	var received []entity.Secret
 	err = json.Unmarshal(buffer.Bytes(), &received)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(received))
@@ -224,8 +225,8 @@ func TestOutput(t *testing.T) {
 		rec := received[i]
 		c, ok := corePkgData[rec.Name]
 		if ok {
-			// Set the isCore bool field to true as the v1.Secret don't include it !
-			rec.isCore = true
+			// Set the IsCore bool field to true as the v1.Secret don't include it !
+			rec.IsCore = true
 			assert.Equal(t, c, rec)
 			delete(corePkgData, rec.Name)
 			continue
@@ -243,9 +244,9 @@ func TestOutput(t *testing.T) {
 	assert.Equal(t, 0, len(packageData))
 }
 
-func secretDataToSecret(data Secret) v1.Secret {
+func secretDataToSecret(data entity.Secret) v1.Secret {
 	d := make(map[string][]byte)
-	if data.isCore {
+	if data.IsCore {
 		d["username"] = []byte(data.Username)
 		d["password"] = []byte(data.Password)
 		d["token"] = []byte(data.Token)

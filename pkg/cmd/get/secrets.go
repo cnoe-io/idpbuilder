@@ -3,6 +3,7 @@ package get
 import (
 	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,16 +51,6 @@ type TemplateData struct {
 	Data      map[string]string `json:"data"`
 }
 
-type Secret struct {
-	isCore    bool
-	Name      string            `json:"name"`
-	Namespace string            `json:"namespace"`
-	Username  string            `json:"username,omitempty"`
-	Password  string            `json:"password,omitempty"`
-	Token     string            `json:"token,omitempty"`
-	Data      map[string]string `json:"data,omitempty"`
-}
-
 func getSecretsE(cmd *cobra.Command, args []string) error {
 	ctx, ctxCancel := context.WithCancel(cmd.Context())
 	defer ctxCancel()
@@ -92,7 +83,11 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 
 func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secrets := []Secret{}
+	secrets := []entity.Secret{}
+	secretPrinter := printer.SecretPrinter{
+		Secrets:   secrets,
+		OutWriter: outWriter,
+	}
 
 	for k, v := range corePkgSecrets {
 		for i := range v {
@@ -120,12 +115,17 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 		fmt.Println("no secrets found")
 		return nil
 	}
-	return printer.PrintOutput(outWriter, secrets, generateSecretTable(secrets), format)
+
+	secretPrinter.Secrets = secrets
+	return secretPrinter.PrintOutput(format)
 }
 
 func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secrets := []Secret{}
+	secrets := []entity.Secret{}
+	secretPrinter := printer.SecretPrinter{
+		OutWriter: outWriter,
+	}
 
 	for i := range packages {
 		p := packages[i]
@@ -166,10 +166,11 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		}
 	}
 
-	return printer.PrintOutput(outWriter, secrets, generateSecretTable(secrets), format)
+	secretPrinter.Secrets = secrets
+	return secretPrinter.PrintOutput(format)
 }
 
-func generateSecretTable(secretTable []Secret) metav1.Table {
+func generateSecretTable(secretTable []entity.Secret) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},
@@ -182,7 +183,7 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 	for _, secret := range secretTable {
 		var dataEntries []string
 
-		if !secret.isCore {
+		if !secret.IsCore {
 			for key, value := range secret.Data {
 				dataEntries = append(dataEntries, fmt.Sprintf("%s=%s", key, value))
 			}
@@ -203,14 +204,14 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 	return *table
 }
 
-func populateSecret(s v1.Secret, isCoreSecret bool) Secret {
-	secret := Secret{
+func populateSecret(s v1.Secret, isCoreSecret bool) entity.Secret {
+	secret := entity.Secret{
 		Name:      s.Name,
 		Namespace: s.Namespace,
 	}
 
 	if isCoreSecret {
-		secret.isCore = true
+		secret.IsCore = true
 		secret.Username = string(s.Data["username"])
 		secret.Password = string(s.Data["password"])
 		secret.Token = string(s.Data["token"])
