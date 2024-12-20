@@ -4,10 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io"
-	"k8s.io/cli-runtime/pkg/printers"
 	"math"
 	"math/big"
 	mathrand "math/rand"
@@ -19,11 +16,9 @@ import (
 	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kind/pkg/cluster"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -187,25 +182,4 @@ func SetPackageLabels(obj client.Object) {
 	default:
 		labels[v1alpha1.PackageTypeLabelKey] = v1alpha1.PackageTypeLabelCustom
 	}
-}
-
-func PrintTable(table metav1.Table, outWriter io.Writer) error {
-	printer := printers.NewTablePrinter(printers.PrintOptions{})
-	return printer.PrintObj(&table, outWriter)
-}
-
-func PrintDataAsJson(data any, outWriter io.Writer) error {
-	enc := json.NewEncoder(outWriter)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(data)
-}
-
-func PrintDataAsYaml(data any, outWriter io.Writer) error {
-	b, err := yaml.Marshal(data)
-	if err != nil {
-		return err
-	}
-	_, err = outWriter.Write(b)
-	return err
 }

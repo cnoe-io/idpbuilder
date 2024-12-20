@@ -7,6 +7,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"io"
@@ -87,11 +88,11 @@ func list(cmd *cobra.Command, args []string) error {
 func printClustersOutput(outWriter io.Writer, clusters []Cluster, format string) error {
 	switch format {
 	case "json":
-		return util.PrintDataAsJson(clusters, outWriter)
+		return printer.PrintDataAsJson(clusters, outWriter)
 	case "yaml":
-		return util.PrintDataAsYaml(clusters, outWriter)
+		return printer.PrintDataAsYaml(clusters, outWriter)
 	case "table":
-		return util.PrintTable(generateClusterTable(clusters), outWriter)
+		return printer.PrintTable(generateClusterTable(clusters), outWriter)
 	default:
 
 		return fmt.Errorf("output format %s is not supported", format)

@@ -3,7 +3,7 @@ package get
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -206,11 +206,11 @@ func generateSecretTable(secretTable []Secret) metav1.Table {
 func printSecretsOutput(outWriter io.Writer, secrets []Secret, format string) error {
 	switch format {
 	case "json":
-		return util.PrintDataAsJson(secrets, outWriter)
+		return printer.PrintDataAsJson(secrets, outWriter)
 	case "yaml":
-		return util.PrintDataAsYaml(secrets, outWriter)
+		return printer.PrintDataAsYaml(secrets, outWriter)
 	case "table":
-		return util.PrintTable(generateSecretTable(secrets), outWriter)
+		return printer.PrintTable(generateSecretTable(secrets), outWriter)
 	default:
 		return fmt.Errorf("output format %s is not supported", format)
 	}
