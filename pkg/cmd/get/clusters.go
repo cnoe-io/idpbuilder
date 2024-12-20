@@ -90,7 +90,7 @@ func printClustersOutput(outWriter io.Writer, clusters []Cluster, format string)
 		return util.PrintDataAsJson(clusters, outWriter)
 	case "yaml":
 		return util.PrintDataAsYaml(clusters, outWriter)
-	case "":
+	case "table":
 		return util.PrintTable(generateClusterTable(clusters), outWriter)
 	default:
 

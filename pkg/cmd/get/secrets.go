@@ -209,7 +209,7 @@ func printSecretsOutput(outWriter io.Writer, secrets []Secret, format string) er
 		return util.PrintDataAsJson(secrets, outWriter)
 	case "yaml":
 		return util.PrintDataAsYaml(secrets, outWriter)
-	case "", "table":
+	case "table":
 		return util.PrintTable(generateSecretTable(secrets), outWriter)
 	default:
 		return fmt.Errorf("output format %s is not supported", format)
