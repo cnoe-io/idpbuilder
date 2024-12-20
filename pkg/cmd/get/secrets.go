@@ -103,7 +103,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 				}
 				return fmt.Errorf("getting secret %s in %s: %w", v[i], k, sErr)
 			}
-			secrets = append(secrets, generateSecret(secret, true))
+			secrets = append(secrets, populateSecret(secret, true))
 		}
 	}
 
@@ -113,7 +113,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 	}
 
 	for i := range cnoeLabelSecrets.Items {
-		secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i], false))
+		secrets = append(secrets, populateSecret(cnoeLabelSecrets.Items[i], false))
 	}
 
 	if len(secrets) == 0 {
@@ -139,7 +139,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 					}
 					return fmt.Errorf("getting secret %s in %s: %w", secretNames[j], p, sErr)
 				}
-				secrets = append(secrets, generateSecret(secret, true))
+				secrets = append(secrets, populateSecret(secret, true))
 			}
 			continue
 		}
@@ -157,7 +157,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 		}
 
 		for i := range cnoeLabelSecrets.Items {
-			secrets = append(secrets, generateSecret(cnoeLabelSecrets.Items[i], false))
+			secrets = append(secrets, populateSecret(cnoeLabelSecrets.Items[i], false))
 		}
 
 		if len(secrets) == 0 {
@@ -216,7 +216,7 @@ func printSecretsOutput(outWriter io.Writer, secrets []Secret, format string) er
 	}
 }
 
-func generateSecret(s v1.Secret, isCoreSecret bool) Secret {
+func populateSecret(s v1.Secret, isCoreSecret bool) Secret {
 	secret := Secret{
 		Name:      s.Name,
 		Namespace: s.Namespace,
