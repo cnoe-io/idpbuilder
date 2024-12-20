@@ -19,13 +19,13 @@ func (cp ClusterPrinter) PrintOutput(format string) error {
 	case "yaml":
 		return PrintDataAsYaml(cp.Clusters, cp.OutWriter)
 	case "table":
-		return PrintDataAsTable(cp.generateClusterTable(cp.Clusters), cp.OutWriter)
+		return PrintDataAsTable(generateClusterTable(cp.Clusters), cp.OutWriter)
 	default:
 		return fmt.Errorf("output format %s is not supported", format)
 	}
 }
 
-func (cp ClusterPrinter) generateClusterTable(input []entity.Cluster) metav1.Table {
+func generateClusterTable(input []entity.Cluster) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},

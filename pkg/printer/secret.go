@@ -20,13 +20,13 @@ func (sp SecretPrinter) PrintOutput(format string) error {
 	case "yaml":
 		return PrintDataAsYaml(sp.Secrets, sp.OutWriter)
 	case "table":
-		return PrintDataAsTable(sp.generateSecretTable(sp.Secrets), sp.OutWriter)
+		return PrintDataAsTable(generateSecretTable(sp.Secrets), sp.OutWriter)
 	default:
 		return fmt.Errorf("output format %s is not supported", format)
 	}
 }
 
-func (sp SecretPrinter) generateSecretTable(secretTable []entity.Secret) metav1.Table {
+func generateSecretTable(secretTable []entity.Secret) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},
