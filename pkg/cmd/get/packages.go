@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
 )
 
 var PackagesCmd = &cobra.Command{
@@ -94,6 +95,9 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 			}
 			newPackage.GitRepository = cp.Spec.RemoteRepository.Url + "/tree/" + ref + "/" + cp.Spec.RemoteRepository.Path
 		}
+
+		newPackage.Status = strconv.FormatBool(cp.Status.Synced)
+
 		packageList = append(packageList, newPackage)
 	}
 

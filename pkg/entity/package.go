@@ -5,4 +5,5 @@ type Package struct {
 	Namespace     string
 	Type          string
 	GitRepository string
+	Status        string
 }
