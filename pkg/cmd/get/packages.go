@@ -87,6 +87,7 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		if cp.Status.GitRepositoryRefs != nil {
 			newPackage.GitRepository = cp.Spec.InternalGitServeURL + "/" + v1alpha1.GiteaAdminUserName + "/" + idpbuilderNamespace + "-" + cp.Status.GitRepositoryRefs[0].Name
 		} else {
+			// Default branch reference
 			ref := "main"
 			if cp.Spec.RemoteRepository.Ref != "" {
 				ref = cp.Spec.RemoteRepository.Ref
