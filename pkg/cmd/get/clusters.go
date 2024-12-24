@@ -1,22 +1,23 @@
 package get
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"slices"
@@ -26,34 +27,6 @@ import (
 // ClusterManager holds the clients for the different idpbuilder clusters
 type ClusterManager struct {
 	clients map[string]client.Client // map of cluster name to client
-}
-
-type Cluster struct {
-	Name         string
-	URLKubeApi   string
-	KubePort     int32
-	TlsCheck     bool
-	ExternalPort int32
-	Nodes        []Node
-}
-
-type Node struct {
-	Name       string
-	InternalIP string
-	ExternalIP string
-	Capacity   Capacity
-	Allocated  Allocated
-}
-
-type Capacity struct {
-	Memory float64
-	Pods   int64
-	Cpu    int64
-}
-
-type Allocated struct {
-	Cpu    string
-	Memory string
 }
 
 var ClustersCmd = &cobra.Command{
@@ -74,13 +47,15 @@ func list(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	} else {
-		// Convert the list of the clusters to Table of clusters
-		printTable(printers.PrintOptions{}, generateClusterTable(clusters))
-		return nil
+		clusterPrinter := printer.ClusterPrinter{
+			Clusters:  clusters,
+			OutWriter: os.Stdout,
+		}
+		return clusterPrinter.PrintOutput(outputFormat)
 	}
 }
 
-func populateClusterList() ([]Cluster, error) {
+func populateClusterList() ([]entity.Cluster, error) {
 	logger := helpers.CmdLogger
 
 	detectOpt, err := util.DetectKindNodeProvider()
@@ -106,7 +81,7 @@ func populateClusterList() ([]Cluster, error) {
 	}
 
 	// Create an empty array of clusters to collect the information
-	clusterList := []Cluster{}
+	clusterList := []entity.Cluster{}
 
 	// List the idp builder clusters according to the provider: podman or docker
 	provider := cluster.NewProvider(cluster.ProviderWithLogger(kind.KindLoggerFromLogr(&logger)), detectOpt)
@@ -122,7 +97,7 @@ func populateClusterList() ([]Cluster, error) {
 	}
 
 	for _, cluster := range clusters {
-		aCluster := Cluster{Name: cluster}
+		aCluster := entity.Cluster{Name: cluster}
 
 		// Search about the idp cluster within the kubeconfig file and show information
 		c, found := findClusterByName(config, "kind-"+cluster)
@@ -164,7 +139,7 @@ func populateClusterList() ([]Cluster, error) {
 			for _, node := range nodeList.Items {
 				nodeName := node.Name
 
-				aNode := Node{}
+				aNode := entity.Node{}
 				aNode.Name = nodeName
 
 				for _, addr := range node.Status.Addresses {
@@ -183,7 +158,7 @@ func populateClusterList() ([]Cluster, error) {
 				cpu := resources[corev1.ResourceCPU]
 				pods := resources[corev1.ResourcePods]
 
-				aNode.Capacity = Capacity{
+				aNode.Capacity = entity.Capacity{
 					Memory: float64(memory.Value()) / (1024 * 1024 * 1024),
 					Cpu:    cpu.Value(),
 					Pods:   pods.Value(),
@@ -206,60 +181,11 @@ func populateClusterList() ([]Cluster, error) {
 	return clusterList, nil
 }
 
-func generateClusterTable(clusterTable []Cluster) metav1.Table {
-	table := &metav1.Table{}
-	table.ColumnDefinitions = []metav1.TableColumnDefinition{
-		{Name: "Name", Type: "string"},
-		{Name: "External-Port", Type: "string"},
-		{Name: "Kube-Api", Type: "string"},
-		{Name: "TLS", Type: "string"},
-		{Name: "Kube-Port", Type: "string"},
-		{Name: "Nodes", Type: "string"},
-	}
-	for _, cluster := range clusterTable {
-		row := metav1.TableRow{
-			Cells: []interface{}{
-				cluster.Name,
-				cluster.ExternalPort,
-				cluster.URLKubeApi,
-				cluster.TlsCheck,
-				cluster.KubePort,
-				generateNodeData(cluster.Nodes),
-			},
-		}
-		table.Rows = append(table.Rows, row)
-	}
-	return *table
-}
-
-func printTable(opts printers.PrintOptions, table metav1.Table) {
-	logger := helpers.CmdLogger
-	out := bytes.NewBuffer([]byte{})
-	printer := printers.NewTablePrinter(opts)
-	err := printer.PrintObj(&table, out)
-	if err != nil {
-		logger.Error(err, "failed to print the table.")
-		return
-	}
-	fmt.Println(out.String())
-}
-
-func generateNodeData(nodes []Node) string {
-	var result string
-	for i, aNode := range nodes {
-		result += aNode.Name
-		if i < len(nodes)-1 {
-			result += ","
-		}
-	}
-	return result
-}
-
-func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (Allocated, error) {
+func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (entity.Allocated, error) {
 	// List all pods on the specified node
 	var podList corev1.PodList
 	if err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": nodeName}); err != nil {
-		return Allocated{}, fmt.Errorf("failed to list pods on node %s.", nodeName)
+		return entity.Allocated{}, fmt.Errorf("failed to list pods on node %s.", nodeName)
 	}
 
 	// Initialize counters for CPU and memory requests
@@ -278,7 +204,7 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 		}
 	}
 
-	allocated := Allocated{
+	allocated := entity.Allocated{
 		Memory: totalMemory.String(),
 		Cpu:    totalCPU.String(),
 	}
