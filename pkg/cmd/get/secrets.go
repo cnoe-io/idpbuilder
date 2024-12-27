@@ -47,11 +47,8 @@ var (
 )
 
 type TemplateData struct {
-	IsCore    bool              `json:"isCore"`
 	Name      string            `json:"name"`
 	Namespace string            `json:"namespace"`
-	Username  string            `json:"username"`
-	Password  string            `json:"password"`
 	Data      map[string]string `json:"data"`
 }
 
