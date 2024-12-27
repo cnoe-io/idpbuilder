@@ -275,10 +275,10 @@ func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
 				continue
 			}
 
-			for i := range secs {
-				if secs[i].Name == name {
-					out.Password = secs[i].Data["password"]
-					out.Username = secs[i].Data["username"]
+			for _, sec := range secs {
+				if sec.Name == name {
+					out.Password = sec.Password
+					out.Username = sec.Username
 					break
 				}
 			}
@@ -388,8 +388,8 @@ func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaP
 	assert.NoError(t, err)
 
 	sec := secs[0]
-	user := sec.Data["username"]
-	pass := sec.Data["password"]
+	user := sec.Username
+	pass := sec.Password
 
 	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
 	require.NoErrorf(t, err, "%s login err: %s", cmd, login)

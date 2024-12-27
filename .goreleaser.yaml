@@ -5,7 +5,7 @@ before:
     - go mod tidy
 release:
   # Mark nightly build as prerelease based on tag
-  prerelease: '{{ contains .Tag "-nightly" }}'
+  prerelease: auto
 
 builds:
   - env:

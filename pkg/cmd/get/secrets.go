@@ -3,13 +3,14 @@ package get
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
-	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
@@ -46,8 +47,11 @@ var (
 )
 
 type TemplateData struct {
+	IsCore    bool              `json:"isCore"`
 	Name      string            `json:"name"`
 	Namespace string            `json:"namespace"`
+	Username  string            `json:"username"`
+	Password  string            `json:"password"`
 	Data      map[string]string `json:"data"`
 }
 
