@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -243,13 +244,8 @@ func getSecretsByCNOELabel(ctx context.Context, kubeClient client.Client, l labe
 	return secrets, kubeClient.List(ctx, &secrets, &opts)
 }
 
-func getSecretByName(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s := v1.Secret{}
-	return s, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &s)
-}
-
 func getCorePackageSecret(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s, err := getSecretByName(ctx, kubeClient, ns, name)
+	s, err := util.GetSecretByName(ctx, kubeClient, ns, name)
 	if err != nil {
 		return v1.Secret{}, err
 	}

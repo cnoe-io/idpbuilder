@@ -51,6 +51,8 @@ spec:
                     type: string
                   selfSignedCert:
                     type: string
+                  staticPassword:
+                    type: boolean
                   usePathRouting:
                     type: boolean
                 type: object
