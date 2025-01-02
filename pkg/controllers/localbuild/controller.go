@@ -25,8 +25,10 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -286,6 +288,8 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 		},
 	}
 
+	util.SetPackageLabels(app)
+
 	if err := controllerutil.SetControllerReference(resource, app, r.Scheme); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -334,6 +338,30 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 		return false, err
 	}
 
+	// check if core packages are ready
+	selector := labels.NewSelector()
+	req, err := labels.NewRequirement(v1alpha1.PackageTypeLabelKey, selection.Equals, []string{v1alpha1.PackageTypeLabelCore})
+	if err != nil {
+		return false, fmt.Errorf("building labels with key %s and value %s : %w", v1alpha1.PackageTypeLabelKey, v1alpha1.PackageTypeLabelCore, err)
+	}
+
+	opts := client.ListOptions{
+		LabelSelector: selector.Add(*req),
+		Namespace:     "",
+	}
+	apps := argov1alpha1.ApplicationList{}
+	err = r.Client.List(ctx, &apps, &opts)
+	if err != nil {
+		return false, fmt.Errorf("listing core packages: %w", err)
+	}
+
+	for _, app := range apps.Items {
+		if app.Status.Health.Status != "Healthy" {
+			return false, nil
+		}
+	}
+
+	// check if repositories are ready
 	repos := &v1alpha1.GitRepositoryList{}
 	err = r.Client.List(ctx, repos, client.InNamespace(resource.Namespace))
 	if err != nil {
@@ -365,6 +393,7 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 		}
 	}
 
+	// check if custom packages are ready
 	pkgs := &v1alpha1.CustomPackageList{}
 	err = r.Client.List(ctx, pkgs, client.InNamespace(resource.Namespace))
 	if err != nil {

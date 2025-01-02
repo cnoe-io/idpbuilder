@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -56,11 +56,12 @@ var (
 )
 
 var CreateCmd = &cobra.Command{
-	Use:     "create",
-	Short:   "(Re)Create an IDP cluster",
-	Long:    ``,
-	RunE:    create,
-	PreRunE: preCreateE,
+	Use:          "create",
+	Short:        "(Re)Create an IDP cluster",
+	Long:         ``,
+	RunE:         create,
+	PreRunE:      preCreateE,
+	SilenceUsage: true,
 }
 
 func init() {
@@ -91,7 +92,8 @@ func preCreateE(cmd *cobra.Command, args []string) error {
 }
 
 func create(cmd *cobra.Command, args []string) error {
-	ctx, ctxCancel := context.WithCancel(ctrl.SetupSignalHandler())
+
+	ctx, ctxCancel := context.WithCancel(cmd.Context())
 	defer ctxCancel()
 
 	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
@@ -164,18 +166,11 @@ func create(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	subDomain := "argocd."
-	subPath := ""
-
-	if pathRouting == true {
-		subDomain = ""
-		subPath = "argocd"
+	if cmd.Context().Err() != nil {
+		return context.Cause(cmd.Context())
 	}
 
-	fmt.Print("\n\n########################### Finished Creating IDP Successfully! ############################\n\n\n")
-	fmt.Printf("Can Access ArgoCD at %s\nUsername: admin\n", fmt.Sprintf("%s://%s%s:%s/%s", protocol, subDomain, host, port, subPath))
-	fmt.Print(`Password can be retrieved by running: idpbuilder get secrets -p argocd`, "\n")
-
+	printSuccessMsg()
 	return nil
 }
 
@@ -227,4 +222,33 @@ func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
 		Name:     name,
 		FilePath: paths[0],
 	}, nil
+}
+
+func printSuccessMsg() {
+	subDomain := "argocd."
+	subPath := ""
+
+	if pathRouting == true {
+		subDomain = ""
+		subPath = "argocd"
+	}
+
+	var argoURL string
+
+	proxy := behindProxy()
+	if proxy {
+		argoURL = fmt.Sprintf("https://%s/argocd", host)
+	} else {
+		argoURL = fmt.Sprintf("%s://%s%s:%s/%s", protocol, subDomain, host, port, subPath)
+	}
+
+	fmt.Print("\n\n########################### Finished Creating IDP Successfully! ############################\n\n\n")
+	fmt.Printf("Can Access ArgoCD at %s\nUsername: admin\n", argoURL)
+	fmt.Print(`Password can be retrieved by running: idpbuilder get secrets -p argocd`, "\n")
+}
+
+func behindProxy() bool {
+	// check if we are in codespaces: https://docs.github.com/en/codespaces/developing-in-a-codespace/default-environment-variables-for-your-codespace
+	_, ok := os.LookupEnv("CODESPACES")
+	return ok
 }

@@ -16,11 +16,12 @@ var (
 )
 
 var DeleteCmd = &cobra.Command{
-	Use:     "delete",
-	Short:   "Delete an IDP cluster",
-	Long:    ``,
-	RunE:    deleteE,
-	PreRunE: preDeleteE,
+	Use:          "delete",
+	Short:        "Delete an IDP cluster",
+	Long:         ``,
+	RunE:         deleteE,
+	PreRunE:      preDeleteE,
+	SilenceUsage: true,
 }
 
 func init() {
