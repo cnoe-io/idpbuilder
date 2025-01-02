@@ -59,7 +59,7 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 
 	idpbuilderNamespace, err := getIDPNamespace(ctx, kubeClient)
 	if err != nil {
-		return fmt.Errorf("calculating idp namespace: %w", err)
+		return fmt.Errorf("getting namespace: %w", err)
 	}
 
 	if len(packages) == 0 {
