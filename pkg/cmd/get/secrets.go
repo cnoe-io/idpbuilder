@@ -3,23 +3,20 @@ package get
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/printer"
-	"github.com/cnoe-io/idpbuilder/pkg/types"
-	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	"github.com/cnoe-io/idpbuilder/pkg/types"
 	"github.com/spf13/cobra"
+	"io"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/util/homedir"
+	"os"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -168,40 +165,6 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 
 	secretPrinter.Secrets = secrets
 	return secretPrinter.PrintOutput(format)
-}
-
-func generateSecretTable(secretTable []types.Secret) metav1.Table {
-	table := &metav1.Table{}
-	table.ColumnDefinitions = []metav1.TableColumnDefinition{
-		{Name: "Name", Type: "string"},
-		{Name: "Namespace", Type: "string"},
-		{Name: "Username", Type: "string"},
-		{Name: "Password", Type: "string"},
-		{Name: "Token", Type: "string"},
-		{Name: "Data", Type: "string"},
-	}
-	for _, secret := range secretTable {
-		var dataEntries []string
-
-		if !secret.IsCore {
-			for key, value := range secret.Data {
-				dataEntries = append(dataEntries, fmt.Sprintf("%s=%s", key, value))
-			}
-		}
-		dataString := strings.Join(dataEntries, ", ")
-		row := metav1.TableRow{
-			Cells: []interface{}{
-				secret.Name,
-				secret.Namespace,
-				secret.Username,
-				secret.Password,
-				secret.Token,
-				dataString,
-			},
-		}
-		table.Rows = append(table.Rows, row)
-	}
-	return *table
 }
 
 func populateSecret(s v1.Secret, isCoreSecret bool) types.Secret {
