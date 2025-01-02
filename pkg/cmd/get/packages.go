@@ -74,7 +74,7 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		for _, name := range packages {
 			cp, err := getPackageByName(ctx, kubeClient, idpbuilderNamespace, name)
 			if err != nil {
-				return fmt.Errorf("get custom package: %w", err)
+				return fmt.Errorf("getting custom package %s: %w", name, err)
 			}
 			customPackages.Items = append(customPackages.Items, cp)
 		}
