@@ -31,6 +31,7 @@ func generatePackageTable(packagesTable []types.Package) metav1.Table {
 		{Name: "Custom package name", Type: "string"},
 		{Name: "idp namespace", Type: "string"},
 		{Name: "Git Repository", Type: "string"},
+		{Name: "Argocd Repository", Type: "string"},
 		{Name: "Status", Type: "string"},
 	}
 	for _, p := range packagesTable {
@@ -39,6 +40,7 @@ func generatePackageTable(packagesTable []types.Package) metav1.Table {
 				p.Name,
 				p.Namespace,
 				p.GitRepository,
+				p.ArgocdRepository,
 				p.Status,
 			},
 		}

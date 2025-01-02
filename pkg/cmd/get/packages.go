@@ -17,6 +17,11 @@ import (
 	"strconv"
 )
 
+// TODO To be removed when we will merge PR: 442 as duplicate
+const (
+	ArgocdIngressURL = "%s://argocd.cnoe.localtest.me:%s"
+)
+
 var PackagesCmd = &cobra.Command{
 	Use:          "packages",
 	Short:        "retrieve packages from the cluster",
@@ -34,6 +39,7 @@ func getPackagesE(cmd *cobra.Command, args []string) error {
 		KubeConfigPath: kubeConfigPath,
 		Scheme:         k8s.GetScheme(),
 		CancelFunc:     ctxCancel,
+		TemplateData:   v1alpha1.BuildCustomizationSpec{},
 	}
 
 	b := build.NewBuild(opts)
@@ -62,6 +68,11 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		return fmt.Errorf("getting namespace: %w", err)
 	}
 
+	argocdBaseUrl, err := ArgocdBaseUrl(ctx, kubeClient)
+	if err != nil {
+		return fmt.Errorf("getting localbuild config: %w", err)
+	}
+
 	if len(packages) == 0 {
 		// Get all custom packages
 		customPackages, err = getPackages(ctx, kubeClient, idpbuilderNamespace)
@@ -84,6 +95,7 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		newPackage := types.Package{}
 		newPackage.Name = cp.Name
 		newPackage.Namespace = cp.Namespace
+		newPackage.ArgocdRepository = argocdBaseUrl + "/applications/" + cp.Spec.ArgoCD.Namespace + "/" + cp.Spec.ArgoCD.Name
 		// There is a GitRepositoryRefs when the project has been cloned to the internal git repository
 		if cp.Status.GitRepositoryRefs != nil {
 			newPackage.GitRepository = cp.Spec.InternalGitServeURL + "/" + v1alpha1.GiteaAdminUserName + "/" + idpbuilderNamespace + "-" + cp.Status.GitRepositoryRefs[0].Name
@@ -113,6 +125,16 @@ func getPackageByName(ctx context.Context, kubeClient client.Client, ns, name st
 	return p, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &p)
 }
 
+func getIDPConfig(ctx context.Context, kubeClient client.Client) (v1alpha1.BuildCustomizationSpec, error) {
+	b := v1alpha1.BuildCustomizationSpec{}
+	list, err := getLocalBuild(ctx, kubeClient)
+	if err != nil {
+		return b, err
+	}
+	// TODO: We assume that only one LocalBuild has been created for one cluster !
+	return list.Items[0].Spec.BuildCustomization, nil
+}
+
 func getIDPNamespace(ctx context.Context, kubeClient client.Client) (string, error) {
 	build, err := getLocalBuild(ctx, kubeClient)
 	if err != nil {
@@ -131,4 +153,13 @@ func getLocalBuild(ctx context.Context, kubeClient client.Client) (v1alpha1.Loca
 func getPackages(ctx context.Context, kubeClient client.Client, ns string) (v1alpha1.CustomPackageList, error) {
 	packageList := v1alpha1.CustomPackageList{}
 	return packageList, kubeClient.List(ctx, &packageList, client.InNamespace(ns))
+}
+
+// TODO To be removed when we will merge PR: 442 as duplicate
+func ArgocdBaseUrl(ctx context.Context, kubeClient client.Client) (string, error) {
+	config, err := getIDPConfig(ctx, kubeClient)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(ArgocdIngressURL, config.Protocol, config.Port), nil
 }
