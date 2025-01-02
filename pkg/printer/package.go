@@ -2,13 +2,13 @@ package printer
 
 import (
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
+	"github.com/cnoe-io/idpbuilder/pkg/types"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type PackagePrinter struct {
-	Packages  []entity.Package
+	Packages  []types.Package
 	OutWriter io.Writer
 }
 
@@ -25,7 +25,7 @@ func (pp PackagePrinter) PrintOutput(format string) error {
 	}
 }
 
-func generatePackageTable(packagesTable []entity.Package) metav1.Table {
+func generatePackageTable(packagesTable []types.Package) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Custom package name", Type: "string"},

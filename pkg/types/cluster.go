@@ -1,4 +1,4 @@
-package entity
+package types
 
 type Cluster struct {
 	Name         string

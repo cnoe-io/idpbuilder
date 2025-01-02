@@ -1,4 +1,4 @@
-package entity
+package types
 
 type Package struct {
 	Name          string

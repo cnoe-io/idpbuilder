@@ -3,8 +3,8 @@ package get
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	"github.com/cnoe-io/idpbuilder/pkg/types"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
@@ -83,7 +83,7 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 
 func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secrets := []entity.Secret{}
+	secrets := []types.Secret{}
 	secretPrinter := printer.SecretPrinter{
 		Secrets:   secrets,
 		OutWriter: outWriter,
@@ -122,7 +122,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 
 func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secrets := []entity.Secret{}
+	secrets := []types.Secret{}
 	secretPrinter := printer.SecretPrinter{
 		OutWriter: outWriter,
 	}
@@ -170,7 +170,7 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 	return secretPrinter.PrintOutput(format)
 }
 
-func generateSecretTable(secretTable []entity.Secret) metav1.Table {
+func generateSecretTable(secretTable []types.Secret) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},
@@ -204,8 +204,8 @@ func generateSecretTable(secretTable []entity.Secret) metav1.Table {
 	return *table
 }
 
-func populateSecret(s v1.Secret, isCoreSecret bool) entity.Secret {
-	secret := entity.Secret{
+func populateSecret(s v1.Secret, isCoreSecret bool) types.Secret {
+	secret := types.Secret{
 		Name:      s.Name,
 		Namespace: s.Namespace,
 	}

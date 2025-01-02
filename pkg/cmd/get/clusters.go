@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	idpTypes "github.com/cnoe-io/idpbuilder/pkg/types"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -55,7 +55,7 @@ func list(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func populateClusterList() ([]entity.Cluster, error) {
+func populateClusterList() ([]idpTypes.Cluster, error) {
 	logger := helpers.CmdLogger
 
 	detectOpt, err := util.DetectKindNodeProvider()
@@ -81,7 +81,7 @@ func populateClusterList() ([]entity.Cluster, error) {
 	}
 
 	// Create an empty array of clusters to collect the information
-	clusterList := []entity.Cluster{}
+	clusterList := []idpTypes.Cluster{}
 
 	// List the idp builder clusters according to the provider: podman or docker
 	provider := cluster.NewProvider(cluster.ProviderWithLogger(kind.KindLoggerFromLogr(&logger)), detectOpt)
@@ -97,7 +97,7 @@ func populateClusterList() ([]entity.Cluster, error) {
 	}
 
 	for _, cluster := range clusters {
-		aCluster := entity.Cluster{Name: cluster}
+		aCluster := idpTypes.Cluster{Name: cluster}
 
 		// Search about the idp cluster within the kubeconfig file and show information
 		c, found := findClusterByName(config, "kind-"+cluster)
@@ -139,7 +139,7 @@ func populateClusterList() ([]entity.Cluster, error) {
 			for _, node := range nodeList.Items {
 				nodeName := node.Name
 
-				aNode := entity.Node{}
+				aNode := idpTypes.Node{}
 				aNode.Name = nodeName
 
 				for _, addr := range node.Status.Addresses {
@@ -158,7 +158,7 @@ func populateClusterList() ([]entity.Cluster, error) {
 				cpu := resources[corev1.ResourceCPU]
 				pods := resources[corev1.ResourcePods]
 
-				aNode.Capacity = entity.Capacity{
+				aNode.Capacity = idpTypes.Capacity{
 					Memory: float64(memory.Value()) / (1024 * 1024 * 1024),
 					Cpu:    cpu.Value(),
 					Pods:   pods.Value(),
@@ -181,11 +181,11 @@ func populateClusterList() ([]entity.Cluster, error) {
 	return clusterList, nil
 }
 
-func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (entity.Allocated, error) {
+func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeName string) (idpTypes.Allocated, error) {
 	// List all pods on the specified node
 	var podList corev1.PodList
 	if err := k8sClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": nodeName}); err != nil {
-		return entity.Allocated{}, fmt.Errorf("failed to list pods on node %s.", nodeName)
+		return idpTypes.Allocated{}, fmt.Errorf("failed to list pods on node %s.", nodeName)
 	}
 
 	// Initialize counters for CPU and memory requests
@@ -204,7 +204,7 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 		}
 	}
 
-	allocated := entity.Allocated{
+	allocated := idpTypes.Allocated{
 		Memory: totalMemory.String(),
 		Cpu:    totalCPU.String(),
 	}

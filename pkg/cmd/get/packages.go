@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	"github.com/cnoe-io/idpbuilder/pkg/types"
 	"github.com/spf13/cobra"
 	"io"
 	"k8s.io/client-go/util/homedir"
@@ -53,7 +53,7 @@ func getPackagesE(cmd *cobra.Command, args []string) error {
 
 // Print all the custom packages or based on package arguments passed using flag: -p
 func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
-	packageList := []entity.Package{}
+	packageList := []types.Package{}
 	customPackages := v1alpha1.CustomPackageList{}
 	var err error
 
@@ -81,7 +81,7 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 	}
 
 	for _, cp := range customPackages.Items {
-		newPackage := entity.Package{}
+		newPackage := types.Package{}
 		newPackage.Name = cp.Name
 		newPackage.Namespace = cp.Namespace
 		// There is a GitRepositoryRefs when the project has been cloned to the internal git repository
