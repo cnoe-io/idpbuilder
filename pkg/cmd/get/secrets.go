@@ -3,13 +3,14 @@ package get
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
-	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
@@ -44,12 +45,6 @@ var (
 		"gitea":  []string{giteaAdminSecretName},
 	}
 )
-
-type TemplateData struct {
-	Name      string            `json:"name"`
-	Namespace string            `json:"namespace"`
-	Data      map[string]string `json:"data"`
-}
 
 func getSecretsE(cmd *cobra.Command, args []string) error {
 	ctx, ctxCancel := context.WithCancel(cmd.Context())
