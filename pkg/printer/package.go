@@ -28,7 +28,7 @@ func (pp PackagePrinter) PrintOutput(format string) error {
 func generatePackageTable(packagesTable []types.Package) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
-		{Name: "Custom package name", Type: "string"},
+		{Name: "Name", Type: "string"},
 		{Name: "idp namespace", Type: "string"},
 		{Name: "Git Repository", Type: "string"},
 		{Name: "Argocd Repository", Type: "string"},
