@@ -1,4 +1,4 @@
-package entity
+package types
 
 type Capacity struct {
 	Memory float64
