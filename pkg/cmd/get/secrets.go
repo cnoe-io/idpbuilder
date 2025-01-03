@@ -46,12 +46,6 @@ var (
 	}
 )
 
-type TemplateData struct {
-	Name      string            `json:"name"`
-	Namespace string            `json:"namespace"`
-	Data      map[string]string `json:"data"`
-}
-
 func getSecretsE(cmd *cobra.Command, args []string) error {
 	ctx, ctxCancel := context.WithCancel(cmd.Context())
 	defer ctxCancel()
