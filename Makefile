@@ -7,6 +7,11 @@ LD_FLAGS=-ldflags " \
 # The name of the binary. Defaults to idpbuilder
 OUT_FILE ?= idpbuilder
 
+# The container engine to be used to create the kind cluster. Defaults to docker
+CONTAINER_ENGINE ?= docker
+# The sock file used by docker or podman. Defaults to docker.sock
+DOCKER_HOST      ?= "unix:///var/run/docker.sock"
+
 .PHONY: build
 build: manifests generate fmt vet embedded-resources
 	go build $(LD_FLAGS) -o $(OUT_FILE) main.go
@@ -93,4 +98,5 @@ embedded-resources: kustomize helm
 
 .PHONY: e2e
 e2e: build
+	@echo "CONTAINER_ENGINE: $(CONTAINER_ENGINE)"
 	go test -v -p 1 -timeout 15m --tags=e2e ./tests/e2e/...

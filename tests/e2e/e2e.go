@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -93,6 +94,9 @@ func RunCommand(ctx context.Context, command string, timeout time.Duration) ([]b
 	}
 
 	c := exec.CommandContext(cmdCtx, binary, args...)
+	// DOCKER_HOST = unix:///var/run/docker.sock is needed for podman running in rootless mode
+	c.Env = append(os.Environ(), "DOCKER_HOST="+os.Getenv("DOCKER_HOST"))
+
 	b, err := c.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
@@ -391,17 +395,35 @@ func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaP
 	user := sec.Username
 	pass := sec.Password
 
-	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
-	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
+	var login []byte
+	loginCmd := fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass)
+	if os.Getenv("CONTAINER_ENGINE") == "podman" {
+		login, err = RunCommand(ctx, loginCmd+" --tls-verify=false", 10*time.Second)
+	} else {
+		login, err = RunCommand(ctx, loginCmd, 10*time.Second)
+	}
+	require.NoErrorf(t, err, "%s login err: %s", loginCmd, login)
 
 	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
 
 	build, err := RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", cmd, tag), 10*time.Second)
 	require.NoErrorf(t, err, "%s build err: %s", cmd, build)
 
-	push, err := RunCommand(ctx, fmt.Sprintf("%s push %s", cmd, tag), 10*time.Second)
-	require.NoErrorf(t, err, "%s push err: %s", cmd, push)
+	pushCmd := fmt.Sprintf("%s push %s", cmd, tag)
+	var push []byte
+	if os.Getenv("CONTAINER_ENGINE") == "podman" {
+		push, err = RunCommand(ctx, pushCmd+" --tls-verify=false", 10*time.Second)
+	} else {
+		push, err = RunCommand(ctx, pushCmd, 10*time.Second)
+	}
+	require.NoErrorf(t, err, "%s push err: %s", pushCmd, push)
 
-	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, tag), 10*time.Second)
-	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
+	var pull []byte
+	pullCmd := fmt.Sprintf("%s pull %s", cmd, tag)
+	if os.Getenv("CONTAINER_ENGINE") == "podman" {
+		pull, err = RunCommand(ctx, pullCmd+" --tls-verify=false", 10*time.Second)
+	} else {
+		pull, err = RunCommand(ctx, pullCmd, 10*time.Second)
+	}
+	require.NoErrorf(t, err, "%s pull err: %s", pullCmd, pull)
 }

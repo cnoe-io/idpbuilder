@@ -18,24 +18,45 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+var (
+	containerClientEngine string
+	cmd                   *exec.Cmd
+)
+
+func configureContainerClientEngine() {
+	if os.Getenv("CONTAINER_ENGINE") == "podman" {
+		containerClientEngine = "podman"
+	} else {
+		containerClientEngine = "docker"
+	}
+}
+
+func enableKindExperimentalProvider(cmd exec.Cmd) *exec.Cmd {
+	if os.Getenv("CONTAINER_ENGINE") == "podman" {
+		cmd.Env = append(os.Environ(), "KIND_EXPERIMENTAL_PROVIDER=podman")
+	}
+	return &cmd
+}
+
 func CleanUpDocker(t *testing.T) {
 	t.Log("cleaning up docker env")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	b, err := e2e.RunCommand(ctx, `docker ps -aqf name=localdev-control-plane`, 10*time.Second)
+	b, err := e2e.RunCommand(ctx, fmt.Sprintf("%s ps -aqf name=localdev-control-plane", containerClientEngine), 10*time.Second)
 	assert.NoError(t, err, fmt.Sprintf("error while listing docker containers: %s, %s", err, b))
 
 	conts := strings.TrimSpace(string(b))
 	if len(conts) == 0 {
 		return
 	}
-	b, err = e2e.RunCommand(ctx, fmt.Sprintf("docker container rm -f %s", conts), 60*time.Second)
+	b, err = e2e.RunCommand(ctx, fmt.Sprintf("%s container rm -f %s", containerClientEngine, conts), 60*time.Second)
 	assert.NoError(t, err, fmt.Sprintf("error while removing docker containers: %s, %s", err, b))
 
-	b, err = e2e.RunCommand(ctx, "docker system prune -f", 60*time.Second)
+	b, err = e2e.RunCommand(ctx, fmt.Sprintf("%s system prune -f", containerClientEngine), 60*time.Second)
 	assert.NoError(t, err, fmt.Sprintf("error while pruning system: %s, %s", err, b))
 
-	b, err = e2e.RunCommand(ctx, "docker volume prune -f", 60*time.Second)
+	b, err = e2e.RunCommand(ctx, fmt.Sprintf("%s volume prune -f", containerClientEngine), 60*time.Second)
 	assert.NoError(t, err, fmt.Sprintf("error while pruning volumes: %s, %s", err, b))
 	t.Log("finished cleaning up docker env")
 }
@@ -44,6 +65,7 @@ func Test_CreateDocker(t *testing.T) {
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
+	configureContainerClientEngine()
 	testCreate(t)
 	testCreatePath(t)
 	testCreatePort(t)
@@ -57,7 +79,8 @@ func testCreate(t *testing.T) {
 	defer CleanUpDocker(t)
 
 	t.Log("running idpbuilder create")
-	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create")
+	cmd = exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create")
+	cmd = enableKindExperimentalProvider(*cmd)
 	b, err := cmd.CombinedOutput()
 	assert.NoError(t, err, b)
 
@@ -70,7 +93,7 @@ func testCreate(t *testing.T) {
 	giteaBaseUrl := fmt.Sprintf("https://gitea.%s:%s", e2e.DefaultBaseDomain, e2e.DefaultPort)
 	e2e.TestCoreEndpoints(ctx, t, argoBaseUrl, giteaBaseUrl)
 
-	e2e.TestGiteaRegistry(ctx, t, "docker", fmt.Sprintf("gitea.%s", e2e.DefaultBaseDomain), e2e.DefaultPort)
+	e2e.TestGiteaRegistry(ctx, t, containerClientEngine, fmt.Sprintf("gitea.%s", e2e.DefaultBaseDomain), e2e.DefaultPort)
 }
 
 // test idpbuilder create --use-path-routing
@@ -80,7 +103,8 @@ func testCreatePath(t *testing.T) {
 	defer CleanUpDocker(t)
 
 	t.Log("running idpbuilder create --use-path-routing")
-	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create", "--use-path-routing")
+	cmd = exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create", "--use-path-routing")
+	cmd = enableKindExperimentalProvider(*cmd)
 	b, err := cmd.CombinedOutput()
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
@@ -93,7 +117,7 @@ func testCreatePath(t *testing.T) {
 	giteaBaseUrl := fmt.Sprintf("https://%s:%s/gitea", e2e.DefaultBaseDomain, e2e.DefaultPort)
 	e2e.TestCoreEndpoints(ctx, t, argoBaseUrl, giteaBaseUrl)
 
-	e2e.TestGiteaRegistry(ctx, t, "docker", e2e.DefaultBaseDomain, e2e.DefaultPort)
+	e2e.TestGiteaRegistry(ctx, t, containerClientEngine, e2e.DefaultBaseDomain, e2e.DefaultPort)
 }
 
 func testCreatePort(t *testing.T) {
@@ -103,7 +127,8 @@ func testCreatePort(t *testing.T) {
 
 	port := "2443"
 	t.Logf("running idpbuilder create --port %s", port)
-	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create", "--port", port)
+	cmd = exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, "create", "--port", port)
+	cmd = enableKindExperimentalProvider(*cmd)
 	b, err := cmd.CombinedOutput()
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
@@ -125,7 +150,8 @@ func testCustomPkg(t *testing.T) {
 	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
 
 	t.Log(fmt.Sprintf("running %s", cmdString))
-	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, strings.Split(cmdString, " ")...)
+	cmd = exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, strings.Split(cmdString, " ")...)
+	cmd = enableKindExperimentalProvider(*cmd)
 	b, err := cmd.CombinedOutput()
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
