@@ -18,7 +18,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/cmd/get"
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -268,17 +268,17 @@ func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
 			}
 
 			out := BasicAuth{}
-			secs := make([]get.TemplateData, 2)
+			secs := make([]entity.Secret, 2)
 			if err = json.Unmarshal(b, &secs); err != nil {
 				lastErr = err
 				time.Sleep(httpRetryDelay)
 				continue
 			}
 
-			for i := range secs {
-				if secs[i].Name == name {
-					out.Password = secs[i].Data["password"]
-					out.Username = secs[i].Data["username"]
+			for _, sec := range secs {
+				if sec.Name == name {
+					out.Password = sec.Password
+					out.Username = sec.Username
 					break
 				}
 			}
@@ -383,13 +383,13 @@ func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaP
 	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
 	assert.NoError(t, err)
 
-	secs := make([]get.TemplateData, 2)
+	secs := make([]entity.Secret, 1)
 	err = json.Unmarshal(b, &secs)
 	assert.NoError(t, err)
 
 	sec := secs[0]
-	user := sec.Data["username"]
-	pass := sec.Data["password"]
+	user := sec.Username
+	pass := sec.Password
 
 	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
 	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
