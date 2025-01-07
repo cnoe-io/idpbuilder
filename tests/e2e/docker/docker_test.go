@@ -3,6 +3,8 @@
 package docker
 
 import (
+	"context"
+	"fmt"
 	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
 	"github.com/cnoe-io/idpbuilder/tests/e2e/shared"
 	"github.com/go-logr/logr"
@@ -10,7 +12,9 @@ import (
 	"os"
 	"os/exec"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"strings"
 	"testing"
+	"time"
 )
 
 type DockerEngine struct {
