@@ -26,6 +26,55 @@ func (p *DockerEngine) IdpCmd() *exec.Cmd {
 	return exec.Command(container.IdpbuilderBinaryLocation)
 }
 
+func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
+	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmds := strings.Split(command, " ")
+	if len(cmds) == 0 {
+		return nil, fmt.Errorf("supply at least one command")
+	}
+
+	binary := cmds[0]
+	args := make([]string, 0, len(cmds)-1)
+	if len(cmds) > 1 {
+		args = append(args, cmds[1:]...)
+	}
+
+	c := exec.CommandContext(cmdCtx, binary, args...)
+	b, err := c.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
+	}
+
+	return b, nil
+}
+
+func (p *PodmanEngine) RunIdpCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
+	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmds := strings.Split(command, " ")
+	if len(cmds) == 0 {
+		return nil, fmt.Errorf("supply at least one command")
+	}
+
+	binary := cmds[0]
+	args := make([]string, 0, len(cmds)-1)
+	if len(cmds) > 1 {
+		args = append(args, cmds[1:]...)
+	}
+
+	c := exec.CommandContext(cmdCtx, binary, args...)
+
+	b, err := c.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
+	}
+
+	return b, nil
+}
+
 func Test_CreateDocker(t *testing.T) {
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
