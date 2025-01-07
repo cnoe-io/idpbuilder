@@ -176,10 +176,7 @@ func TestCustomPkg(t *testing.T, containerEngine container.Engine) {
 	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
 
 	t.Log(fmt.Sprintf("running %s", cmdString))
-	/*	cmd := containerEngine.IdpCmd()
-		cmd.Args = append(cmd.Args, strings.Split(cmdString, " ")...)
-		b, err := cmd.CombinedOutput()*/
-	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s %ss", IdpbuilderBinaryLocation, cmdString), 0)
+	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s %s", IdpbuilderBinaryLocation, cmdString), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
