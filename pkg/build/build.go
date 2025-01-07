@@ -284,5 +284,6 @@ func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool 
 		s1.IngressHost == s2.IngressHost &&
 		s1.Port == s2.Port &&
 		s1.UsePathRouting == s2.UsePathRouting &&
-		s1.SelfSignedCert == s2.SelfSignedCert
+		s1.SelfSignedCert == s2.SelfSignedCert &&
+		s1.StaticPassword == s2.StaticPassword
 }

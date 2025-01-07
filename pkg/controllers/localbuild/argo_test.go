@@ -80,8 +80,8 @@ func TestGetK8sInstallResources(t *testing.T) {
 		t.Fatalf("GetK8sInstallResources() error: %v", err)
 	}
 
-	if len(objs) != 58 {
-		t.Fatalf("Expected 58 Argo Install Resources, got: %d", len(objs))
+	if len(objs) != 59 {
+		t.Fatalf("Expected 59 Argo Install Resources, got: %d", len(objs))
 	}
 }
 

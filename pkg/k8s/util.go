@@ -2,10 +2,9 @@ package k8s
 
 import (
 	"embed"
-	"os"
-
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
