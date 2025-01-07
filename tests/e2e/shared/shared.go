@@ -152,9 +152,6 @@ func TestCreatePort(t *testing.T, containerEngine container.Engine) {
 
 	port := "2443"
 	t.Logf("running idpbuilder create --port %s", port)
-	/*	cmd := containerEngine.IdpCmd()
-		cmd.Args = append(cmd.Args, "create", "--port", port)
-		b, err := cmd.CombinedOutput()*/
 	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --port %s", IdpbuilderBinaryLocation, port), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
