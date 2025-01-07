@@ -30,7 +30,7 @@ func (p *DockerEngine) IdpCmd() *exec.Cmd {
 	return exec.Command(container.IdpbuilderBinaryLocation)
 }
 
-func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
+func (p *DockerEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -54,7 +54,7 @@ func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout t
 	return b, nil
 }
 
-func (p *PodmanEngine) RunIdpCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
+func (p *DockerEngine) RunIdpCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
