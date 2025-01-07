@@ -5,6 +5,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	container_engine "github.com/cnoe-io/idpbuilder/tests/e2e/container"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -22,21 +23,6 @@ var (
 	containerClientEngine string
 	cmd                   *exec.Cmd
 )
-
-func configureContainerClientEngine() {
-	if os.Getenv("CONTAINER_ENGINE") == "podman" {
-		containerClientEngine = "podman"
-	} else {
-		containerClientEngine = "docker"
-	}
-}
-
-func enableKindExperimentalProvider(cmd exec.Cmd) *exec.Cmd {
-	if os.Getenv("CONTAINER_ENGINE") == "podman" {
-		cmd.Env = append(os.Environ(), "KIND_EXPERIMENTAL_PROVIDER=podman")
-	}
-	return &cmd
-}
 
 func CleanUpDocker(t *testing.T) {
 	t.Log("cleaning up docker env")
@@ -65,7 +51,8 @@ func Test_CreateDocker(t *testing.T) {
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
-	configureContainerClientEngine()
+	t.Log("creating IDP cluster using docker engine")
+	containerClientEngine = container_engine.ContainerClient()
 	testCreate(t)
 	testCreatePath(t)
 	testCreatePort(t)
