@@ -99,4 +99,9 @@ embedded-resources: kustomize helm
 .PHONY: e2e
 e2e: build
 	@echo "CONTAINER_ENGINE: $(CONTAINER_ENGINE)"
-	go test -v -p 1 -timeout 15m --tags=e2e ./tests/e2e/...
+ifeq ($(CONTAINER_ENGINE), docker)
+	go test -v -p 1 -timeout 15m --tags=e2e ./tests/e2e/docker/...
+endif
+ifeq ($(CONTAINER_ENGINE), podman)
+	go test -v -p 1 -timeout 15m --tags=e2e ./tests/e2e/podman/...
+endif
