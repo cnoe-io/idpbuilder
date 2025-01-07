@@ -31,8 +31,8 @@ func Test_CreateDocker(t *testing.T) {
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
 	containerEngine := &DockerEngine{Client: "docker"}
-	shared.testCreate(t, containerEngine)
-	shared.testCreatePath(t, containerEngine)
-	shared.testCreatePort(t, containerEngine)
-	shared.testCustomPkg(t, containerEngine)
+	shared.TestCreateCluster(t, containerEngine)
+	shared.TestCreatePath(t, containerEngine)
+	shared.TestCreatePort(t, containerEngine)
+	shared.TestCustomPkg(t, containerEngine)
 }
