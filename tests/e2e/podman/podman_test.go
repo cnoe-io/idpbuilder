@@ -26,12 +26,6 @@ func (p *PodmanEngine) GetClient() string {
 	return p.Client
 }
 
-func (p *PodmanEngine) IdpCmd() *exec.Cmd {
-	cmd := exec.Command(container.IdpbuilderBinaryLocation)
-	cmd.Env = append(os.Environ(), "KIND_EXPERIMENTAL_PROVIDER=podman")
-	return cmd
-}
-
 func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
