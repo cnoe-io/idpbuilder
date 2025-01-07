@@ -108,10 +108,8 @@ func TestCreateCluster(t *testing.T, containerEngine container.Engine) {
 	defer cleanUp(t, containerEngine)
 
 	t.Log("running idpbuilder create")
-	cmd := containerEngine.IdpCmd()
-	cmd.Args = append(cmd.Args, "create")
-	b, err := cmd.CombinedOutput()
-	assert.NoError(t, err, b)
+	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --recreate", IdpbuilderBinaryLocation), 0)
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
 	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
@@ -132,9 +130,7 @@ func TestCreatePath(t *testing.T, containerEngine container.Engine) {
 	defer cleanUp(t, containerEngine)
 
 	t.Log("running idpbuilder create --use-path-routing")
-	cmd := containerEngine.IdpCmd()
-	cmd.Args = append(cmd.Args, "create", "--use-path-routing")
-	b, err := cmd.CombinedOutput()
+	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --use-path-routing", IdpbuilderBinaryLocation), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
@@ -156,9 +152,10 @@ func TestCreatePort(t *testing.T, containerEngine container.Engine) {
 
 	port := "2443"
 	t.Logf("running idpbuilder create --port %s", port)
-	cmd := containerEngine.IdpCmd()
-	cmd.Args = append(cmd.Args, "create", "--port", port)
-	b, err := cmd.CombinedOutput()
+	/*	cmd := containerEngine.IdpCmd()
+		cmd.Args = append(cmd.Args, "create", "--port", port)
+		b, err := cmd.CombinedOutput()*/
+	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --port %s", IdpbuilderBinaryLocation, port), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
@@ -179,9 +176,10 @@ func TestCustomPkg(t *testing.T, containerEngine container.Engine) {
 	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
 
 	t.Log(fmt.Sprintf("running %s", cmdString))
-	cmd := containerEngine.IdpCmd()
-	cmd.Args = append(cmd.Args, strings.Split(cmdString, " ")...)
-	b, err := cmd.CombinedOutput()
+	/*	cmd := containerEngine.IdpCmd()
+		cmd.Args = append(cmd.Args, strings.Split(cmdString, " ")...)
+		b, err := cmd.CombinedOutput()*/
+	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s %ss", IdpbuilderBinaryLocation, cmdString), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()

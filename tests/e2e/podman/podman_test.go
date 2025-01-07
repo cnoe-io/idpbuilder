@@ -79,7 +79,13 @@ func (p *PodmanEngine) RunIdpCommand(ctx context.Context, command string, timeou
 		args = append(args, cmds[1:]...)
 	}
 
-	c := exec.CommandContext(cmdCtx, binary, args...)
+	var c *exec.Cmd
+	if timeout > 0 {
+		c = exec.CommandContext(cmdCtx, binary, args...)
+	} else {
+		c = exec.Command(binary, args...)
+	}
+	c.Env = append(os.Environ(), "KIND_EXPERIMENTAL_PROVIDER=podman")
 
 	b, err := c.CombinedOutput()
 	if err != nil {

@@ -26,10 +26,6 @@ func (p *DockerEngine) GetClient() string {
 	return p.Client
 }
 
-func (p *DockerEngine) IdpCmd() *exec.Cmd {
-	return exec.Command(container.IdpbuilderBinaryLocation)
-}
-
 func (p *DockerEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -69,8 +65,12 @@ func (p *DockerEngine) RunIdpCommand(ctx context.Context, command string, timeou
 		args = append(args, cmds[1:]...)
 	}
 
-	c := exec.CommandContext(cmdCtx, binary, args...)
-
+	var c *exec.Cmd
+	if timeout > 0 {
+		c = exec.CommandContext(cmdCtx, binary, args...)
+	} else {
+		c = exec.Command(binary, args...)
+	}
 	b, err := c.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
