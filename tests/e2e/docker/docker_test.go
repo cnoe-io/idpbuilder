@@ -5,24 +5,30 @@ package docker
 import (
 	"context"
 	"fmt"
-	container_engine "github.com/cnoe-io/idpbuilder/tests/e2e/container"
+	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
+	"github.com/cnoe-io/idpbuilder/tests/e2e/shared"
+	"github.com/go-logr/logr"
 	"log/slog"
 	"os"
 	"os/exec"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/cnoe-io/idpbuilder/tests/e2e"
-	"github.com/go-logr/logr"
-	"github.com/stretchr/testify/assert"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var (
-	containerClientEngine string
-	cmd                   *exec.Cmd
-)
+type DockerEngine struct {
+	container.Engine
+	Client string
+}
+
+func (p *DockerEngine) GetClient() string {
+	return p.Client
+}
+
+func (p *DockerEngine) IdpCmd() *exec.Cmd {
+	return exec.Command(container.IdpbuilderBinaryLocation)
+}
 
 func CleanUpDocker(t *testing.T) {
 	t.Log("cleaning up docker env")
@@ -51,12 +57,11 @@ func Test_CreateDocker(t *testing.T) {
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
-	t.Log("creating IDP cluster using docker engine")
-	containerClientEngine = container_engine.ContainerClient()
-	testCreate(t)
-	testCreatePath(t)
-	testCreatePort(t)
-	testCustomPkg(t)
+	containerEngine := &DockerEngine{Client: "docker"}
+	shared.testCreate(t, containerEngine)
+	shared.testCreatePath(t, containerEngine)
+	shared.testCreatePort(t, containerEngine)
+	shared.testCustomPkg(t, containerEngine)
 }
 
 // test idpbuilder create

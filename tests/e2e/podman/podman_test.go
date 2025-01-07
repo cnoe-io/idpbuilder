@@ -5,11 +5,13 @@ package podman
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/tests/e2e"
 	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
 	"github.com/cnoe-io/idpbuilder/tests/e2e/shared"
+	"github.com/go-logr/logr"
+	"log/slog"
 	"os"
 	"os/exec"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +27,7 @@ func (p *PodmanEngine) GetClient() string {
 }
 
 func (p *PodmanEngine) IdpCmd() *exec.Cmd {
-	cmd := exec.Command(e2e.IdpbuilderBinaryLocation)
+	cmd := exec.Command(container.IdpbuilderBinaryLocation)
 	cmd.Env = append(os.Environ(), "KIND_EXPERIMENTAL_PROVIDER=podman")
 	return cmd
 }
@@ -45,8 +47,7 @@ func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout t
 		args = append(args, cmds[1:]...)
 	}
 
-	// Append some args to the podman command only
-	if !strings.Contains(binary, "idpbuilder") {
+	if cmds[1] == "login" || cmds[1] == "push" || cmds[1] == "pull" {
 		args = append(args, "--tls-verify=false")
 	}
 
@@ -89,6 +90,12 @@ func (p *PodmanEngine) RunIdpCommand(ctx context.Context, command string, timeou
 }
 
 func Test_CreateCluster(t *testing.T) {
+	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
+
 	containerEngine := &PodmanEngine{Client: "podman"}
 	shared.TestCreateCluster(t, containerEngine)
+	shared.TestCreatePath(t, containerEngine)
+	shared.TestCreatePort(t, containerEngine)
+	shared.TestCustomPkg(t, containerEngine)
 }

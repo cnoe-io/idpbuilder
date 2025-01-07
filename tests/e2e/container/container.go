@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const (
+	IdpbuilderBinaryLocation = "../../../idpbuilder"
+)
+
 type Engine interface {
 	IdpCmd() *exec.Cmd
 	RunIdpCommand(ctx context.Context, cmd string, timeout time.Duration) ([]byte, error)
