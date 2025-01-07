@@ -52,7 +52,7 @@ func TestCreateCluster(t *testing.T, containerEngine container.Engine) {
 // login, build a test image, push, then pull.
 func TestGiteaRegistry(ctx context.Context, t *testing.T, containerEngine container.Engine, giteaHost, giteaPort string) {
 	t.Log("testing gitea container registry")
-	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
 	assert.NoError(t, err)
 
 	secs := make([]entity.Secret, 1)
@@ -63,20 +63,17 @@ func TestGiteaRegistry(ctx context.Context, t *testing.T, containerEngine contai
 	user := sec.Username
 	pass := sec.Password
 
-	loginCmd := fmt.Sprintf("%s login %s:%s -u %s -p %s", containerEngine.GetClient(), giteaHost, giteaPort, user, pass)
-	login, err := containerEngine.RunCommand(ctx, loginCmd, 10*time.Second)
-	require.NoErrorf(t, err, "%s login err: %s", loginCmd, login)
+	login, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", containerEngine.GetClient(), giteaHost, giteaPort, user, pass), 10*time.Second)
+	require.NoErrorf(t, err, "%s login err: %s", containerEngine.GetClient(), login)
 
 	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
 
 	build, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", containerEngine.GetClient(), tag), 10*time.Second)
 	require.NoErrorf(t, err, "%s build err: %s", containerEngine.GetClient(), build)
 
-	pushCmd := fmt.Sprintf("%s push %s", containerEngine.GetClient(), tag)
-	push, err := containerEngine.RunCommand(ctx, pushCmd, 10*time.Second)
-	require.NoErrorf(t, err, "%s push err: %s", pushCmd, push)
+	push, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s push %s", containerEngine.GetClient(), tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s push err: %s", containerEngine.GetClient(), push)
 
-	pullCmd := fmt.Sprintf("%s pull %s", containerEngine.GetClient(), tag)
-	pull, err := containerEngine.RunCommand(ctx, pullCmd, 10*time.Second)
-	require.NoErrorf(t, err, "%s pull err: %s", pullCmd, pull)
+	pull, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s pull %s", containerEngine.GetClient(), tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s pull err: %s", containerEngine.GetClient(), pull)
 }

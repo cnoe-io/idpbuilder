@@ -9,6 +9,7 @@ import (
 
 type Engine interface {
 	IdpCmd() *exec.Cmd
+	RunIdpCommand(ctx context.Context, cmd string, timeout time.Duration) ([]byte, error)
 	RunCommand(ctx context.Context, cmd string, timeout time.Duration) ([]byte, error)
 	GetClient() string
 }
