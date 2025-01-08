@@ -28,6 +28,7 @@ const (
 	passwordLength  = 40
 	numSpecialChars = 3
 	numDigits       = 3
+	StaticPassword  = "developer"
 )
 
 func GetCLIStartTimeAnnotationValue(annotations map[string]string) (string, error) {
