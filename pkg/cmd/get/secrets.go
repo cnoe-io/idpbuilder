@@ -7,8 +7,8 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
-	"github.com/cnoe-io/idpbuilder/pkg/util"  
 	"github.com/cnoe-io/idpbuilder/pkg/types"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"io"
 	v1 "k8s.io/api/core/v1"
@@ -16,10 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/util/homedir"
-  metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 	"path/filepath"
-  "strings"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
