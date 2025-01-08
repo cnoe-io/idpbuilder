@@ -5,7 +5,6 @@ package podman
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
 	"github.com/cnoe-io/idpbuilder/tests/e2e/shared"
 	"github.com/go-logr/logr"
 	"log/slog"
@@ -18,14 +17,15 @@ import (
 )
 
 type PodmanEngine struct {
-	container.Engine
 	Client string
 }
 
+// Implementation of the method Getclient of the interface: container.Engine
 func (p *PodmanEngine) GetClient() string {
 	return p.Client
 }
 
+// Implementation of the method RunCommand of the interface: container.Engine
 func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -58,6 +58,7 @@ func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout t
 	return b, nil
 }
 
+// Implementation of the method RunIdpCommand of the interface: container.Engine
 func (p *PodmanEngine) RunIdpCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
