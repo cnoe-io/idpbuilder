@@ -86,7 +86,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	baseUrl := util.GiteaBaseUrl(r.Config)
+	baseUrl := util.GiteaBaseUrl()
 	// need this to ensure gitrepository controller can reach the api endpoint.
 	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
 	c := util.GetHttpClient()

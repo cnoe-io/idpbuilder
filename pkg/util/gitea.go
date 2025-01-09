@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -57,7 +58,7 @@ func PatchPasswordSecret(ctx context.Context, kubeClient client.Client, config v
 
 	if strings.Contains(secretName, "gitea") {
 		// We should recreate a token as user/password changed
-		t, err := GetGiteaToken(ctx, GiteaBaseUrl(config), string(username), string(pass))
+		t, err := GetGiteaToken(ctx, GiteaBaseUrl(), string(username), string(pass))
 		if err != nil {
 			return fmt.Errorf("getting gitea token: %w", err)
 		}
@@ -107,6 +108,6 @@ func GetGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	return token.Token, nil
 }
 
-func GiteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
-	return fmt.Sprintf(GiteaIngressURL, config.Protocol, config.Port)
+func GiteaBaseUrl() string {
+	return fmt.Sprintf(GiteaIngressURL, globals.ClusterProtocol, globals.ClusterPort)
 }

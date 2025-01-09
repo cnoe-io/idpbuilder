@@ -2,7 +2,7 @@ package util
 
 import (
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,8 +14,8 @@ const (
 	ArgocdIngressURL             = "%s://argocd.cnoe.localtest.me:%s"
 )
 
-func ArgocdBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
-	return fmt.Sprintf(ArgocdIngressURL, config.Protocol, config.Port)
+func ArgocdBaseUrl() string {
+	return fmt.Sprintf(ArgocdIngressURL, globals.ClusterProtocol, globals.ClusterPort)
 }
 
 func ArgocdInitialAdminSecretObject() corev1.Secret {
