@@ -7,7 +7,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
-	"github.com/cnoe-io/idpbuilder/pkg/types"
+	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"io"

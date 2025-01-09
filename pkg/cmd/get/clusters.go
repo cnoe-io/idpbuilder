@@ -8,7 +8,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
-	idpTypes "github.com/cnoe-io/idpbuilder/pkg/types"
+	idpTypes "github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"

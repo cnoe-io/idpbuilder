@@ -7,7 +7,8 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
-	"github.com/cnoe-io/idpbuilder/pkg/types"
+	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
 	"io"
 	"k8s.io/client-go/util/homedir"
@@ -15,11 +16,6 @@ import (
 	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
-)
-
-// TODO To be removed when we will merge PR: 442 as duplicate
-const (
-	ArgocdIngressURL = "%s://argocd.cnoe.localtest.me:%s"
 )
 
 var PackagesCmd = &cobra.Command{
@@ -68,10 +64,7 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		return fmt.Errorf("getting namespace: %w", err)
 	}
 
-	argocdBaseUrl, err := ArgocdBaseUrl(ctx, kubeClient)
-	if err != nil {
-		return fmt.Errorf("getting localbuild config: %w", err)
-	}
+	argocdBaseUrl := util.ArgocdBaseUrl()
 
 	if len(packages) == 0 {
 		// Get all custom packages
@@ -153,13 +146,4 @@ func getLocalBuild(ctx context.Context, kubeClient client.Client) (v1alpha1.Loca
 func getPackages(ctx context.Context, kubeClient client.Client, ns string) (v1alpha1.CustomPackageList, error) {
 	packageList := v1alpha1.CustomPackageList{}
 	return packageList, kubeClient.List(ctx, &packageList, client.InNamespace(ns))
-}
-
-// TODO To be removed when we will merge PR: 442 as duplicate
-func ArgocdBaseUrl(ctx context.Context, kubeClient client.Client) (string, error) {
-	config, err := getIDPConfig(ctx, kubeClient)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf(ArgocdIngressURL, config.Protocol, config.Port), nil
 }
