@@ -5,8 +5,7 @@ package docker
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
-	"github.com/cnoe-io/idpbuilder/tests/e2e/shared"
+	"github.com/cnoe-io/idpbuilder/tests/e2e"
 	"github.com/go-logr/logr"
 	"log/slog"
 	"os"
@@ -18,7 +17,6 @@ import (
 )
 
 type DockerEngine struct {
-	container.Engine
 	Client string
 }
 
@@ -84,8 +82,8 @@ func Test_CreateDocker(t *testing.T) {
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
 	containerEngine := &DockerEngine{Client: "docker"}
-	shared.TestCreateCluster(t, containerEngine)
-	shared.TestCreatePath(t, containerEngine)
-	shared.TestCreatePort(t, containerEngine)
-	shared.TestCustomPkg(t, containerEngine)
+	e2e.TestCreateCluster(t, containerEngine)
+	e2e.TestCreatePath(t, containerEngine)
+	e2e.TestCreatePort(t, containerEngine)
+	e2e.TestCustomPkg(t, containerEngine)
 }

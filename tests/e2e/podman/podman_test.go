@@ -5,7 +5,7 @@ package podman
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/tests/e2e/shared"
+	"github.com/cnoe-io/idpbuilder/tests/e2e"
 	"github.com/go-logr/logr"
 	"log/slog"
 	"os"
@@ -95,8 +95,8 @@ func Test_CreateCluster(t *testing.T) {
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
 	containerEngine := &PodmanEngine{Client: "podman"}
-	shared.TestCreateCluster(t, containerEngine)
-	shared.TestCreatePath(t, containerEngine)
-	shared.TestCreatePort(t, containerEngine)
-	shared.TestCustomPkg(t, containerEngine)
+	e2e.TestCreateCluster(t, containerEngine)
+	e2e.TestCreatePath(t, containerEngine)
+	e2e.TestCreatePort(t, containerEngine)
+	e2e.TestCustomPkg(t, containerEngine)
 }
