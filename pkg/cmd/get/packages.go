@@ -74,7 +74,6 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		}
 	} else {
 		// Get the custom package using its name
-		customPackages = v1alpha1.CustomPackageList{}
 		for _, name := range packages {
 			cp, err := getPackageByName(ctx, kubeClient, idpbuilderNamespace, name)
 			if err != nil {
