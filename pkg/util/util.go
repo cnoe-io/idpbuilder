@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"math"
 	"math/big"
 	mathrand "math/rand"
@@ -31,28 +30,6 @@ const (
 	numDigits       = 3
 	StaticPassword  = "developer"
 )
-
-func GetIDPConfig(ctx context.Context) (v1alpha1.BuildCustomizationSpec, error) {
-	b := v1alpha1.BuildCustomizationSpec{}
-
-	kubeClient, err := k8s.GetKubeClient()
-	if err != nil {
-		return b, err
-	}
-
-	list, err := getLocalBuild(ctx, kubeClient)
-	if err != nil {
-		return b, err
-	}
-
-	// TODO: We assume that only one LocalBuild exists !
-	return list.Items[0].Spec.BuildCustomization, nil
-}
-
-func getLocalBuild(ctx context.Context, kubeClient client.Client) (v1alpha1.LocalbuildList, error) {
-	localBuildList := v1alpha1.LocalbuildList{}
-	return localBuildList, kubeClient.List(ctx, &localBuildList)
-}
 
 func GetCLIStartTimeAnnotationValue(annotations map[string]string) (string, error) {
 	if annotations == nil {

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/util/idp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -113,7 +114,7 @@ func GetGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 }
 
 func GiteaBaseUrl(ctx context.Context) (string, error) {
-	idpConfig, err := GetIDPConfig(ctx)
+	idpConfig, err := idp.GetConfig(ctx)
 	if err != nil {
 		return "", fmt.Errorf("error fetching idp config: %s", err)
 	}
