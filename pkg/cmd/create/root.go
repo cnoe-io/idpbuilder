@@ -135,10 +135,6 @@ func create(cmd *cobra.Command, args []string) error {
 		exitOnSync = !noExit
 	}
 
-	// Set global variables
-	globals.ClusterProtocol = protocol
-	globals.ClusterPort = port
-
 	opts := build.NewBuildOptions{
 		Name:              buildName,
 		KubeVersion:       kubeVersion,

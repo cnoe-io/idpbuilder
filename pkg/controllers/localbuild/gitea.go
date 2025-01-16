@@ -5,10 +5,10 @@ import (
 	"embed"
 	"encoding/base64"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"net/http"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -86,7 +86,11 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		return result, err
 	}
 
-	baseUrl := util.GiteaBaseUrl()
+	baseUrl, err := util.GiteaBaseUrl(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	// need this to ensure gitrepository controller can reach the api endpoint.
 	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
 	c := util.GetHttpClient()

@@ -64,7 +64,10 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		return fmt.Errorf("getting namespace: %w", err)
 	}
 
-	argocdBaseUrl := util.ArgocdBaseUrl()
+	argocdBaseUrl, err := util.ArgocdBaseUrl(ctx)
+	if err != nil {
+		return fmt.Errorf("Error creating argocd Url: %v\n", err)
+	}
 
 	if len(packages) == 0 {
 		// Get all custom packages
@@ -115,16 +118,6 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 func getPackageByName(ctx context.Context, kubeClient client.Client, ns, name string) (v1alpha1.CustomPackage, error) {
 	p := v1alpha1.CustomPackage{}
 	return p, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &p)
-}
-
-func getIDPConfig(ctx context.Context, kubeClient client.Client) (v1alpha1.BuildCustomizationSpec, error) {
-	b := v1alpha1.BuildCustomizationSpec{}
-	list, err := getLocalBuild(ctx, kubeClient)
-	if err != nil {
-		return b, err
-	}
-	// TODO: We assume that only one LocalBuild has been created for one cluster !
-	return list.Items[0].Spec.BuildCustomization, nil
 }
 
 func getIDPNamespace(ctx context.Context, kubeClient client.Client) (string, error) {
