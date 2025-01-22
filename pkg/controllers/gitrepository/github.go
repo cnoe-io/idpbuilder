@@ -39,7 +39,7 @@ type gitHubProvider struct {
 	client.Client
 	Scheme       *runtime.Scheme
 	gitHubClient gitHubClient
-	config       util.CorePackageTemplateConfig
+	config       v1alpha1.BuildCustomizationSpec
 }
 
 func (g *gitHubProvider) createRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error) {

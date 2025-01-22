@@ -3,24 +3,32 @@ package util
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"math"
 	"math/big"
 	mathrand "math/rand"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/kind/pkg/cluster"
 )
 
 const (
 	chars           = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	digits          = "0123456789"
-	specialChars    = `!"#$%&'()*+,-./:;<=>?@[\\]^_{|}~`
+	specialChars    = `!#$%&'()*+,-./:;<=>?@[]^_{|}~`
 	passwordLength  = 40
 	numSpecialChars = 3
 	numDigits       = 3
+	StaticPassword  = "developer"
 )
 
 func GetCLIStartTimeAnnotationValue(annotations map[string]string) (string, error) {
@@ -64,14 +72,18 @@ func UpdateSyncAnnotation(ctx context.Context, kubeClient client.Client, obj cli
 	}
 	annotations := make(map[string]string, 1)
 	SetLastObservedSyncTimeAnnotationValue(annotations, timeStamp)
+
+	return ApplyAnnotation(ctx, kubeClient, obj, annotations, client.ForceOwnership, client.FieldOwner(v1alpha1.FieldManager))
+}
+
+func ApplyAnnotation(ctx context.Context, kubeClient client.Client, obj client.Object, annotations map[string]string, opts ...client.PatchOption) error {
 	// MUST be unstructured to avoid managing fields we do not care about.
 	u := unstructured.Unstructured{}
 	u.SetAnnotations(annotations)
 	u.SetName(obj.GetName())
 	u.SetNamespace(obj.GetNamespace())
 	u.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
-
-	return kubeClient.Patch(ctx, &u, client.Apply, client.ForceOwnership, client.FieldOwner(v1alpha1.FieldManager))
+	return kubeClient.Patch(ctx, &u, client.Apply, opts...)
 }
 
 func GeneratePassword() (string, error) {
@@ -122,4 +134,53 @@ func getRandElement(input string) (string, error) {
 	}
 
 	return string(input[position.Int64()]), nil
+}
+
+func IsYamlFile(input string) bool {
+	extension := filepath.Ext(input)
+	return extension == ".yaml" || extension == ".yml"
+}
+
+func GetHttpClient() *http.Client {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second, // from http.DefaultTransport
+		}).DialContext,
+	}
+	return &http.Client{Transport: tr, Timeout: 30 * time.Second}
+}
+
+// DetectKindNodeProvider follows the kind CLI convention where:
+// 1. if KIND_EXPERIMENTAL_PROVIDER env var is specified, it uses the value:
+// 2. if env var is not specified, use the first available supported engine.
+// https://github.com/kubernetes-sigs/kind/blob/ac81e7b64e06670132dae3486e64e531953ad58c/pkg/cluster/provider.go#L100-L114
+func DetectKindNodeProvider() (cluster.ProviderOption, error) {
+	switch p := os.Getenv("KIND_EXPERIMENTAL_PROVIDER"); p {
+	case "podman":
+		return cluster.ProviderWithPodman(), nil
+	case "docker":
+		return cluster.ProviderWithDocker(), nil
+	case "nerdctl", "finch", "nerdctl.lima":
+		return cluster.ProviderWithNerdctl(p), nil
+	default:
+		return cluster.DetectNodeProvider()
+	}
+}
+
+func SetPackageLabels(obj client.Object) {
+	labels := obj.GetLabels()
+	if labels == nil {
+		labels = map[string]string{}
+		obj.SetLabels(labels)
+	}
+	labels[v1alpha1.PackageNameLabelKey] = obj.GetName()
+
+	switch n := obj.GetName(); n {
+	case v1alpha1.ArgoCDPackageName, v1alpha1.GiteaPackageName, v1alpha1.IngressNginxPackageName:
+		labels[v1alpha1.PackageTypeLabelKey] = v1alpha1.PackageTypeLabelCore
+	default:
+		labels[v1alpha1.PackageTypeLabelKey] = v1alpha1.PackageTypeLabelCustom
+	}
 }

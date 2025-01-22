@@ -25,7 +25,7 @@ HELM_TGZ ?= $(LOCALBIN)/helm.tar.gz
 HELM ?= $(LOCALBIN)/helm
 
 ## Tool Versions
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+CONTROLLER_TOOLS_VERSION ?= v0.15.0
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -93,4 +93,4 @@ embedded-resources: kustomize helm
 
 .PHONY: e2e
 e2e: build
-	go test -v -p 1 --tags=e2e ./tests/e2e/...
+	go test -v -p 1 -timeout 15m --tags=e2e ./tests/e2e/...

@@ -10,7 +10,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -28,7 +28,7 @@ var (
 
 type Build struct {
 	name                 string
-	cfg                  util.CorePackageTemplateConfig
+	cfg                  v1alpha1.BuildCustomizationSpec
 	kindConfigPath       string
 	kubeConfigPath       string
 	kubeVersion          string
@@ -43,7 +43,7 @@ type Build struct {
 
 type NewBuildOptions struct {
 	Name                 string
-	TemplateData         util.CorePackageTemplateConfig
+	TemplateData         v1alpha1.BuildCustomizationSpec
 	KindConfigPath       string
 	KubeConfigPath       string
 	KubeVersion          string
@@ -75,7 +75,7 @@ func NewBuild(opts NewBuildOptions) *Build {
 
 func (b *Build) ReconcileKindCluster(ctx context.Context, recreateCluster bool) error {
 	// Initialize Kind Cluster
-	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping, b.cfg)
+	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping, b.cfg, setupLog)
 	if err != nil {
 		setupLog.Error(err, "Error Creating kind cluster")
 		return err
@@ -126,9 +126,37 @@ func (b *Build) RunControllers(ctx context.Context, mgr manager.Manager, exitCh 
 	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync, b.cfg, tmpDir)
 }
 
-func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
-	managerExit := make(chan error)
+func (b *Build) isCompatible(ctx context.Context, kubeClient client.Client) (bool, error) {
+	localBuild := v1alpha1.Localbuild{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: b.name,
+		},
+	}
 
+	err := kubeClient.Get(ctx, client.ObjectKeyFromObject(&localBuild), &localBuild)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+
+	ok := isBuildCustomizationSpecEqual(b.cfg, localBuild.Spec.BuildCustomization)
+
+	if ok {
+		return ok, nil
+	}
+
+	existing, given := localBuild.Spec.BuildCustomization, b.cfg
+	existing.SelfSignedCert = ""
+	given.SelfSignedCert = ""
+
+	return false, fmt.Errorf("provided command flags and existing configurations are incompatible. please recreate the cluster. "+
+		"existing: %+v, given: %+v",
+		existing, given)
+}
+
+func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	setupLog.Info("Creating kind cluster")
 	if err := b.ReconcileKindCluster(ctx, recreateCluster); err != nil {
 		return err
@@ -172,6 +200,31 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	defer os.RemoveAll(dir)
 	setupLog.V(1).Info("Created temp directory for cloning repositories", "dir", dir)
 
+	setupLog.Info("Setting up CoreDNS")
+	err = setupCoreDNS(ctx, kubeClient, b.scheme, b.cfg)
+	if err != nil {
+		return err
+	}
+
+	setupLog.Info("Setting up TLS certificate")
+	cert, err := setupSelfSignedCertificate(ctx, setupLog, kubeClient, b.cfg)
+	if err != nil {
+		return err
+	}
+	b.cfg.SelfSignedCert = string(cert)
+
+	setupLog.V(1).Info("Checking for incompatible options from a previous run")
+	ok, err := b.isCompatible(ctx, kubeClient)
+	if err != nil {
+		setupLog.Error(err, "Error while checking incompatible flags")
+		return err
+	}
+	if !ok {
+		return err
+	}
+
+	managerExit := make(chan error)
+
 	setupLog.V(1).Info("Running controllers")
 	if err := b.RunControllers(ctx, mgr, managerExit, dir); err != nil {
 		setupLog.Error(err, "Error running controllers")
@@ -193,16 +246,17 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		}
 		localBuild.ObjectMeta.Annotations[v1alpha1.CliStartTimeAnnotation] = cliStartTime
 		localBuild.Spec = v1alpha1.LocalbuildSpec{
+			BuildCustomization: b.cfg,
 			PackageConfigs: v1alpha1.PackageConfigsSpec{
 				Argo: v1alpha1.ArgoPackageConfigSpec{
 					Enabled: true,
 				},
 				EmbeddedArgoApplications: v1alpha1.EmbeddedArgoApplicationsPackageConfigSpec{
-					Enabled:              true,
-					PackageCustomization: b.packageCustomization,
+					Enabled: true,
 				},
-				CustomPackageDirs: b.customPackageDirs,
-				CustomPackageUrls: b.customPackageUrls,
+				CustomPackageDirs:        b.customPackageDirs,
+				CustomPackageUrls:        b.customPackageUrls,
+				CorePackageCustomization: b.packageCustomization,
 			},
 		}
 
@@ -212,12 +266,24 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return fmt.Errorf("creating localbuild resource: %w", err)
 	}
 
-	if err != nil {
-		setupLog.Error(err, "Error creating localbuild resource")
-		return err
+	select {
+	case mgrErr := <-managerExit:
+		if mgrErr != nil {
+			return mgrErr
+		}
+	case <-ctx.Done():
+		return nil
 	}
+	return nil
+}
 
-	err = <-managerExit
-	close(managerExit)
-	return err
+func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool {
+	// probably ok to use cmp.Equal but keeping it simple for now
+	return s1.Protocol == s2.Protocol &&
+		s1.Host == s2.Host &&
+		s1.IngressHost == s2.IngressHost &&
+		s1.Port == s2.Port &&
+		s1.UsePathRouting == s2.UsePathRouting &&
+		s1.SelfSignedCert == s2.SelfSignedCert &&
+		s1.StaticPassword == s2.StaticPassword
 }

@@ -3,10 +3,74 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  name: my-gitea-path-oci-root
+  namespace: gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .IngressHost }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /v2
+            pathType: Prefix
+    - host: localhost
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /v2
+            pathType: Prefix
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-gitea-path-oci-repo
+  namespace: gitea
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /v2/$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .IngressHost }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /v2/gitea(/|$)(.*)
+            pathType: ImplementationSpecific
+    - host: localhost
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-gitea-http
+                port:
+                  number: 3000
+            path: /v2/gitea(/|$)(.*)
+            pathType: ImplementationSpecific
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
   name: my-gitea-path
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
@@ -40,7 +104,7 @@ metadata:
   name: my-gitea-custom
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
   ingressClassName: nginx
   rules:
@@ -61,7 +125,7 @@ kind: Ingress
 metadata:
   name: my-gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 512m
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
   ingressClassName: nginx
   rules:

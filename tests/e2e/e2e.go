@@ -18,9 +18,10 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/cmd/get"
+	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +36,9 @@ const (
 	GiteaSessionEndpoint     = "/api/v1/users/%s/tokens"
 	GiteaUserEndpoint        = "/api/v1/users/%s"
 	GiteaRepoEndpoint        = "/api/v1/repos/search"
+
+	httpRetryDelay   = 5 * time.Second
+	httpRetryTimeout = 300 * time.Second
 )
 
 var (
@@ -97,52 +101,110 @@ func RunCommand(ctx context.Context, command string, timeout time.Duration) ([]b
 	return b, nil
 }
 
-func SendAndParse(target any, httpClient *http.Client, req *http.Request) error {
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("running http request: %w", err)
+func SendAndParse(ctx context.Context, target any, httpClient *http.Client, req *http.Request) error {
+	sendCtx, cancel := context.WithTimeout(ctx, httpRetryTimeout)
+	defer cancel()
+	var bodyBytes []byte
+	if req.Body != nil {
+		b, bErr := io.ReadAll(req.Body)
+		if bErr != nil {
+			return fmt.Errorf("failed copying http request body: %w", bErr)
+		}
+		bodyBytes = b
 	}
 
-	defer resp.Body.Close()
+	for {
+		select {
+		case <-sendCtx.Done():
+			return fmt.Errorf("timedout")
+		default:
+			if req.Body != nil {
+				b := append(make([]byte, 0, len(bodyBytes)), bodyBytes...)
+				req.Body = io.NopCloser(bytes.NewBuffer(b))
+			}
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				fmt.Println("failed running http request: ", err)
+				time.Sleep(httpRetryDelay)
+				continue
+			}
 
-	respB, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("reading http response body: %w", err)
-	}
+			defer resp.Body.Close()
 
-	err = json.Unmarshal(respB, target)
-	if err != nil {
-		return fmt.Errorf("parsing response body %s, %s", err, respB)
+			respB, err := io.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Println("failed reading http response body: ", err)
+				time.Sleep(httpRetryDelay)
+				continue
+			}
+
+			err = json.Unmarshal(respB, target)
+			if err != nil {
+				fmt.Println("failed parsing response body: ", err, "\n", string(respB))
+				time.Sleep(httpRetryDelay)
+				continue
+			}
+			return nil
+		}
 	}
-	return nil
 }
 
 func TestGiteaEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 	t.Log("testing gitea endpoints")
+	repos, err := GetGiteaRepos(ctx, baseUrl)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 3, len(repos))
+	expectedRepoNames := map[string]struct{}{
+		"idpbuilder-localdev-gitea":  {},
+		"idpbuilder-localdev-nginx":  {},
+		"idpbuilder-localdev-argocd": {},
+	}
+
+	for i := range repos {
+		_, ok := expectedRepoNames[repos[i].Name]
+		if ok {
+			delete(expectedRepoNames, repos[i].Name)
+		}
+	}
+	assert.Equal(t, 0, len(expectedRepoNames))
+}
+
+func GetGiteaRepos(ctx context.Context, baseUrl string) ([]gitea.Repository, error) {
 	auth, err := GetBasicAuth(ctx, "gitea-credential")
-	assert.Nil(t, err, fmt.Sprintf("getting gitea k8s secret %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("getting gitea credentials %w", err)
+	}
 
 	token, err := GetGiteaSessionToken(ctx, auth, baseUrl)
-	assert.Nil(t, err, fmt.Sprintf("getting gitea token %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("getting gitea token %w", err)
+	}
 
 	userEP := fmt.Sprintf("%s%s", baseUrl, fmt.Sprintf(GiteaUserEndpoint, auth.Username))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, userEP, nil)
-	assert.Nil(t, err, fmt.Sprintf("creating new request %s", err))
+	if err != nil {
+		return nil, fmt.Errorf("creating new request %w", err)
+	}
 
 	httpClient := GetHttpClient()
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 
 	user := gitea.User{}
-	err = SendAndParse(&user, httpClient, req)
-	assert.Nil(t, err, fmt.Sprintf("getting user info %s", err))
+	err = SendAndParse(ctx, &user, httpClient, req)
+	if err != nil {
+		return nil, fmt.Errorf("getting user info %w", err)
+	}
 
 	repos := GiteaSearchRepoResponse{}
 	repoEp := fmt.Sprintf("%s%s", baseUrl, GiteaRepoEndpoint)
 	repoReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, repoEp, nil)
-	err = SendAndParse(&repos, httpClient, repoReq)
-	assert.Nil(t, err, fmt.Sprintf("getting user info %s", err))
+	err = SendAndParse(ctx, &repos, httpClient, repoReq)
+	if err != nil {
+		return nil, fmt.Errorf("getting gitea repositories %w", err)
+	}
 
-	assert.Equal(t, 3, len(repos.Data))
+	return repos.Data, nil
 }
 
 func GetGiteaSessionToken(ctx context.Context, auth BasicAuth, baseUrl string) (string, error) {
@@ -159,7 +221,7 @@ func GetGiteaSessionToken(ctx context.Context, auth BasicAuth, baseUrl string) (
 	sessionReq.Header.Set("Content-Type", "application/json")
 
 	var sess gitea.AccessToken
-	err = SendAndParse(&sess, httpClient, sessionReq)
+	err = SendAndParse(ctx, &sess, httpClient, sessionReq)
 	if err != nil {
 		return "", err
 	}
@@ -184,37 +246,53 @@ func TestArgoCDEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	var appResp ArgoCDAppResp
-	err = SendAndParse(&appResp, httpClient, req)
+	err = SendAndParse(ctx, &appResp, httpClient, req)
 	assert.Nil(t, err, fmt.Sprintf("getting argocd applications: %s", err))
 
 	assert.Equal(t, 3, len(appResp.Items), fmt.Sprintf("number of apps do not match: %v", appResp.Items))
 }
 
 func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
+	var lastErr error
 
-	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
-	if err != nil {
-		return BasicAuth{}, err
-	}
-	out := BasicAuth{}
+	for attempt := 0; attempt < 5; attempt++ {
+		select {
+		case <-ctx.Done():
+			return BasicAuth{}, ctx.Err()
+		default:
+			b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
+			if err != nil {
+				lastErr = err
+				time.Sleep(httpRetryDelay)
+				continue
+			}
 
-	secs := make([]get.TemplateData, 2)
-	err = json.Unmarshal(b, &secs)
-	if err != nil {
-		return BasicAuth{}, err
-	}
+			out := BasicAuth{}
+			secs := make([]entity.Secret, 2)
+			if err = json.Unmarshal(b, &secs); err != nil {
+				lastErr = err
+				time.Sleep(httpRetryDelay)
+				continue
+			}
 
-	for i := range secs {
-		if secs[i].Name == name {
-			out.Password = secs[i].Data["password"]
-			out.Username = secs[i].Data["username"]
-			break
+			for _, sec := range secs {
+				if sec.Name == name {
+					out.Password = sec.Password
+					out.Username = sec.Username
+					break
+				}
+			}
+
+			if out.Password == "" || out.Username == "" {
+				time.Sleep(httpRetryDelay)
+				continue
+			}
+
+			return out, nil
 		}
 	}
-	if out.Password == "" || out.Username == "" {
-		return BasicAuth{}, fmt.Errorf("could not find argocd or gitea credentials: %s", b)
-	}
-	return out, nil
+
+	return BasicAuth{}, fmt.Errorf("failed after 5 attempts: %w", lastErr)
 }
 
 func GetArgoCDSessionToken(ctx context.Context, endpoint string) (string, error) {
@@ -237,7 +315,7 @@ func GetArgoCDSessionToken(ctx context.Context, endpoint string) (string, error)
 	req.Header.Set("Content-Type", "application/json")
 
 	var tokenResp ArgoCDAuthResponse
-	err = SendAndParse(&tokenResp, httpClient, req)
+	err = SendAndParse(ctx, &tokenResp, httpClient, req)
 	if err != nil {
 		return "", err
 	}
@@ -271,7 +349,7 @@ func TestArgoCDApps(ctx context.Context, t *testing.T, kubeClient client.Client,
 			}
 			if len(apps) != 0 {
 				t.Logf("waiting for apps to be ready")
-				time.Sleep(3 * time.Second)
+				time.Sleep(httpRetryDelay)
 				continue
 			}
 			done = true
@@ -288,11 +366,7 @@ func isArgoAppSyncedAndHealthy(ctx context.Context, kubeClient client.Client, na
 		return false, err
 	}
 
-	if app.Status.Health.Status == "Healthy" && app.Status.Sync.Status == "Synced" {
-		return true, nil
-	}
-
-	return false, nil
+	return app.Status.Health.Status == "Healthy" && app.Status.Sync.Status == "Synced", nil
 }
 
 func GetKubeClient() (client.Client, error) {
@@ -301,4 +375,33 @@ func GetKubeClient() (client.Client, error) {
 		return nil, err
 	}
 	return client.New(conf, client.Options{Scheme: k8s.GetScheme()})
+}
+
+// login, build a test image, push, then pull.
+func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaPort string) {
+	t.Log("testing gitea container registry")
+	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	assert.NoError(t, err)
+
+	secs := make([]entity.Secret, 1)
+	err = json.Unmarshal(b, &secs)
+	assert.NoError(t, err)
+
+	sec := secs[0]
+	user := sec.Username
+	pass := sec.Password
+
+	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
+	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
+
+	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
+
+	build, err := RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s build err: %s", cmd, build)
+
+	push, err := RunCommand(ctx, fmt.Sprintf("%s push %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s push err: %s", cmd, push)
+
+	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
 }

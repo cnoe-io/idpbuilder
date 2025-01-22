@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app-helm
+  namespace: argocd
+spec:
+  destination:
+    namespace: my-app-helm
+    server: "https://kubernetes.default.svc"
+  source:
+    repoURL: cnoe://test
+    targetRevision: HEAD
+    path: "."
+    helm:
+      valuesObject:
+        repoURLGit: cnoe://test
+        nested:
+          repoURLGit: cnoe://test
+  project: default
+  syncPolicy:
+    automated:
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

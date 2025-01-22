@@ -14,9 +14,16 @@ const (
 	CliStartTimeAnnotation = "cnoe.io/cli-start-time"
 	FieldManager           = "idpbuilder"
 	// If GetSecretLabelKey is set to GetSecretLabelValue on a kubernetes secret, secret key and values can be used by the get command.
-	CLISecretLabelKey   = "cnoe.io/cli-secret"
-	CLISecretLabelValue = "true"
-	PackageNameLabelKey = "cnoe.io/package-name"
+	CLISecretLabelKey      = "cnoe.io/cli-secret"
+	CLISecretLabelValue    = "true"
+	PackageNameLabelKey    = "cnoe.io/package-name"
+	PackageTypeLabelKey    = "cnoe.io/package-type"
+	PackageTypeLabelCore   = "core"
+	PackageTypeLabelCustom = "custom"
+
+	ArgoCDPackageName       = "argocd"
+	GiteaPackageName        = "gitea"
+	IngressNginxPackageName = "nginx"
 )
 
 // ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
@@ -30,8 +37,6 @@ type ArgoPackageConfigSpec struct {
 type EmbeddedArgoApplicationsPackageConfigSpec struct {
 	// Enabled controls whether to install the embedded argo applications and the associated GitServer
 	Enabled bool `json:"enabled,omitempty"`
-	// +kubebuilder:validation:Optional
-	PackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
 type PackageConfigsSpec struct {
@@ -39,10 +44,24 @@ type PackageConfigsSpec struct {
 	EmbeddedArgoApplications EmbeddedArgoApplicationsPackageConfigSpec `json:"embeddedArgoApplicationsPackageConfigs,omitempty"`
 	CustomPackageDirs        []string                                  `json:"customPackageDirs,omitempty"`
 	CustomPackageUrls        []string                                  `json:"customPackageUrls,omitempty"`
+	// +kubebuilder:validation:Optional
+	CorePackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
+}
+
+// BuildCustomizationSpec fields cannot change once a cluster is created
+type BuildCustomizationSpec struct {
+	Protocol       string `json:"protocol,omitempty"`
+	Host           string `json:"host,omitempty"`
+	IngressHost    string `json:"ingressHost,omitempty"`
+	Port           string `json:"port,omitempty"`
+	UsePathRouting bool   `json:"usePathRouting,omitempty"`
+	SelfSignedCert string `json:"selfSignedCert,omitempty"`
+	StaticPassword bool   `json:"staticPassword,omitempty"`
 }
 
 type LocalbuildSpec struct {
-	PackageConfigs PackageConfigsSpec `json:"packageConfigs,omitempty"`
+	PackageConfigs     PackageConfigsSpec     `json:"packageConfigs,omitempty"`
+	BuildCustomization BuildCustomizationSpec `json:"buildCustomization,omitempty"`
 }
 
 // PackageCustomization defines how packages are customized

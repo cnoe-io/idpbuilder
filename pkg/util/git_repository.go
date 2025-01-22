@@ -85,7 +85,7 @@ func GetWorktreeYamlFiles(parent string, wt billy.Filesystem, recurse bool) ([]s
 			}
 			paths = append(paths, rPaths...)
 		}
-		if ent.Mode().IsRegular() && (strings.HasSuffix(ent.Name(), "yaml") || strings.HasSuffix(ent.Name(), "yml")) {
+		if ent.Mode().IsRegular() && IsYamlFile(ent.Name()) {
 			paths = append(paths, fmt.Sprintf("%s/%s", parent, ent.Name()))
 		}
 	}
@@ -160,8 +160,9 @@ func CloneRemoteRepoToDir(ctx context.Context, remote v1alpha1.RemoteRepositoryS
 					if err != nil {
 						return nil, nil, fmt.Errorf("cloning repo with fall back url: %w", err)
 					}
+				} else {
+					return nil, nil, fmt.Errorf("cloning repo: %w", err)
 				}
-				return nil, nil, fmt.Errorf("cloning repo: %w", err)
 			}
 		} else {
 			return nil, nil, fmt.Errorf("opening repo at %s %w", dir, err)

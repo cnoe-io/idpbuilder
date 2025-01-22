@@ -3,8 +3,8 @@ package localbuild
 import (
 	"context"
 	"embed"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -13,10 +13,6 @@ import (
 
 //go:embed resources/argo/*
 var installArgoFS embed.FS
-
-const (
-	argocdNamespace string = "argocd"
-)
 
 func RawArgocdInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/argo", installArgoFS, scheme, templateData)
@@ -27,7 +23,7 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		name:         "Argo CD",
 		resourcePath: "resources/argo",
 		resourceFS:   installArgoFS,
-		namespace:    argocdNamespace,
+		namespace:    globals.ArgoCDNamespace,
 		monitoredResources: map[string]schema.GroupVersionKind{
 			"argocd-server": {
 				Group:   "apps",
@@ -48,7 +44,12 @@ func (r *LocalbuildReconciler) ReconcileArgo(ctx context.Context, req ctrl.Reque
 		skipReadinessCheck: true,
 	}
 
-	if result, err := argocd.Install(ctx, req, resource, r.Client, r.Scheme, r.Config); err != nil {
+	v, ok := resource.Spec.PackageConfigs.CorePackageCustomization[v1alpha1.ArgoCDPackageName]
+	if ok {
+		argocd.customization = v
+	}
+
+	if result, err := argocd.Install(ctx, resource, r.Client, r.Scheme, r.Config); err != nil {
 		return result, err
 	}
 

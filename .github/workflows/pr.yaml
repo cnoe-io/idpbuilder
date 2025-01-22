@@ -8,12 +8,17 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
-          go-version: '1.21'
+          go-version: '1.22'
       - name: Run tests
         run: |
           make build
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "git is in dirty state";
+            git status --porcelain=2 --branch
+            exit 1
+          fi
           make test

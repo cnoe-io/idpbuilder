@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.15.0
   name: localbuilds.idpbuilder.cnoe.io
 spec:
   group: idpbuilder.cnoe.io
@@ -37,6 +37,25 @@ spec:
             type: object
           spec:
             properties:
+              buildCustomization:
+                description: BuildCustomizationSpec fields cannot change once a cluster
+                  is created
+                properties:
+                  host:
+                    type: string
+                  ingressHost:
+                    type: string
+                  port:
+                    type: string
+                  protocol:
+                    type: string
+                  selfSignedCert:
+                    type: string
+                  staticPassword:
+                    type: boolean
+                  usePathRouting:
+                    type: boolean
+                type: object
               packageConfigs:
                 properties:
                   argoPackageConfigs:
@@ -64,23 +83,22 @@ spec:
                         description: Enabled controls whether to install the embedded
                           argo applications and the associated GitServer
                         type: boolean
-                      packageCustomization:
-                        additionalProperties:
-                          description: PackageCustomization defines how packages are
-                            customized
-                          properties:
-                            filePath:
-                              description: FilePath is the absolute file path to a
-                                YAML file that contains Kubernetes manifests.
-                              type: string
-                            name:
-                              description: Name is the name of the package to be customized.
-                                e.g. argocd
-                              type: string
-                          required:
-                          - name
-                          type: object
-                        type: object
+                    type: object
+                  packageCustomization:
+                    additionalProperties:
+                      description: PackageCustomization defines how packages are customized
+                      properties:
+                        filePath:
+                          description: FilePath is the absolute file path to a YAML
+                            file that contains Kubernetes manifests.
+                          type: string
+                        name:
+                          description: Name is the name of the package to be customized.
+                            e.g. argocd
+                          type: string
+                      required:
+                      - name
+                      type: object
                     type: object
                 type: object
             type: object

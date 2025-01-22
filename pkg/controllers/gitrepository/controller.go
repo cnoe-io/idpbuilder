@@ -2,7 +2,6 @@ package gitrepository
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -44,13 +43,13 @@ type RepositoryReconciler struct {
 	client.Client
 	Recorder        record.EventRecorder
 	Scheme          *runtime.Scheme
-	Config          util.CorePackageTemplateConfig
+	Config          v1alpha1.BuildCustomizationSpec
 	GitProviderFunc gitProviderFunc
 	TempDir         string
 	RepoMap         *util.RepoMap
 }
 
-type gitProviderFunc func(context.Context, *v1alpha1.GitRepository, client.Client, *runtime.Scheme, util.CorePackageTemplateConfig) (gitProvider, error)
+type gitProviderFunc func(context.Context, *v1alpha1.GitRepository, client.Client, *runtime.Scheme, v1alpha1.BuildCustomizationSpec) (gitProvider, error)
 
 type notFoundError struct{}
 
@@ -70,18 +69,10 @@ func getFallbackRepositoryURL(repo *v1alpha1.GitRepository, info repoInfo) strin
 	return fmt.Sprintf("%s/%s.git", repo.Spec.Provider.GitURL, info.fullName)
 }
 
-func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig) (gitProvider, error) {
+func GetGitProvider(ctx context.Context, repo *v1alpha1.GitRepository, kubeClient client.Client, scheme *runtime.Scheme, tmplConfig v1alpha1.BuildCustomizationSpec) (gitProvider, error) {
 	switch repo.Spec.Provider.Name {
 	case v1alpha1.GitProviderGitea:
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			DialContext: (&net.Dialer{
-				Timeout:   gitTCPTimeout,
-				KeepAlive: 30 * time.Second, // from http.DefaultTransport
-			}).DialContext,
-		}
-		c := &http.Client{Transport: tr, Timeout: gitHTTPTimeout}
-		giteaClient, err := NewGiteaClient(repo.Spec.Provider.GitURL, gitea.SetHTTPClient(c))
+		giteaClient, err := NewGiteaClient(repo.Spec.Provider.GitURL, gitea.SetHTTPClient(util.GetHttpClient()))
 		if err != nil {
 			return nil, err
 		}
@@ -150,6 +141,10 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 	creds, err := provider.getProviderCredentials(ctx, repo)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("getting git provider credentials: %w", err)
+	}
+
+	if r.Config.StaticPassword {
+		creds.password = util.StaticPassword
 	}
 
 	err = provider.setProviderCredentials(ctx, repo, creds)
@@ -236,7 +231,7 @@ func pushToRemote(ctx context.Context, remoteRepo *git.Repository, creds gitProv
 }
 
 // add files from local fs to target repository (gitea for now)
-func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, scheme *runtime.Scheme, tmplConfig util.CorePackageTemplateConfig, tmpDir string, repoMap *util.RepoMap) error {
+func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository, tgtRepo repoInfo, creds gitProviderCredentials, scheme *runtime.Scheme, tmplConfig v1alpha1.BuildCustomizationSpec, tmpDir string, repoMap *util.RepoMap) error {
 	logger := log.FromContext(ctx)
 	tgtCloneDir := util.RepoDir(tgtRepo.cloneUrl, tmpDir)
 
@@ -272,7 +267,7 @@ func reconcileLocalRepoContent(ctx context.Context, repo *v1alpha1.GitRepository
 			return fmt.Errorf("getting remote url %w", err)
 		}
 
-		logger.V(1).Info("pushing to remote url %s", remoteUrl)
+		logger.V(1).Info("pushing to remote url", "remoteUrl", remoteUrl)
 		err = pushToRemote(ctx, tgtRepository, creds)
 		if err != nil {
 			return fmt.Errorf("pushing to git: %w", err)
@@ -337,7 +332,7 @@ func reconcileRemoteRepoContent(ctx context.Context, repo *v1alpha1.GitRepositor
 			return fmt.Errorf("getting remote url %w", err)
 		}
 
-		logger.V(1).Info("pushing to remote url %s", remoteUrl)
+		logger.V(1).Info("pushing to remote url", "remoteUrl", remoteUrl)
 		err = pushToRemote(ctx, tgtRepository, creds)
 		if err != nil {
 			return fmt.Errorf("pushing to git: %w", err)

@@ -1,26 +1,34 @@
 package localbuild
 
 import (
+	"bytes"
+	"code.gitea.io/sdk/gitea"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"k8s.io/apimachinery/pkg/types"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	argocdapp "github.com/cnoe-io/argocd-api/api/argo/application"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/resources/localbuild"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,11 +38,18 @@ import (
 
 const (
 	defaultArgoCDProjectName string = "default"
+	defaultRequeueTime              = time.Second * 15
+	errRequeueTime                  = time.Second * 5
+
+	argoCDApplicationAnnotationKeyRefresh         = "argocd.argoproj.io/refresh"
+	argoCDApplicationAnnotationValueRefreshNormal = "normal"
+	argoCDApplicationSetAnnotationKeyRefresh      = "argocd.argoproj.io/application-set-refresh"
+	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
 )
 
-var (
-	defaultRequeueTime = time.Second * 30
-)
+type ArgocdSession struct {
+	Token string `json:"token"`
+}
 
 type LocalbuildReconciler struct {
 	client.Client
@@ -42,7 +57,7 @@ type LocalbuildReconciler struct {
 	CancelFunc     context.CancelFunc
 	ExitOnSync     bool
 	shouldShutdown bool
-	Config         util.CorePackageTemplateConfig
+	Config         v1alpha1.BuildCustomizationSpec
 	TempDir        string
 	RepoMap        *util.RepoMap
 }
@@ -64,39 +79,128 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Make sure we post process
 	defer r.postProcessReconcile(ctx, req, &localBuild)
 
-	// respecting order of installation matters as there are hard dependencies
-	subReconcilers := []subReconciler{
-		r.ReconcileProjectNamespace,
-		r.ReconcileNginx,
-		r.ReconcileArgo,
-		r.ReconcileGitea,
-		r.ReconcileArgoAppsWithGitea,
+	_, err := r.ReconcileProjectNamespace(ctx, req, &localBuild)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
-	for _, sub := range subReconcilers {
-		result, err := sub(ctx, req, &localBuild)
-		if err != nil || result.Requeue || result.RequeueAfter != 0 {
-			return result, err
+	instCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	errChan := make(chan error, 3)
+
+	go r.installCorePackages(instCtx, req, &localBuild, errChan)
+
+	select {
+	case <-ctx.Done():
+		return ctrl.Result{}, nil
+	case instErr := <-errChan:
+		if instErr != nil {
+			// likely due to ingress-nginx admission hook not ready. debug log and try again.
+			logger.V(1).Info("failed installing core package. likely not fatal. will try again", "error", instErr)
+			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
 		}
 	}
 
-	return ctrl.Result{}, nil
+	if r.Config.StaticPassword {
+		logger.V(1).Info("static password is enabled")
+
+		// Check if the Argocd Initial admin secret exists
+		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
+		if err != nil {
+			// Argocd initial admin secret is not yet available ...
+			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+		}
+
+		logger.V(1).Info("Initial argocd admin secret found ...")
+
+		// Secret containing the initial argocd password exists
+		// Lets try to update the password
+		if argocdInitialAdminPassword != "" {
+			err = r.updateArgocdPassword(ctx, argocdInitialAdminPassword)
+			if err != nil {
+				return ctrl.Result{}, err
+			} else {
+				logger.V(1).Info(fmt.Sprintf("Argocd admin password change succeeded !"))
+			}
+		}
+
+		// Check if the Gitea credentials secret exists
+		giteaAdminPassword, err := r.extractGiteaAdminSecret(ctx)
+		if err != nil {
+			// Gitea admin secret is not yet available ...
+			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+		}
+		logger.V(1).Info("Gitea admin secret found ...")
+		// Secret containing the gitea password exists
+		// Lets try to update the password
+		if giteaAdminPassword != "" {
+			err = r.updateGiteaPassword(ctx, giteaAdminPassword)
+			if err != nil {
+				return ctrl.Result{}, err
+			} else {
+				logger.V(1).Info(fmt.Sprintf("Gitea admin password change succeeded !"))
+			}
+		}
+	}
+
+	logger.V(1).Info("done installing core packages. passing control to argocd")
+	_, err = r.ReconcileArgoAppsWithGitea(ctx, req, &localBuild)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+}
+
+func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild, errChan chan error) {
+	logger := log.FromContext(ctx)
+	defer close(errChan)
+	var wg sync.WaitGroup
+
+	installers := map[string]subReconciler{
+		v1alpha1.IngressNginxPackageName: r.ReconcileNginx,
+		v1alpha1.ArgoCDPackageName:       r.ReconcileArgo,
+		v1alpha1.GiteaPackageName:        r.ReconcileGitea,
+	}
+	logger.V(1).Info("installing core packages")
+	for k, v := range installers {
+		wg.Add(1)
+		name := k
+		inst := v
+		go func() {
+			defer wg.Done()
+			_, iErr := inst(ctx, req, resource)
+			if iErr != nil {
+				logger.V(1).Info("failed installing", "name", name, "error", iErr)
+				errChan <- fmt.Errorf("failed installing %s: %w", name, iErr)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 // Responsible to updating ObservedGeneration in status
 func (r *LocalbuildReconciler) postProcessReconcile(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) {
-	log := log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	log.Info("Checking if we should shutdown")
+	logger.Info("Checking if we should shutdown")
 	if r.shouldShutdown {
-		log.Info("Shutting Down")
+		logger.Info("Shutting Down")
+		err := r.requestArgoCDAppRefresh(ctx)
+		if err != nil {
+			logger.V(1).Info("failed requesting argocd application refresh", "error", err)
+		}
+		err = r.requestArgoCDAppSetRefresh(ctx)
+		if err != nil {
+			logger.V(1).Info("failed requesting argocd application set refresh", "error", err)
+		}
 		r.CancelFunc()
 		return
 	}
 
 	resource.Status.ObservedGeneration = resource.GetGeneration()
 	if err := r.Status().Update(ctx, resource); err != nil {
-		log.Error(err, "Failed to update resource status after reconcile")
+		logger.Error(err, "Failed to update resource status after reconcile")
 	}
 }
 
@@ -136,7 +240,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 
 	// push bootstrap app manifests to Gitea. let ArgoCD take over
 	// will need a way to filter them based on user input
-	bootStrapApps := []string{"argocd", "nginx", "gitea"}
+	bootStrapApps := []string{v1alpha1.ArgoCDPackageName, v1alpha1.IngressNginxPackageName, v1alpha1.GiteaPackageName}
 	for _, n := range bootStrapApps {
 		result, err := r.reconcileEmbeddedApp(ctx, n, resource)
 		if err != nil {
@@ -164,7 +268,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 	}
 	r.shouldShutdown = shutdown
 
-	return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName string, resource *v1alpha1.Localbuild) (ctrl.Result, error) {
@@ -180,9 +284,11 @@ func (r *LocalbuildReconciler) reconcileEmbeddedApp(ctx context.Context, appName
 	app := &argov1alpha1.Application{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      appName,
-			Namespace: "argocd",
+			Namespace: globals.ArgoCDNamespace,
 		},
 	}
+
+	util.SetPackageLabels(app)
 
 	if err := controllerutil.SetControllerReference(resource, app, r.Scheme); err != nil {
 		return ctrl.Result{}, err
@@ -232,6 +338,30 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 		return false, err
 	}
 
+	// check if core packages are ready
+	selector := labels.NewSelector()
+	req, err := labels.NewRequirement(v1alpha1.PackageTypeLabelKey, selection.Equals, []string{v1alpha1.PackageTypeLabelCore})
+	if err != nil {
+		return false, fmt.Errorf("building labels with key %s and value %s : %w", v1alpha1.PackageTypeLabelKey, v1alpha1.PackageTypeLabelCore, err)
+	}
+
+	opts := client.ListOptions{
+		LabelSelector: selector.Add(*req),
+		Namespace:     "",
+	}
+	apps := argov1alpha1.ApplicationList{}
+	err = r.Client.List(ctx, &apps, &opts)
+	if err != nil {
+		return false, fmt.Errorf("listing core packages: %w", err)
+	}
+
+	for _, app := range apps.Items {
+		if app.Status.Health.Status != "Healthy" {
+			return false, nil
+		}
+	}
+
+	// check if repositories are ready
 	repos := &v1alpha1.GitRepositoryList{}
 	err = r.Client.List(ctx, repos, client.InNamespace(resource.Namespace))
 	if err != nil {
@@ -263,6 +393,7 @@ func (r *LocalbuildReconciler) shouldShutDown(ctx context.Context, resource *v1a
 		}
 	}
 
+	// check if custom packages are ready
 	pkgs := &v1alpha1.CustomPackageList{}
 	err = r.Client.List(ctx, pkgs, client.InNamespace(resource.Namespace))
 	if err != nil {
@@ -306,6 +437,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 	}
 
 	if isSupportedArgoCDTypes(gvk) {
+		kind := o.GetKind()
 		appName := o.GetName()
 		appNS := o.GetNamespace()
 		customPkg := &v1alpha1.CustomPackage{
@@ -339,6 +471,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 					ApplicationFile: filePath,
 					Name:            appName,
 					Namespace:       appNS,
+					Type:            kind,
 				},
 			}
 
@@ -411,7 +544,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 
 	for i := range files {
 		file := files[i]
-		if !file.Type().IsRegular() {
+		if !file.Type().IsRegular() || !util.IsYamlFile(file.Name()) {
 			continue
 		}
 
@@ -475,7 +608,7 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 		} else {
 			repo.Spec.Source.Path = absPath
 		}
-		f, ok := resource.Spec.PackageConfigs.EmbeddedArgoApplications.PackageCustomization[embeddedName]
+		f, ok := resource.Spec.PackageConfigs.CorePackageCustomization[embeddedName]
 		if ok {
 			repo.Spec.Customization = v1alpha1.PackageCustomization{
 				Name:     embeddedName,
@@ -488,6 +621,230 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 	return repo, err
 }
 
+func (r *LocalbuildReconciler) requestArgoCDAppRefresh(ctx context.Context) error {
+	apps := &argov1alpha1.ApplicationList{}
+	err := r.Client.List(ctx, apps, client.InNamespace(globals.ArgoCDNamespace))
+	if err != nil {
+		return fmt.Errorf("listing argocd apps for refresh: %w", err)
+	}
+
+apps:
+	for i := range apps.Items {
+		app := apps.Items[i]
+		for _, o := range app.OwnerReferences {
+			// if this app is owned by an ApplicationSet, we should let the ApplicationSet refresh.
+			if o.Kind == argocdapp.ApplicationSetKind {
+				continue apps
+			}
+		}
+		aErr := r.applyArgoCDAnnotation(ctx, &app, argocdapp.ApplicationKind, argoCDApplicationAnnotationKeyRefresh, argoCDApplicationAnnotationValueRefreshNormal)
+		if aErr != nil {
+			return aErr
+		}
+	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) requestArgoCDAppSetRefresh(ctx context.Context) error {
+	appsets := &argov1alpha1.ApplicationSetList{}
+	err := r.Client.List(ctx, appsets, client.InNamespace(globals.ArgoCDNamespace))
+	if err != nil {
+		return fmt.Errorf("listing argocd apps for refresh: %w", err)
+	}
+
+	for i := range appsets.Items {
+		appset := appsets.Items[i]
+		aErr := r.applyArgoCDAnnotation(ctx, &appset, argocdapp.ApplicationSetKind, argoCDApplicationSetAnnotationKeyRefresh, argoCDApplicationSetAnnotationKeyRefreshTrue)
+		if aErr != nil {
+			return aErr
+		}
+	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) extractArgocdInitialAdminSecret(ctx context.Context) (string, error) {
+	sec := util.ArgocdInitialAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("initial admin secret not found")
+		}
+	}
+	return string(sec.Data["password"]), nil
+}
+
+func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (string, error) {
+	sec := util.GiteaAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("gitea admin secret not found")
+		}
+	}
+	return string(sec.Data["password"]), nil
+}
+
+func (r *LocalbuildReconciler) updateGiteaPassword(ctx context.Context, adminPassword string) error {
+	client, err := gitea.NewClient(util.GiteaBaseUrl(r.Config), gitea.SetHTTPClient(util.GetHttpClient()),
+		gitea.SetBasicAuth("giteaAdmin", adminPassword), gitea.SetContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("cannot create gitea client: %w", err)
+	}
+
+	opts := gitea.EditUserOption{
+		LoginName: "giteaAdmin",
+		Password:  util.StaticPassword,
+	}
+
+	resp, err := client.AdminEditUser("giteaAdmin", opts)
+	if err != nil {
+		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err)
+	}
+
+	err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.GiteaNamespace, util.GiteaAdminSecret, util.GiteaAdminName, util.StaticPassword)
+	if err != nil {
+		return fmt.Errorf("patching the gitea credentials failed : %w", err)
+	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) updateArgocdPassword(ctx context.Context, adminPassword string) error {
+	argocdEndpoint := util.ArgocdBaseUrl(r.Config) + "/api/v1"
+
+	payload := map[string]string{
+		"username": "admin",
+		"password": adminPassword,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Error creating JSON payload: %v\n", err)
+	}
+
+	// Create an HTTP POST request to get the Session token
+	req, err := http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("Error creating HTTP request: %v\n", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Create an HTTP c and disable TLS verification
+	c := util.GetHttpClient()
+
+	// Send the request
+	resp, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("Error sending request: %v\n", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Error reading response body: %v\n", err)
+	}
+
+	// We got a session Token, so we can update the Argocd admin password
+	if resp.StatusCode == 200 {
+		var argocdSession ArgocdSession
+
+		err := json.Unmarshal([]byte(body), &argocdSession)
+		if err != nil {
+			return fmt.Errorf("Error unmarshalling JSON: %v", err)
+		}
+
+		payload := map[string]string{
+			"name":            "admin",
+			"currentPassword": adminPassword,
+			"newPassword":     util.StaticPassword,
+		}
+
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("Error creating JSON payload: %v\n", err)
+		}
+
+		req, err := http.NewRequest("PUT", argocdEndpoint+"/account/password", bytes.NewBuffer(payloadBytes))
+		if req != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", argocdSession.Token))
+			req.Header.Set("Content-Type", "application/json")
+		}
+
+		resp, err := c.Do(req)
+		if err != nil {
+			return fmt.Errorf("Error sending request: %v\n", err)
+		}
+		defer resp.Body.Close()
+
+		// Lets checking the new admin password
+		payload = map[string]string{
+			"username": "admin",
+			"password": util.StaticPassword,
+		}
+		payloadBytes, err = json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("Error creating JSON payload: %v\n", err)
+		}
+
+		// Define the request able to verify if the username and password changed works
+		req, err = http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			return fmt.Errorf("Error creating HTTP request: %v\n", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		// Send the request
+		resp, err = c.Do(req)
+		if err != nil {
+			return fmt.Errorf("Error sending request: %v\n", err)
+		}
+		defer resp.Body.Close()
+
+		// Password verification succeeded !
+		if resp.StatusCode == 200 {
+			// Let's patch the existing secret now
+			err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, util.ArgocdAdminName, util.StaticPassword)
+			if err != nil {
+				return fmt.Errorf("patching the argocd initial secret failed : %w", err)
+			}
+			return nil
+		}
+	}
+	// No session token has been received and by consequence the admin password has not been changed
+	return nil
+}
+
+func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj client.Object, argoCDType, annotationKey, annotationValue string) error {
+	annotations := obj.GetAnnotations()
+	if annotations != nil {
+		_, ok := annotations[annotationKey]
+		if !ok {
+			annotations[annotationKey] = annotationValue
+			err := util.ApplyAnnotation(ctx, r.Client, obj, annotations, client.FieldOwner(v1alpha1.FieldManager))
+			if err != nil {
+				return fmt.Errorf("applying %s refresh annotation for %s: %w", argoCDType, obj.GetName(), err)
+			}
+		}
+	} else {
+		a := map[string]string{
+			annotationKey: annotationValue,
+		}
+		err := util.ApplyAnnotation(ctx, r.Client, obj, a, client.FieldOwner(v1alpha1.FieldManager))
+		if err != nil {
+			return fmt.Errorf("applying %s refresh annotation for %s: %w", argoCDType, obj.GetName(), err)
+		}
+	}
+	return nil
+}
+
 func getCustomPackageName(fileName, appName string) string {
 	s := strings.Split(fileName, ".")
 	return fmt.Sprintf("%s-%s", strings.ToLower(s[0]), appName)
@@ -497,16 +854,16 @@ func isSupportedArgoCDTypes(gvk *schema.GroupVersionKind) bool {
 	if gvk == nil {
 		return false
 	}
-	return gvk.Kind == argocdapp.ApplicationKind && gvk.Group == argocdapp.Group
+	return gvk.Group == argocdapp.Group && (gvk.Kind == argocdapp.ApplicationKind || gvk.Kind == argocdapp.ApplicationSetKind)
 }
 
 func GetEmbeddedRawInstallResources(name string, templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
 	switch name {
-	case "argocd":
+	case v1alpha1.ArgoCDPackageName:
 		return RawArgocdInstallResources(templateData, config, scheme)
-	case "gitea":
+	case v1alpha1.GiteaPackageName:
 		return RawGiteaInstallResources(templateData, config, scheme)
-	case "nginx":
+	case v1alpha1.IngressNginxPackageName:
 		return RawNginxInstallResources(templateData, config, scheme)
 	default:
 		return nil, fmt.Errorf("unsupported embedded app name %s", name)

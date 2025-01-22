@@ -21081,12 +21081,27 @@ subjects:
 ---
 apiVersion: v1
 data:
+  policy.csv: |-
+    p, role:developer, applications, *, *, allow
+    g, developer, role:developer
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+  name: argocd-rbac-cm
+  namespace: argocd
+---
+apiVersion: v1
+data:
+  accounts.developer: apiKey, login
   application.resourceTrackingMethod: annotation
   resource.exclusions: |
     - kinds:
         - ProviderConfigUsage
       apiGroups:
         - "*"
+  timeout.reconciliation: 60s
 kind: ConfigMap
 metadata:
   labels:
@@ -21153,6 +21168,11 @@ metadata:
   name: argocd-ssh-known-hosts-cm
 ---
 apiVersion: v1
+data:
+  '{{.Host}}': |
+    {{ .SelfSignedCert | indentNewLines 4 }}
+  gitea.{{.Host}}: |
+    {{ .SelfSignedCert | indentNewLines 4 }}
 kind: ConfigMap
 metadata:
   labels:

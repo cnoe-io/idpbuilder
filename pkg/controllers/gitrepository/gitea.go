@@ -28,7 +28,7 @@ type giteaProvider struct {
 	client.Client
 	Scheme      *runtime.Scheme
 	giteaClient GiteaClient
-	config      util.CorePackageTemplateConfig
+	config      v1alpha1.BuildCustomizationSpec
 }
 
 func (g *giteaProvider) createRepository(ctx context.Context, repo *v1alpha1.GitRepository) (repoInfo, error) {
@@ -69,6 +69,7 @@ func (g *giteaProvider) getProviderCredentials(ctx context.Context, repo *v1alph
 	if !ok {
 		return gitProviderCredentials{}, fmt.Errorf("%s key not found in secret %s in %s ns", giteaAdminPasswordKey, repo.Spec.SecretRef.Name, repo.Spec.SecretRef.Namespace)
 	}
+
 	return gitProviderCredentials{
 		username: string(username),
 		password: string(password),
@@ -116,7 +117,7 @@ func (g *giteaProvider) updateRepoContent(
 	}
 }
 
-func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config util.CorePackageTemplateConfig, scheme *runtime.Scheme) error {
+func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config v1alpha1.BuildCustomizationSpec, scheme *runtime.Scheme) error {
 	if repo.Spec.Source.EmbeddedAppName != "" {
 		resources, err := localbuild.GetEmbeddedRawInstallResources(
 			repo.Spec.Source.EmbeddedAppName, config,

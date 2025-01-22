@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 
@@ -18,7 +19,7 @@ func RunControllers(
 	exitCh chan error,
 	ctxCancel context.CancelFunc,
 	exitOnSync bool,
-	cfg util.CorePackageTemplateConfig,
+	cfg v1alpha1.BuildCustomizationSpec,
 	tmpDir string,
 ) error {
 	logger := log.FromContext(ctx)
@@ -62,15 +63,12 @@ func RunControllers(
 	if err != nil {
 		logger.Error(err, "unable to create custom package controller")
 	}
-
 	// Start our manager in another goroutine
 	logger.V(1).Info("starting manager")
+
 	go func() {
-		if err := mgr.Start(ctx); err != nil {
-			logger.Error(err, "problem running manager")
-			exitCh <- err
-		}
-		exitCh <- nil
+		exitCh <- mgr.Start(ctx)
+		close(exitCh)
 	}()
 
 	return nil
