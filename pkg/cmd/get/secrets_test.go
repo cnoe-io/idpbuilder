@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
+	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
@@ -145,7 +145,7 @@ func TestOutput(t *testing.T) {
 	ctx := context.Background()
 	r, _ := labels.NewRequirement(v1alpha1.CLISecretLabelKey, selection.Equals, []string{v1alpha1.CLISecretLabelValue})
 
-	corePkgData := map[string]entity.Secret{
+	corePkgData := map[string]types.Secret{
 		argoCDInitialAdminSecretName: {
 			IsCore:    true,
 			Name:      argoCDInitialAdminSecretName,
@@ -162,7 +162,7 @@ func TestOutput(t *testing.T) {
 		},
 	}
 
-	packageData := map[string]entity.Secret{
+	packageData := map[string]types.Secret{
 		"name1": {
 			Name:      "name1",
 			Namespace: "ns1",
@@ -216,7 +216,7 @@ func TestOutput(t *testing.T) {
 	assert.Nil(t, err)
 
 	// verify received json data
-	var received []entity.Secret
+	var received []types.Secret
 	err = json.Unmarshal(buffer.Bytes(), &received)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(received))
@@ -244,7 +244,7 @@ func TestOutput(t *testing.T) {
 	assert.Equal(t, 0, len(packageData))
 }
 
-func secretDataToSecret(data entity.Secret) v1.Secret {
+func secretDataToSecret(data types.Secret) v1.Secret {
 	d := make(map[string][]byte)
 	if data.IsCore {
 		d["username"] = []byte(data.Username)

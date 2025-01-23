@@ -5,13 +5,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/util/files"
 	"io/fs"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	kindv1alpha4 "sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
@@ -94,7 +95,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	}
 
 	var retBuff []byte
-	if retBuff, err = util.ApplyTemplate(rawConfigTempl, TemplateConfig{
+	if retBuff, err = files.ApplyTemplate(rawConfigTempl, TemplateConfig{
 		BuildCustomizationSpec: c.cfg,
 		KubernetesVersion:      c.kubeVersion,
 		ExtraPortsMapping:      portMappingPairs,

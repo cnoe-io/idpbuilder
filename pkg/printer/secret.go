@@ -2,14 +2,14 @@ package printer
 
 import (
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
+	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"strings"
 )
 
 type SecretPrinter struct {
-	Secrets   []entity.Secret
+	Secrets   []types.Secret
 	OutWriter io.Writer
 }
 
@@ -26,7 +26,7 @@ func (sp SecretPrinter) PrintOutput(format string) error {
 	}
 }
 
-func generateSecretTable(secretTable []entity.Secret) metav1.Table {
+func generateSecretTable(secretTable []types.Secret) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},

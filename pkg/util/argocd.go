@@ -1,8 +1,9 @@
 package util
 
 import (
+	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/util/idp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,8 +15,12 @@ const (
 	ArgocdIngressURL             = "%s://argocd.cnoe.localtest.me:%s"
 )
 
-func ArgocdBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
-	return fmt.Sprintf(ArgocdIngressURL, config.Protocol, config.Port)
+func ArgocdBaseUrl(ctx context.Context) (string, error) {
+	idpConfig, err := idp.GetConfig(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error fetching idp config: %s", err)
+	}
+	return fmt.Sprintf(ArgocdIngressURL, idpConfig.Protocol, idpConfig.Port), nil
 }
 
 func ArgocdInitialAdminSecretObject() corev1.Secret {

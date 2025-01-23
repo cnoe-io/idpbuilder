@@ -2,13 +2,13 @@ package localbuild
 
 import (
 	"context"
+	"github.com/cnoe-io/idpbuilder/pkg/util/fs"
 	"testing"
 
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,7 +43,7 @@ func TestGetRawInstallResources(t *testing.T) {
 		resourceFS:   installArgoFS,
 		resourcePath: "resources/argo",
 	}
-	resources, err := util.ConvertFSToBytes(e.resourceFS, e.resourcePath,
+	resources, err := fs.ConvertFSToBytes(e.resourceFS, e.resourcePath,
 		v1alpha1.BuildCustomizationSpec{
 			Protocol:       "",
 			Host:           "",

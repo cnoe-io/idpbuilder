@@ -2,13 +2,13 @@ package printer
 
 import (
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
+	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type ClusterPrinter struct {
-	Clusters  []entity.Cluster
+	Clusters  []types.Cluster
 	OutWriter io.Writer
 }
 
@@ -25,7 +25,7 @@ func (cp ClusterPrinter) PrintOutput(format string) error {
 	}
 }
 
-func generateClusterTable(input []entity.Cluster) metav1.Table {
+func generateClusterTable(input []types.Cluster) metav1.Table {
 	table := &metav1.Table{}
 	table.ColumnDefinitions = []metav1.TableColumnDefinition{
 		{Name: "Name", Type: "string"},
@@ -52,7 +52,7 @@ func generateClusterTable(input []entity.Cluster) metav1.Table {
 	return *table
 }
 
-func generateNodeData(nodes []entity.Node) string {
+func generateNodeData(nodes []types.Node) string {
 	var result string
 	for i, aNode := range nodes {
 		result += aNode.Name
