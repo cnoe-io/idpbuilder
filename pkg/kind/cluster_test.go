@@ -42,6 +42,9 @@ nodes:
   - containerPort: 443
     hostPort: 8443
     protocol: TCP
+  - containerPort: 32222
+    hostPort: 32222
+    protocol: TCP
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.cnoe.localtest.me:8443"]
@@ -64,6 +67,9 @@ nodes:
   extraPortMappings:
   - containerPort: 443
     hostPort: 8443
+    protocol: TCP
+  - containerPort: 32222
+    hostPort: 32222
     protocol: TCP
 
 containerdConfigPatches:
@@ -116,6 +122,9 @@ nodes:
   extraPortMappings:
   - containerPort: 443
     hostPort: 8443
+    protocol: TCP
+  - containerPort: 32222
+    hostPort: 32222
     protocol: TCP
   - containerPort: 32222
     hostPort: 22
