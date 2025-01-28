@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/cnoe-io/idpbuilder/pkg/util/files"
+	"io"
 	"io/fs"
 	"os"
 	"strconv"
@@ -70,7 +71,20 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	var err error
 
 	if c.kindConfigPath != "" {
-		rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
+		if strings.HasPrefix(c.kindConfigPath, "https://") || strings.HasPrefix(c.kindConfigPath, "http://") {
+			httpClient := util.GetHttpClient()
+			resp, err := httpClient.Get(c.kindConfigPath)
+			if err != nil {
+				return nil, fmt.Errorf("fetching remote kind config: %w", err)
+			}
+			defer resp.Body.Close()
+			rawConfigTempl, err = io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("reading remote kind config body: %w", err)
+			}
+		} else {
+			rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
+		}
 	} else {
 		rawConfigTempl, err = fs.ReadFile(configFS, "resources/kind.yaml.tmpl")
 	}
