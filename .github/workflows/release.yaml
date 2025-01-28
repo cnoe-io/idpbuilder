@@ -36,6 +36,8 @@ jobs:
         with:
           app-id: ${{ vars.CNOE_HOMEBREW_APP_ID }}
           private-key: ${{ secrets.CNOE_HOMEBREW_PRIVATE_KEY }}
+          repositories: |
+            homebrew-tap
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         id: run-goreleaser
