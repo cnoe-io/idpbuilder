@@ -36,7 +36,7 @@ stringData:
     ROOT_URL={{- if .UsePathRouting }} {{- .Protocol }}://{{ .Host }}:{{ .Port }}/gitea {{- else }} {{- .Protocol }}://gitea.{{ .Host }}:{{ .Port }} {{- end }}
     SSH_DOMAIN={{- if .UsePathRouting -}} {{ .Host }} {{- else -}} gitea.{{- .Host }} {{- end }}
     SSH_LISTEN_PORT=2222
-    SSH_PORT=22
+    SSH_PORT=32222
     START_SSH_SERVER=true
   session: |-
     PROVIDER=memory
@@ -381,7 +381,7 @@ spec:
   externalTrafficPolicy: Local
   ports:
   - name: ssh
-    port: 22
+    port: 32222
     targetPort: 2222
     protocol: TCP
     nodePort: 32222
@@ -417,7 +417,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 94b0102e29e8bd17652180743c848722b184530813c36ad9fe0705edc22cc716
+        checksum/config: 9472556301411a93ff19830db2ba46ea781c96364243b2f06ab8e33fb785c25d
       labels:
         helm.sh/chart: gitea-10.1.4
         app: gitea
@@ -539,7 +539,7 @@ spec:
             - name: SSH_LISTEN_PORT
               value: "2222"
             - name: SSH_PORT
-              value: "22"
+              value: "32222"
             - name: GITEA_APP_INI
               value: /data/gitea/conf/app.ini
             - name: GITEA_CUSTOM

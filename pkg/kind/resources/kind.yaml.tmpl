@@ -9,6 +9,9 @@ nodes:
   - containerPort: {{ if (eq .Protocol "http")  -}} 80 {{- else -}} 443 {{- end }}
     hostPort: {{ .Port }}
     protocol: TCP
+  - containerPort: 32222
+    hostPort: 32222
+    protocol: TCP
   {{ range .ExtraPortsMapping -}}
   - containerPort: {{ .ContainerPort }}
     hostPort: {{ .HostPort }}
