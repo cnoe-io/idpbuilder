@@ -24,7 +24,7 @@ const (
 	kubeVersionUsage       = "Version of the kind kubernetes cluster to create."
 	extraPortsMappingUsage = "List of extra ports to expose on the docker container and kubernetes cluster as nodePort " +
 		"(e.g. \"22:32222,9090:39090,etc\")."
-	kindConfigPathUsage = "Path of the kind config file to be used instead of the default."
+	kindConfigPathUsage = "Path or URL to the kind config file to be used instead of the default."
 	hostUsage           = "Host name to access resources in this cluster."
 	ingressHostUsage    = "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions."
 	protocolUsage       = "Protocol to use to access web UIs. http or https."
