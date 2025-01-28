@@ -2,16 +2,11 @@ package kind
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/cnoe-io/idpbuilder/pkg/util/files"
-	"io"
-	"io/fs"
-	"os"
 	"strconv"
-	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -42,11 +37,6 @@ type Cluster struct {
 	cfg               v1alpha1.BuildCustomizationSpec
 }
 
-type PortMapping struct {
-	HostPort      string
-	ContainerPort string
-}
-
 type IProvider interface {
 	List() ([]string, error)
 	ListNodes(string) ([]nodes.Node, error)
@@ -56,57 +46,10 @@ type IProvider interface {
 	ExportKubeConfig(string, string, bool) error
 }
 
-type TemplateConfig struct {
-	v1alpha1.BuildCustomizationSpec
-	KubernetesVersion string
-	ExtraPortsMapping []PortMapping
-}
-
-//go:embed resources/*
-var configFS embed.FS
-
 func (c *Cluster) getConfig() ([]byte, error) {
+	rawConfigTempl, err := loadConfig(c.kindConfigPath)
 
-	var rawConfigTempl []byte
-	var err error
-
-	if c.kindConfigPath != "" {
-		if strings.HasPrefix(c.kindConfigPath, "https://") || strings.HasPrefix(c.kindConfigPath, "http://") {
-			httpClient := util.GetHttpClient()
-			resp, err := httpClient.Get(c.kindConfigPath)
-			if err != nil {
-				return nil, fmt.Errorf("fetching remote kind config: %w", err)
-			}
-			defer resp.Body.Close()
-			rawConfigTempl, err = io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, fmt.Errorf("reading remote kind config body: %w", err)
-			}
-		} else {
-			rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
-		}
-	} else {
-		rawConfigTempl, err = fs.ReadFile(configFS, "resources/kind.yaml.tmpl")
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("reading kind config: %w", err)
-	}
-
-	var portMappingPairs []PortMapping
-	if len(c.extraPortsMapping) > 0 {
-		// Split pairs of ports "11=1111","22=2222",etc
-		pairs := strings.Split(c.extraPortsMapping, ",")
-		// Create a slice to store PortMapping pairs.
-		portMappingPairs = make([]PortMapping, len(pairs))
-		// Parse each pair into PortPair objects.
-		for i, pair := range pairs {
-			parts := strings.Split(pair, ":")
-			if len(parts) == 2 {
-				portMappingPairs[i] = PortMapping{parts[0], parts[1]}
-			}
-		}
-	}
+	portMappingPairs := parsePortMappings(c.extraPortsMapping)
 
 	var retBuff []byte
 	if retBuff, err = files.ApplyTemplate(rawConfigTempl, TemplateConfig{

@@ -1,19 +1,12 @@
 package kind
 
 import (
-	"context"
-	"io"
 	"os"
 	"testing"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"sigs.k8s.io/kind/pkg/cluster/nodes"
-	"sigs.k8s.io/kind/pkg/exec"
 )
 
 func TestGetConfig(t *testing.T) {
@@ -187,70 +180,4 @@ func TestGetConfigCustom(t *testing.T) {
 		expected, _ := os.ReadFile(v.outputPath)
 		assert.YAMLEq(t, string(expected), string(b))
 	}
-}
-
-// Mock provider for testing
-type mockProvider struct {
-	mock.Mock
-	IProvider
-}
-
-func (m *mockProvider) ListNodes(name string) ([]nodes.Node, error) {
-	args := m.Called(name)
-	return args.Get(0).([]nodes.Node), args.Error(1)
-}
-
-type mockRuntime struct {
-	mock.Mock
-}
-
-func (m *mockRuntime) ContainerWithPort(ctx context.Context, name string, port string) (bool, error) {
-	args := m.Called(ctx, name, port)
-	return args.Get(0).(bool), args.Error(1)
-}
-
-// Mock Docker client for testing
-type DockerClientMock struct {
-	client.APIClient
-	mock.Mock
-}
-
-func (m *DockerClientMock) ContainerList(ctx context.Context, listOptions types.ContainerListOptions) ([]types.Container, error) {
-	mockArgs := m.Called(ctx, listOptions)
-	return mockArgs.Get(0).([]types.Container), mockArgs.Error(1)
-}
-
-type NodeMock struct {
-	mock.Mock
-}
-
-func (n *NodeMock) Command(command string, args ...string) exec.Cmd {
-	argsMock := append([]string{command}, args...)
-	mockArgs := n.Called(argsMock)
-	return mockArgs.Get(0).(exec.Cmd)
-}
-
-func (n *NodeMock) String() string {
-	args := n.Called()
-	return args.String(0)
-}
-
-func (n *NodeMock) Role() (string, error) {
-	args := n.Called()
-	return args.String(0), args.Error(1)
-}
-
-func (n *NodeMock) IP() (ipv4 string, ipv6 string, err error) {
-	args := n.Called()
-	return args.String(0), args.String(1), args.Error(2)
-}
-
-func (n *NodeMock) SerialLogs(writer io.Writer) error {
-	args := n.Called(writer)
-	return args.Error(0)
-}
-
-func (n *NodeMock) CommandContext(ctx context.Context, cmd string, args ...string) exec.Cmd {
-	mockArgs := n.Called(nil)
-	return mockArgs.Get(0).(exec.Cmd)
 }
