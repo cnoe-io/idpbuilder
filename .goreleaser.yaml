@@ -36,7 +36,7 @@ brews:
     commit_author:
       name: "CNOEAutomation"
       email: "noreply@cnoe.io"
-    directory: formula
+    directory: Formula
     install: |
       bin.install "idpbuilder"
     test: |
