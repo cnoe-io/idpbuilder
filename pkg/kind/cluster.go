@@ -39,12 +39,18 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
+	extraMounts       []string
 	cfg               v1alpha1.BuildCustomizationSpec
 }
 
 type PortMapping struct {
 	HostPort      string
 	ContainerPort string
+}
+
+type MountMapping struct {
+	HostPath      string
+	ContainerPath string
 }
 
 type IProvider interface {
@@ -58,8 +64,9 @@ type IProvider interface {
 
 type TemplateConfig struct {
 	v1alpha1.BuildCustomizationSpec
-	KubernetesVersion string
-	ExtraPortsMapping []PortMapping
+	KubernetesVersion  string
+	ExtraPortsMapping  []PortMapping
+	ExtraMountsMapping []MountMapping
 }
 
 //go:embed resources/*
@@ -108,11 +115,20 @@ func (c *Cluster) getConfig() ([]byte, error) {
 		}
 	}
 
+	var mountMappingPairs []MountMapping
+	for _, mountPair := range c.extraMounts {
+		parts := strings.Split(mountPair, ":")
+		if len(parts) == 2 {
+			mountMappingPairs = append(mountMappingPairs, MountMapping{parts[0], parts[1]})
+		}
+	}
+
 	var retBuff []byte
 	if retBuff, err = files.ApplyTemplate(rawConfigTempl, TemplateConfig{
 		BuildCustomizationSpec: c.cfg,
 		KubernetesVersion:      c.kubeVersion,
 		ExtraPortsMapping:      portMappingPairs,
+		ExtraMountsMapping:     mountMappingPairs,
 	}); err != nil {
 		return nil, err
 	}
@@ -133,7 +149,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, extraMounts []string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
 	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
 		return nil, err
@@ -148,6 +164,7 @@ func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMap
 		kubeVersion:       kubeVersion,
 		kubeConfigPath:    kubeConfigPath,
 		extraPortsMapping: extraPortsMapping,
+		extraMounts:       extraMounts,
 		cfg:               cfg,
 	}, nil
 }

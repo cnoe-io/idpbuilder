@@ -12,11 +12,18 @@ nodes:
   - containerPort: 32222
     hostPort: 32222
     protocol: TCP
-  {{ range .ExtraPortsMapping -}}
+  {{- range .ExtraPortsMapping }}
   - containerPort: {{ .ContainerPort }}
     hostPort: {{ .HostPort }}
     protocol: TCP
-  {{ end }}
+  {{- end }}
+{{- if ne (len .ExtraMountsMapping) 0 }}
+  extraMounts:
+  {{- range .ExtraMountsMapping }}
+  - containerPath: {{ .ContainerPath }}
+    hostPath: {{ .HostPath }}
+  {{- end }}
+{{- end }}
 containerdConfigPatches:
 - |-
   {{ if .UsePathRouting -}}

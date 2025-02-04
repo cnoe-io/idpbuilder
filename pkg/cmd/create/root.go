@@ -24,6 +24,7 @@ const (
 	kubeVersionUsage       = "Version of the kind kubernetes cluster to create."
 	extraPortsMappingUsage = "List of extra ports to expose on the docker container and kubernetes cluster as nodePort " +
 		"(e.g. \"22:32222,9090:39090,etc\")."
+	extraMountsUsage    = "List of mounts to expose on the docker container (e.g. \"-v /registry/config.json:/var/lib/kubelet/config.json -v /foo:/bar\")"
 	kindConfigPathUsage = "Path or URL to the kind config file to be used instead of the default."
 	hostUsage           = "Host name to access resources in this cluster."
 	ingressHostUsage    = "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions."
@@ -46,6 +47,7 @@ var (
 	extraPortsMapping         string
 	kindConfigPath            string
 	extraPackages             []string
+	extraMounts               []string
 	packageCustomizationFiles []string
 	noExit                    bool
 	protocol                  string
@@ -74,6 +76,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.31.4", kubeVersionUsage)
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", extraPortsMappingUsage)
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", kindConfigPathUsage)
+	CreateCmd.PersistentFlags().StringSliceVarP(&extraMounts, "extra-mounts", "v", []string{}, extraMountsUsage)
 
 	// in-cluster resources related flags
 	CreateCmd.PersistentFlags().StringVar(&host, "host", globals.DefaultHostName, hostUsage)
@@ -141,6 +144,7 @@ func create(cmd *cobra.Command, args []string) error {
 		KubeConfigPath:    kubeConfigPath,
 		KindConfigPath:    kindConfigPath,
 		ExtraPortsMapping: extraPortsMapping,
+		ExtraMounts:       extraMounts,
 
 		TemplateData: v1alpha1.BuildCustomizationSpec{
 			Protocol:       protocol,
