@@ -1,14 +1,15 @@
 package logger
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
-	"time"
 )
 
 // https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -25,7 +26,8 @@ const (
 	CyanDim            = "\033[36;2m"
 	// this mirrors the limit value from the internal slog package
 	maxBufferSize = 16384
-	dateFormat    = time.Stamp
+	dateFormat    = "2006-01-02 15:04:05,000"
+	levelWidth    = 10
 )
 
 var bufPool = sync.Pool{
@@ -154,7 +156,6 @@ func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 		free(bufp)
 	}()
 
-	// append time, level, then message.
 	if h.opts.Colored {
 		buf = fmt.Appendf(buf, WhiteDim)
 		buf = slog.Time(slog.TimeKey, record.Time).Value.Time().AppendFormat(buf, fmt.Sprintf("%s%s ", dateFormat, Reset))
@@ -172,13 +173,13 @@ func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 		default:
 			color = Magenta
 		}
-		buf = fmt.Appendf(buf, "%s%s%s ", color, record.Level.String(), Reset)
-
+		buf = fmt.Appendf(buf, "%s%-7s%s ", color, record.Level.String(), Reset)
 		buf = fmt.Appendf(buf, "%s%s%s ", Cyan, record.Message, Reset)
 	} else {
-		buf = slog.Time(slog.TimeKey, record.Time).Value.Time().AppendFormat(buf, fmt.Sprintf("%s ", dateFormat))
-		buf = fmt.Appendf(buf, "%s ", record.Level)
-		buf = fmt.Appendf(buf, "%s ", record.Message)
+		buf = slog.Time(slog.TimeKey, record.Time).Value.Time().AppendFormat(buf, dateFormat)
+		buf = append(buf, ' ')
+		buf = fmt.Appendf(buf, "%-7s ", record.Level.String())
+		buf = fmt.Appendf(buf, " %s ", record.Message)
 	}
 
 	if h.opts.AddSource {
@@ -194,10 +195,62 @@ func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
 		})
 	}
 	buf = append(buf, "\n"...)
+	buf = []byte(formatMessage(string(buf)))
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	_, err := h.w.Write(buf)
 	return err
+}
+
+func formatMessage(message string) string {
+	parts := strings.SplitN(message, " ", 4)
+	if len(parts) < 4 {
+		return message // Not enough parts, return original message
+	}
+
+	dateTime := parts[0] + " " + parts[1]
+	logLevel := parts[2]
+	content := parts[3]
+
+	// Split content into main message and controller info
+	contentParts := strings.SplitN(content, "controller=", 2)
+	if len(contentParts) < 2 {
+		return message // No controller info, return original message
+	}
+
+	prefixLen := len(dateFormat) + levelWidth
+	indent := strings.Repeat(" ", prefixLen)
+
+	mainMessage := contentParts[0]
+
+	var buf bytes.Buffer
+	buf.WriteString(dateTime)
+	buf.WriteByte(' ')
+	buf.WriteString(logLevel)
+	buf.WriteByte(' ')
+	buf.WriteString(mainMessage)
+	buf.WriteString("\r\n")
+
+	words := strings.Fields(fmt.Sprintf("controller=%s", contentParts[1]))
+	lineLength, maxLineLength := 0, 140-prefixLen
+	for i, word := range words {
+		if i > 0 && lineLength+len(word)+1 > maxLineLength {
+			buf.WriteString("\r\n")
+			buf.WriteString(indent)
+			lineLength = 0
+		} else if i > 0 {
+			buf.WriteByte(' ')
+			lineLength++
+		} else if i == 0 {
+			buf.WriteString(indent)
+			lineLength += prefixLen
+		}
+		buf.WriteString(word)
+		lineLength += len(word)
+	}
+	buf.WriteString("\r\n")
+
+	return buf.String()
 }
 
 func (h *Handler) appendKeyValuePair(buf []byte, a slog.Attr) []byte {
