@@ -12,11 +12,16 @@ nodes:
   - containerPort: 32222
     hostPort: 32222
     protocol: TCP
-  {{ range .ExtraPortsMapping -}}
+  {{- range .ExtraPortsMapping }}
   - containerPort: {{ .ContainerPort }}
     hostPort: {{ .HostPort }}
     protocol: TCP
-  {{ end }}
+  {{- end }}
+{{- if .RegistryConfig }}
+  extraMounts:
+  - containerPath: /var/lib/kubelet/config.json
+    hostPath: {{ .RegistryConfig }}
+{{- end }}
 containerdConfigPatches:
 - |-
   {{ if .UsePathRouting -}}

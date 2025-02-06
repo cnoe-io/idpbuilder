@@ -39,6 +39,7 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
+	registryConfig    []string
 	cfg               v1alpha1.BuildCustomizationSpec
 }
 
@@ -60,6 +61,7 @@ type TemplateConfig struct {
 	v1alpha1.BuildCustomizationSpec
 	KubernetesVersion string
 	ExtraPortsMapping []PortMapping
+	RegistryConfig    string
 }
 
 //go:embed resources/*
@@ -108,11 +110,23 @@ func (c *Cluster) getConfig() ([]byte, error) {
 		}
 	}
 
+	var registryConfig string = func() string {
+		for _, s := range c.registryConfig {
+			path := os.ExpandEnv(s)
+			println(path)
+			if _, err := os.Stat(path); err == nil {
+				return path
+			}
+		}
+		return ""
+	}()
+
 	var retBuff []byte
 	if retBuff, err = files.ApplyTemplate(rawConfigTempl, TemplateConfig{
 		BuildCustomizationSpec: c.cfg,
 		KubernetesVersion:      c.kubeVersion,
 		ExtraPortsMapping:      portMappingPairs,
+		RegistryConfig:         registryConfig,
 	}); err != nil {
 		return nil, err
 	}
@@ -133,7 +147,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, registryConfig []string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
 	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
 		return nil, err
@@ -148,6 +162,7 @@ func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMap
 		kubeVersion:       kubeVersion,
 		kubeConfigPath:    kubeConfigPath,
 		extraPortsMapping: extraPortsMapping,
+		registryConfig:    registryConfig,
 		cfg:               cfg,
 	}, nil
 }

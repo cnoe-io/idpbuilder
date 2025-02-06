@@ -83,7 +83,7 @@ containerdConfigPatches:
 
 	for i := range tcs {
 		c := tcs[i]
-		cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", v1alpha1.BuildCustomizationSpec{
+		cluster, err := NewCluster("testcase", "v1.26.3", "", "", "", nil, v1alpha1.BuildCustomizationSpec{
 			Host:           c.host,
 			Port:           c.port,
 			UsePathRouting: c.usePathRouting,
@@ -98,7 +98,7 @@ containerdConfigPatches:
 
 func TestExtraPortMappings(t *testing.T) {
 
-	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", v1alpha1.BuildCustomizationSpec{
+	cluster, err := NewCluster("testcase", "v1.26.3", "", "", "22:32222", nil, v1alpha1.BuildCustomizationSpec{
 		Host: "cnoe.localtest.me",
 		Port: "8443",
 	}, logr.Discard())
@@ -181,7 +181,7 @@ func TestGetConfigCustom(t *testing.T) {
 	}
 
 	for _, v := range cases {
-		c, _ := NewCluster("testcase", "v1.26.3", "", v.inputPath, "", v1alpha1.BuildCustomizationSpec{
+		c, _ := NewCluster("testcase", "v1.26.3", "", v.inputPath, "", nil, v1alpha1.BuildCustomizationSpec{
 			Host:     "cnoe.localtest.me",
 			Port:     v.hostPort,
 			Protocol: v.protocol,
