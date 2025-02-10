@@ -33,6 +33,7 @@ type Build struct {
 	kubeConfigPath       string
 	kubeVersion          string
 	extraPortsMapping    string
+	registryConfig       []string
 	customPackageDirs    []string
 	customPackageUrls    []string
 	packageCustomization map[string]v1alpha1.PackageCustomization
@@ -48,6 +49,7 @@ type NewBuildOptions struct {
 	KubeConfigPath       string
 	KubeVersion          string
 	ExtraPortsMapping    string
+	RegistryConfig       []string
 	CustomPackageDirs    []string
 	CustomPackageUrls    []string
 	PackageCustomization map[string]v1alpha1.PackageCustomization
@@ -63,6 +65,7 @@ func NewBuild(opts NewBuildOptions) *Build {
 		kubeConfigPath:       opts.KubeConfigPath,
 		kubeVersion:          opts.KubeVersion,
 		extraPortsMapping:    opts.ExtraPortsMapping,
+		registryConfig:       opts.RegistryConfig,
 		customPackageDirs:    opts.CustomPackageDirs,
 		customPackageUrls:    opts.CustomPackageUrls,
 		packageCustomization: opts.PackageCustomization,
@@ -75,7 +78,7 @@ func NewBuild(opts NewBuildOptions) *Build {
 
 func (b *Build) ReconcileKindCluster(ctx context.Context, recreateCluster bool) error {
 	// Initialize Kind Cluster
-	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping, b.cfg, setupLog)
+	cluster, err := kind.NewCluster(b.name, b.kubeVersion, b.kubeConfigPath, b.kindConfigPath, b.extraPortsMapping, b.registryConfig, b.cfg, setupLog)
 	if err != nil {
 		setupLog.Error(err, "Error Creating kind cluster")
 		return err

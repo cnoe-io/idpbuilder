@@ -24,6 +24,7 @@ const (
 	kubeVersionUsage       = "Version of the kind kubernetes cluster to create."
 	extraPortsMappingUsage = "List of extra ports to expose on the docker container and kubernetes cluster as nodePort " +
 		"(e.g. \"22:32222,9090:39090,etc\")."
+	registryConfigUsage = "List of paths to mount as the registry config, uses the first one that exists"
 	kindConfigPathUsage = "Path or URL to the kind config file to be used instead of the default."
 	hostUsage           = "Host name to access resources in this cluster."
 	ingressHostUsage    = "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions."
@@ -46,6 +47,7 @@ var (
 	extraPortsMapping         string
 	kindConfigPath            string
 	extraPackages             []string
+	registryConfig            []string
 	packageCustomizationFiles []string
 	noExit                    bool
 	protocol                  string
@@ -74,6 +76,8 @@ func init() {
 	CreateCmd.PersistentFlags().StringVar(&kubeVersion, "kube-version", "v1.31.4", kubeVersionUsage)
 	CreateCmd.PersistentFlags().StringVar(&extraPortsMapping, "extra-ports", "", extraPortsMappingUsage)
 	CreateCmd.PersistentFlags().StringVar(&kindConfigPath, "kind-config", "", kindConfigPathUsage)
+	CreateCmd.PersistentFlags().StringSliceVar(&registryConfig, "registry-config", []string{}, registryConfigUsage)
+	CreateCmd.PersistentFlags().Lookup("registry-config").NoOptDefVal = "$XDG_RUNTIME_DIR/containers/auth.json,$HOME/.docker/config.json"
 
 	// in-cluster resources related flags
 	CreateCmd.PersistentFlags().StringVar(&host, "host", globals.DefaultHostName, hostUsage)
@@ -135,12 +139,21 @@ func create(cmd *cobra.Command, args []string) error {
 		exitOnSync = !noExit
 	}
 
+	// If registry-config is unset we pass nil
+	// If registry-config is change (--registry-config=foo) we pass the new value
+	// If registry-config is set but unchanged (--registry-confg) we pass ""
+	maybeRegistryConfig := []string{}
+	if cmd.Flags().Changed("registry-config") {
+		maybeRegistryConfig = registryConfig
+	}
+
 	opts := build.NewBuildOptions{
 		Name:              buildName,
 		KubeVersion:       kubeVersion,
 		KubeConfigPath:    kubeConfigPath,
 		KindConfigPath:    kindConfigPath,
 		ExtraPortsMapping: extraPortsMapping,
+		RegistryConfig:    maybeRegistryConfig,
 
 		TemplateData: v1alpha1.BuildCustomizationSpec{
 			Protocol:       protocol,
