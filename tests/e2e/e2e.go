@@ -211,7 +211,7 @@ func GetGiteaSessionToken(ctx context.Context, auth BasicAuth, baseUrl string) (
 	httpClient := GetHttpClient()
 	sessionEP := fmt.Sprintf("%s%s", baseUrl, fmt.Sprintf(GiteaSessionEndpoint, auth.Username))
 
-	sb := []byte(fmt.Sprintf(`{"name":"%d"}`, time.Now().Unix()))
+	sb := []byte(fmt.Sprintf(`{"name":"%d", "scopes":["%s"]}`, time.Now().Unix(), gitea.AccessTokenScopeAll))
 	sessionReq, err := http.NewRequestWithContext(ctx, http.MethodPost, sessionEP, bytes.NewBuffer(sb))
 	if err != nil {
 		return "", fmt.Errorf("reating new request for session: %w", err)
