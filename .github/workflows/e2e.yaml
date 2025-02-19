@@ -13,19 +13,61 @@ on:
 
 jobs:
   e2e:
+    strategy:
+      matrix:
+        engine: [docker, podman]
     runs-on: ubuntu-22.04
     if: ${{ github.event.ref != '' }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - name: Git clone
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
+
       - name: Setup Go
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: '1.22'
-      - name: Run tests
+
+      - if: matrix.engine == 'podman'
+        name: Set up Homebrew on Linux
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - if: matrix.engine == 'podman'
+        name: Remove old executable of crun, stop docker service and install podman v5
+        run: |
+          # Remove the old crun executable coming from podman v4 ubuntu package to let brew to install a newer one ...
+          sudo apt-get remove crun
+          sudo apt-get remove podman
+          
+          sudo systemctl stop docker.socket
+          sudo systemctl stop docker
+          
+          brew install podman
+          brew services start podman 
+          
+          echo "Expose the podman API and podman.socket"
+          podman system service --time=0 &
+
+          echo "Podman version: " $(podman info -f json | jq -r .version.Version)
+          echo "Podman rootless: " $(podman info -f json | jq -r .host.security.rootless)
+          echo "Podman sock path: " $(podman info -f json | jq -r .host.remoteSocket.path)
+          
+          echo "Podman sock path: unix://${XDG_RUNTIME_DIR}/podman/podman.sock"
+          echo "PODMAN_SOCK_PATH=${XDG_RUNTIME_DIR}/podman/podman.sock" >> $GITHUB_ENV 
+
+      - if: matrix.engine == 'podman'
+        name: Run tests using podman
+        env:
+          PODMAN_SOCK_PATH: ${{ env.PODMAN_SOCK_PATH }}
+        run: |
+          make e2e CONTAINER_ENGINE=podman DOCKER_SOCKET=$PODMAN_SOCK_PATH
+
+      - if: matrix.engine == 'docker'
+        name: Run tests using docker
         run: |
           make e2e
+
   # invoked by slash command workflow
   e2e-slash-command:
     runs-on: ubuntu-22.04
