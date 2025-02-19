@@ -1,8 +1,14 @@
 package localbuild
 
 import (
+	"bytes"
+	"code.gitea.io/sdk/gitea"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"k8s.io/apimachinery/pkg/types"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,6 +46,10 @@ const (
 	argoCDApplicationSetAnnotationKeyRefresh      = "argocd.argoproj.io/application-set-refresh"
 	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
 )
+
+type ArgocdSession struct {
+	Token string `json:"token"`
+}
 
 type LocalbuildReconciler struct {
 	client.Client
@@ -88,6 +98,48 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// likely due to ingress-nginx admission hook not ready. debug log and try again.
 			logger.V(1).Info("failed installing core package. likely not fatal. will try again", "error", instErr)
 			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
+		}
+	}
+
+	if r.Config.StaticPassword {
+		logger.V(1).Info("static password is enabled")
+
+		// Check if the Argocd Initial admin secret exists
+		argocdInitialAdminPassword, err := r.extractArgocdInitialAdminSecret(ctx)
+		if err != nil {
+			// Argocd initial admin secret is not yet available ...
+			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+		}
+
+		logger.V(1).Info("Initial argocd admin secret found ...")
+
+		// Secret containing the initial argocd password exists
+		// Lets try to update the password
+		if argocdInitialAdminPassword != "" {
+			err = r.updateArgocdPassword(ctx, argocdInitialAdminPassword)
+			if err != nil {
+				return ctrl.Result{}, err
+			} else {
+				logger.V(1).Info(fmt.Sprintf("Argocd admin password change succeeded !"))
+			}
+		}
+
+		// Check if the Gitea credentials secret exists
+		giteaAdminPassword, err := r.extractGiteaAdminSecret(ctx)
+		if err != nil {
+			// Gitea admin secret is not yet available ...
+			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+		}
+		logger.V(1).Info("Gitea admin secret found ...")
+		// Secret containing the gitea password exists
+		// Lets try to update the password
+		if giteaAdminPassword != "" {
+			err = r.updateGiteaPassword(ctx, giteaAdminPassword)
+			if err != nil {
+				return ctrl.Result{}, err
+			} else {
+				logger.V(1).Info(fmt.Sprintf("Gitea admin password change succeeded !"))
+			}
 		}
 	}
 
@@ -607,6 +659,176 @@ func (r *LocalbuildReconciler) requestArgoCDAppSetRefresh(ctx context.Context) e
 			return aErr
 		}
 	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) extractArgocdInitialAdminSecret(ctx context.Context) (string, error) {
+	sec := util.ArgocdInitialAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("initial admin secret not found")
+		}
+	}
+	return string(sec.Data["password"]), nil
+}
+
+func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (string, error) {
+	sec := util.GiteaAdminSecretObject()
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: sec.GetNamespace(),
+		Name:      sec.GetName(),
+	}, &sec)
+
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return "", fmt.Errorf("gitea admin secret not found")
+		}
+	}
+	return string(sec.Data["password"]), nil
+}
+
+func (r *LocalbuildReconciler) updateGiteaPassword(ctx context.Context, adminPassword string) error {
+	giteaBaseUrl, err := util.GiteaBaseUrl(ctx)
+	if err != nil {
+		return fmt.Errorf("generating gitea url: %w", err)
+	}
+
+	client, err := gitea.NewClient(giteaBaseUrl, gitea.SetHTTPClient(util.GetHttpClient()),
+		gitea.SetBasicAuth("giteaAdmin", adminPassword), gitea.SetContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("cannot create gitea client: %w", err)
+	}
+
+	opts := gitea.EditUserOption{
+		LoginName: "giteaAdmin",
+		Password:  util.StaticPassword,
+	}
+
+	resp, err := client.AdminEditUser("giteaAdmin", opts)
+	if err != nil {
+		return fmt.Errorf("cannot update gitea admin user. status: %d error : %w", resp.StatusCode, err)
+	}
+
+	err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.GiteaNamespace, util.GiteaAdminSecret, util.GiteaAdminName, util.StaticPassword)
+	if err != nil {
+		return fmt.Errorf("patching the gitea credentials failed : %w", err)
+	}
+	return nil
+}
+
+func (r *LocalbuildReconciler) updateArgocdPassword(ctx context.Context, adminPassword string) error {
+	argocdBaseUrl, err := util.ArgocdBaseUrl(ctx)
+	if err != nil {
+		return fmt.Errorf("Error creating argocd Url: %v\n", err)
+	}
+
+	argocdEndpoint := argocdBaseUrl + "/api/v1"
+
+	payload := map[string]string{
+		"username": "admin",
+		"password": adminPassword,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Error creating JSON payload: %v\n", err)
+	}
+
+	// Create an HTTP POST request to get the Session token
+	req, err := http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("Error creating HTTP request: %v\n", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Create an HTTP c and disable TLS verification
+	c := util.GetHttpClient()
+
+	// Send the request
+	resp, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("Error sending request: %v\n", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Error reading response body: %v\n", err)
+	}
+
+	// We got a session Token, so we can update the Argocd admin password
+	if resp.StatusCode == 200 {
+		var argocdSession ArgocdSession
+
+		err := json.Unmarshal([]byte(body), &argocdSession)
+		if err != nil {
+			return fmt.Errorf("Error unmarshalling JSON: %v", err)
+		}
+
+		payload := map[string]string{
+			"name":            "admin",
+			"currentPassword": adminPassword,
+			"newPassword":     util.StaticPassword,
+		}
+
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("Error creating JSON payload: %v\n", err)
+		}
+
+		req, err := http.NewRequest("PUT", argocdEndpoint+"/account/password", bytes.NewBuffer(payloadBytes))
+		if req != nil {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", argocdSession.Token))
+			req.Header.Set("Content-Type", "application/json")
+		}
+
+		resp, err := c.Do(req)
+		if err != nil {
+			return fmt.Errorf("Error sending request: %v\n", err)
+		}
+		defer resp.Body.Close()
+
+		// Lets checking the new admin password
+		payload = map[string]string{
+			"username": "admin",
+			"password": util.StaticPassword,
+		}
+		payloadBytes, err = json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("Error creating JSON payload: %v\n", err)
+		}
+
+		// Define the request able to verify if the username and password changed works
+		req, err = http.NewRequest("POST", argocdEndpoint+"/session", bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			return fmt.Errorf("Error creating HTTP request: %v\n", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		// Send the request
+		resp, err = c.Do(req)
+		if err != nil {
+			return fmt.Errorf("Error sending request: %v\n", err)
+		}
+		defer resp.Body.Close()
+
+		// Password verification succeeded !
+		if resp.StatusCode == 200 {
+			// Let's patch the existing secret now
+			err = util.PatchPasswordSecret(ctx, r.Client, r.Config, util.ArgocdNamespace, util.ArgocdInitialAdminSecretName, util.ArgocdAdminName, util.StaticPassword)
+			if err != nil {
+				return fmt.Errorf("patching the argocd initial secret failed : %w", err)
+			}
+			return nil
+		}
+	}
+	// No session token has been received and by consequence the admin password has not been changed
 	return nil
 }
 

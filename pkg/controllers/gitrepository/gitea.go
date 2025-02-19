@@ -3,6 +3,7 @@ package gitrepository
 import (
 	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util/files"
 	"os"
 	"path/filepath"
 
@@ -69,6 +70,7 @@ func (g *giteaProvider) getProviderCredentials(ctx context.Context, repo *v1alph
 	if !ok {
 		return gitProviderCredentials{}, fmt.Errorf("%s key not found in secret %s in %s ns", giteaAdminPasswordKey, repo.Spec.SecretRef.Name, repo.Spec.SecretRef.Namespace)
 	}
+
 	return gitProviderCredentials{
 		username: string(username),
 		password: string(password),
@@ -135,7 +137,7 @@ func writeRepoContents(repo *v1alpha1.GitRepository, dstPath string, config v1al
 		return nil
 	}
 
-	err := util.CopyDirectory(repo.Spec.Source.Path, dstPath)
+	err := files.CopyDirectory(repo.Spec.Source.Path, dstPath)
 	if err != nil {
 		return fmt.Errorf("copying files: %w", err)
 	}

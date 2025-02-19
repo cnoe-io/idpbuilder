@@ -9,11 +9,19 @@ nodes:
   - containerPort: {{ if (eq .Protocol "http")  -}} 80 {{- else -}} 443 {{- end }}
     hostPort: {{ .Port }}
     protocol: TCP
-  {{ range .ExtraPortsMapping -}}
+  - containerPort: 32222
+    hostPort: 32222
+    protocol: TCP
+  {{- range .ExtraPortsMapping }}
   - containerPort: {{ .ContainerPort }}
     hostPort: {{ .HostPort }}
     protocol: TCP
-  {{ end }}
+  {{- end }}
+{{- if .RegistryConfig }}
+  extraMounts:
+  - containerPath: /var/lib/kubelet/config.json
+    hostPath: {{ .RegistryConfig }}
+{{- end }}
 containerdConfigPatches:
 - |-
   {{ if .UsePathRouting -}}

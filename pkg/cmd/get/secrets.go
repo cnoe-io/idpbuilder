@@ -3,24 +3,21 @@ package get
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
-	"github.com/cnoe-io/idpbuilder/pkg/printer"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/printer"
+	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/spf13/cobra"
+	"io"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/util/homedir"
+	"os"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -78,7 +75,7 @@ func getSecretsE(cmd *cobra.Command, args []string) error {
 
 func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secrets := []entity.Secret{}
+	secrets := []types.Secret{}
 	secretPrinter := printer.SecretPrinter{
 		Secrets:   secrets,
 		OutWriter: outWriter,
@@ -117,7 +114,7 @@ func printAllPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient
 
 func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient client.Client, format string) error {
 	selector := labels.NewSelector()
-	secrets := []entity.Secret{}
+	secrets := []types.Secret{}
 	secretPrinter := printer.SecretPrinter{
 		OutWriter: outWriter,
 	}
@@ -165,42 +162,8 @@ func printPackageSecrets(ctx context.Context, outWriter io.Writer, kubeClient cl
 	return secretPrinter.PrintOutput(format)
 }
 
-func generateSecretTable(secretTable []entity.Secret) metav1.Table {
-	table := &metav1.Table{}
-	table.ColumnDefinitions = []metav1.TableColumnDefinition{
-		{Name: "Name", Type: "string"},
-		{Name: "Namespace", Type: "string"},
-		{Name: "Username", Type: "string"},
-		{Name: "Password", Type: "string"},
-		{Name: "Token", Type: "string"},
-		{Name: "Data", Type: "string"},
-	}
-	for _, secret := range secretTable {
-		var dataEntries []string
-
-		if !secret.IsCore {
-			for key, value := range secret.Data {
-				dataEntries = append(dataEntries, fmt.Sprintf("%s=%s", key, value))
-			}
-		}
-		dataString := strings.Join(dataEntries, ", ")
-		row := metav1.TableRow{
-			Cells: []interface{}{
-				secret.Name,
-				secret.Namespace,
-				secret.Username,
-				secret.Password,
-				secret.Token,
-				dataString,
-			},
-		}
-		table.Rows = append(table.Rows, row)
-	}
-	return *table
-}
-
-func populateSecret(s v1.Secret, isCoreSecret bool) entity.Secret {
-	secret := entity.Secret{
+func populateSecret(s v1.Secret, isCoreSecret bool) types.Secret {
+	secret := types.Secret{
 		Name:      s.Name,
 		Namespace: s.Namespace,
 	}
@@ -238,13 +201,8 @@ func getSecretsByCNOELabel(ctx context.Context, kubeClient client.Client, l labe
 	return secrets, kubeClient.List(ctx, &secrets, &opts)
 }
 
-func getSecretByName(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s := v1.Secret{}
-	return s, kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: ns}, &s)
-}
-
 func getCorePackageSecret(ctx context.Context, kubeClient client.Client, ns, name string) (v1.Secret, error) {
-	s, err := getSecretByName(ctx, kubeClient, ns, name)
+	s, err := util.GetSecretByName(ctx, kubeClient, ns, name)
 	if err != nil {
 		return v1.Secret{}, err
 	}

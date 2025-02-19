@@ -2,15 +2,15 @@ package k8s
 
 import (
 	"embed"
-	"os"
-
-	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/util/files"
+	"github.com/cnoe-io/idpbuilder/pkg/util/fs"
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func BuildCustomizedManifests(filePath, fsPath string, resourceFS embed.FS, scheme *runtime.Scheme, templateData any) ([][]byte, error) {
-	rawResources, err := util.ConvertFSToBytes(resourceFS, fsPath, templateData)
+	rawResources, err := fs.ConvertFSToBytes(resourceFS, fsPath, templateData)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func BuildCustomizedManifests(filePath, fsPath string, resourceFS embed.FS, sche
 }
 
 func BuildCustomizedObjects(filePath, fsPath string, resourceFS embed.FS, scheme *runtime.Scheme, templateData any) ([]client.Object, error) {
-	rawResources, err := util.ConvertFSToBytes(resourceFS, fsPath, templateData)
+	rawResources, err := fs.ConvertFSToBytes(resourceFS, fsPath, templateData)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func applyOverrides(filePath string, originalFiles [][]byte, scheme *runtime.Sch
 		return nil, nil, err
 	}
 
-	rendered, err := util.ApplyTemplate(customBS, templateData)
+	rendered, err := files.ApplyTemplate(customBS, templateData)
 	if err != nil {
 		return nil, nil, err
 	}

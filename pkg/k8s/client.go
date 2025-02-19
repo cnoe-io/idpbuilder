@@ -3,14 +3,24 @@ package k8s
 import (
 	"context"
 	"fmt"
-
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func GetKubeClient() (client.Client, error) {
+	conf, err := clientcmd.BuildConfigFromFlags("", filepath.Join(homedir.HomeDir(), ".kube", "config"))
+	if err != nil {
+		return nil, err
+	}
+	return client.New(conf, client.Options{Scheme: GetScheme()})
+}
 
 func EnsureObject(ctx context.Context, kubeClient client.Client, obj client.Object, namespace string) error {
 	curObj := &unstructured.Unstructured{}

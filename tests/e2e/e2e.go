@@ -17,7 +17,6 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/entity"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
 	"github.com/stretchr/testify/assert"
@@ -399,7 +398,7 @@ func GetGiteaSessionToken(ctx context.Context, auth BasicAuth, baseUrl string) (
 	httpClient := GetHttpClient()
 	sessionEP := fmt.Sprintf("%s%s", baseUrl, fmt.Sprintf(GiteaSessionEndpoint, auth.Username))
 
-	sb := []byte(fmt.Sprintf(`{"name":"%d"}`, time.Now().Unix()))
+	sb := []byte(fmt.Sprintf(`{"name":"%d", "scopes":["%s"]}`, time.Now().Unix(), gitea.AccessTokenScopeAll))
 	sessionReq, err := http.NewRequestWithContext(ctx, http.MethodPost, sessionEP, bytes.NewBuffer(sb))
 	if err != nil {
 		return "", fmt.Errorf("reating new request for session: %w", err)
@@ -436,7 +435,7 @@ func GetBasicAuth(ctx context.Context, containerEngine container.Engine, name st
 			}
 
 			out := BasicAuth{}
-			secs := make([]entity.Secret, 2)
+			secs := make([]types.Secret, 2)
 			if err = json.Unmarshal(b, &secs); err != nil {
 				lastErr = err
 				time.Sleep(httpRetryDelay)
@@ -512,4 +511,33 @@ func GetKubeClient() (client.Client, error) {
 		return nil, err
 	}
 	return client.New(conf, client.Options{Scheme: k8s.GetScheme()})
+}
+
+// login, build a test image, push, then pull.
+func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaPort string) {
+	t.Log("testing gitea container registry")
+	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	assert.NoError(t, err)
+
+	secs := make([]types.Secret, 1)
+	err = json.Unmarshal(b, &secs)
+	assert.NoError(t, err)
+
+	sec := secs[0]
+	user := sec.Username
+	pass := sec.Password
+
+	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
+	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
+
+	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
+
+	build, err := RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s build err: %s", cmd, build)
+
+	push, err := RunCommand(ctx, fmt.Sprintf("%s push %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s push err: %s", cmd, push)
+
+	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
 }

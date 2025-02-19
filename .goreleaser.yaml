@@ -5,7 +5,7 @@ before:
     - go mod tidy
 release:
   # Mark nightly build as prerelease based on tag
-  prerelease: '{{ contains .Tag "-nightly" }}'
+  prerelease: auto
 
 builds:
   - env:
@@ -26,6 +26,21 @@ builds:
     ignore:
       - goos: linux
         goarch: '386'
+brews:
+  - name: idpbuilder
+    homepage: "https://cnoe.io"
+    repository:
+      owner: cnoe-io
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TOKEN }}"
+    commit_author:
+      name: "CNOEAutomation"
+      email: "noreply@cnoe.io"
+    directory: Formula
+    install: |
+      bin.install "idpbuilder"
+    test: |
+      system "#{bin}/idpbuilder --version"
 archives:
   - format: tar.gz
     name_template: >-

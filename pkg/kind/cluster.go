@@ -5,13 +5,15 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/util/files"
+	"io"
 	"io/fs"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/go-logr/logr"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	kindv1alpha4 "sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
@@ -37,6 +39,7 @@ type Cluster struct {
 	kubeConfigPath    string
 	kindConfigPath    string
 	extraPortsMapping string
+	registryConfig    []string
 	cfg               v1alpha1.BuildCustomizationSpec
 }
 
@@ -58,6 +61,7 @@ type TemplateConfig struct {
 	v1alpha1.BuildCustomizationSpec
 	KubernetesVersion string
 	ExtraPortsMapping []PortMapping
+	RegistryConfig    string
 }
 
 //go:embed resources/*
@@ -69,7 +73,20 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	var err error
 
 	if c.kindConfigPath != "" {
-		rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
+		if strings.HasPrefix(c.kindConfigPath, "https://") || strings.HasPrefix(c.kindConfigPath, "http://") {
+			httpClient := util.GetHttpClient()
+			resp, err := httpClient.Get(c.kindConfigPath)
+			if err != nil {
+				return nil, fmt.Errorf("fetching remote kind config: %w", err)
+			}
+			defer resp.Body.Close()
+			rawConfigTempl, err = io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("reading remote kind config body: %w", err)
+			}
+		} else {
+			rawConfigTempl, err = os.ReadFile(c.kindConfigPath)
+		}
 	} else {
 		rawConfigTempl, err = fs.ReadFile(configFS, "resources/kind.yaml.tmpl")
 	}
@@ -93,11 +110,25 @@ func (c *Cluster) getConfig() ([]byte, error) {
 		}
 	}
 
+	registryConfig := ""
+	for _, s := range c.registryConfig {
+		path := os.ExpandEnv(s)
+		if _, err := os.Stat(path); err == nil {
+			registryConfig = path
+			break
+		}
+	}
+
+	if len(c.registryConfig) > 0 && registryConfig == "" {
+		return nil, errors.New("--registry-config flag used but no registry config was found")
+	}
+
 	var retBuff []byte
-	if retBuff, err = util.ApplyTemplate(rawConfigTempl, TemplateConfig{
+	if retBuff, err = files.ApplyTemplate(rawConfigTempl, TemplateConfig{
 		BuildCustomizationSpec: c.cfg,
 		KubernetesVersion:      c.kubeVersion,
 		ExtraPortsMapping:      portMappingPairs,
+		RegistryConfig:         registryConfig,
 	}); err != nil {
 		return nil, err
 	}
@@ -118,7 +149,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 	return retBuff, nil
 }
 
-func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
+func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMapping string, registryConfig []string, cfg v1alpha1.BuildCustomizationSpec, cliLogger logr.Logger) (*Cluster, error) {
 	detectOpt, err := util.DetectKindNodeProvider()
 	if err != nil {
 		return nil, err
@@ -133,6 +164,7 @@ func NewCluster(name, kubeVersion, kubeConfigPath, kindConfigPath, extraPortsMap
 		kubeVersion:       kubeVersion,
 		kubeConfigPath:    kubeConfigPath,
 		extraPortsMapping: extraPortsMapping,
+		registryConfig:    registryConfig,
 		cfg:               cfg,
 	}, nil
 }

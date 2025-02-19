@@ -1,8 +1,9 @@
-package util
+package fs
 
 import (
 	"errors"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/util/files"
 	"io"
 	"io/fs"
 	"os"
@@ -29,7 +30,7 @@ func ConvertFSToBytes(inFS FS, name string, templateData any) ([][]byte, error) 
 			return nil, err
 		}
 
-		if returnedRawResource, err := ApplyTemplate(rawResource, templateData); err == nil {
+		if returnedRawResource, err := files.ApplyTemplate(rawResource, templateData); err == nil {
 			rawResources = append(rawResources, returnedRawResource)
 		} else {
 			return nil, err
