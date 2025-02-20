@@ -32,6 +32,8 @@ jobs:
       - if: matrix.engine == 'podman'
         name: Set up Homebrew on Linux
         uses: Homebrew/actions/setup-homebrew@master
+        with:
+          stable: true
 
       - if: matrix.engine == 'podman'
         name: Remove old executable of crun, stop docker service and install podman v5
