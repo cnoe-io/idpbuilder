@@ -1,6 +1,6 @@
 //go:build e2e
 
-package docker
+package podman
 
 import (
 	"context"
@@ -16,15 +16,17 @@ import (
 	"time"
 )
 
-type DockerEngine struct {
+type PodmanEngine struct {
 	Client string
 }
 
-func (p *DockerEngine) GetClient() string {
+// Implementation of the method Getclient of the interface: container.Engine
+func (p *PodmanEngine) GetClient() string {
 	return p.Client
 }
 
-func (p *DockerEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
+// Implementation of the method RunCommand of the interface: container.Engine
+func (p *PodmanEngine) RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -39,7 +41,15 @@ func (p *DockerEngine) RunCommand(ctx context.Context, command string, timeout t
 		args = append(args, cmds[1:]...)
 	}
 
+	if cmds[1] == "login" || cmds[1] == "push" || cmds[1] == "pull" {
+		args = append(args, "--tls-verify=false")
+	}
+
 	c := exec.CommandContext(cmdCtx, binary, args...)
+
+	// DOCKER_HOST = unix:///var/run/docker.sock is needed for podman running in rootless mode
+	c.Env = append(os.Environ(), "DOCKER_HOST="+os.Getenv("DOCKER_HOST"))
+
 	b, err := c.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
@@ -48,7 +58,8 @@ func (p *DockerEngine) RunCommand(ctx context.Context, command string, timeout t
 	return b, nil
 }
 
-func (p *DockerEngine) RunIdpCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
+// Implementation of the method RunIdpCommand of the interface: container.Engine
+func (p *PodmanEngine) RunIdpCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
 	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -69,6 +80,8 @@ func (p *DockerEngine) RunIdpCommand(ctx context.Context, command string, timeou
 	} else {
 		c = exec.Command(binary, args...)
 	}
+	c.Env = append(os.Environ(), "KIND_EXPERIMENTAL_PROVIDER=podman")
+
 	b, err := c.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
@@ -77,11 +90,11 @@ func (p *DockerEngine) RunIdpCommand(ctx context.Context, command string, timeou
 	return b, nil
 }
 
-func Test_CreateDocker(t *testing.T) {
+func Test_CreateCluster(t *testing.T) {
 	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ctrl.SetLogger(logr.FromSlogHandler(slogger.Handler()))
 
-	containerEngine := &DockerEngine{Client: "docker"}
+	containerEngine := &PodmanEngine{Client: "podman"}
 	e2e.TestCreateCluster(t, containerEngine)
 	e2e.TestCreatePath(t, containerEngine)
 	e2e.TestCreatePort(t, containerEngine)
