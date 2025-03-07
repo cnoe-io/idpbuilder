@@ -8,6 +8,9 @@ nodes:
   extraPortMappings:
   - containerPort: {{ if (eq .Protocol "http")  -}} 80 {{- else -}} 443 {{- end }}
     hostPort: {{ .Port }}
+    {{- if .StaticPassword }}
+    listenAddress: "127.0.0.1"
+    {{- end }}
     protocol: TCP
   - containerPort: 32222
     hostPort: 32222
