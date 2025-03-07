@@ -20,7 +20,8 @@ spec:
                   number: 3000
             path: /v2
             pathType: Prefix
-    - host: localhost
+{{- if ne .IngressHost .Host }}
+    - host: {{ .Host }}
       http:
         paths:
           - backend:
@@ -30,6 +31,7 @@ spec:
                   number: 3000
             path: /v2
             pathType: Prefix
+{{ end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -53,7 +55,8 @@ spec:
                   number: 3000
             path: /v2/gitea(/|$)(.*)
             pathType: ImplementationSpecific
-    - host: localhost
+{{- if ne .IngressHost .Host }}
+    - host: {{ .Host }}
       http:
         paths:
           - backend:
@@ -63,6 +66,7 @@ spec:
                   number: 3000
             path: /v2/gitea(/|$)(.*)
             pathType: ImplementationSpecific
+{{ end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -86,7 +90,8 @@ spec:
                   number: 3000
             path: /gitea(/|$)(.*)
             pathType: ImplementationSpecific
-    - host: localhost
+{{- if ne .IngressHost .Host }}
+    - host: {{ .Host }}
       http:
         paths:
           - backend:
@@ -96,7 +101,8 @@ spec:
                   number: 3000
             path: /gitea(/|$)(.*)
             pathType: ImplementationSpecific
-{{ else if ( ne .Host "cnoe.localtest.me") }}
+{{ end }}
+{{ else }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -118,18 +124,8 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
-{{ end }}
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-gitea
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: "gitea.cnoe.localtest.me"
+{{- if ne .IngressHost .Host }}
+    - host: gitea.{{ .Host }}
       http:
         paths:
           - path: /
@@ -139,3 +135,5 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
+{{ end }}
+{{ end }}

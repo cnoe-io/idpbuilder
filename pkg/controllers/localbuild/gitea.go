@@ -157,7 +157,7 @@ func (r *LocalbuildReconciler) setGiteaToken(ctx context.Context, secret corev1.
 // gitea URL reachable within the cluster with proper coredns config. Mainly for argocd
 func giteaInternalBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
 	if config.UsePathRouting {
-		return fmt.Sprintf(util.GiteaSvcURL, config.Protocol, "", config.Host, config.Port, "/gitea")
+		return fmt.Sprintf(util.GiteaURLTempl, config.Protocol, "", config.Host, config.Port, "/gitea")
 	}
-	return fmt.Sprintf(util.GiteaSvcURL, config.Protocol, "gitea.", config.Host, config.Port, "")
+	return fmt.Sprintf(util.GiteaURLTempl, config.Protocol, "gitea.", config.Host, config.Port, "")
 }

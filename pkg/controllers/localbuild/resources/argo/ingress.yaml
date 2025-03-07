@@ -22,7 +22,8 @@ spec:
                 name: argocd-server
                 port:
                   name: http
-    - host: localhost
+{{- if ne .IngressHost .Host }}
+    - host: {{ .Host }}
       http:
         paths:
           - path: /argocd(/|$)(.*)
@@ -32,7 +33,7 @@ spec:
                 name: argocd-server
                 port:
                   name: http
-
+{{ end }}
 {{- else -}}
 ---
 apiVersion: networking.k8s.io/v1
@@ -56,4 +57,16 @@ spec:
                 name: argocd-server
                 port:
                   name: https
+{{- if ne .IngressHost .Host }}
+    - host: argocd.{{ .Host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  name: https
+{{ end }}
 {{ end }}
