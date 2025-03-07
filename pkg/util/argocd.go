@@ -12,7 +12,8 @@ const (
 	ArgocdInitialAdminSecretName = "argocd-initial-admin-secret"
 	ArgocdAdminName              = "admin"
 	ArgocdNamespace              = "argocd"
-	ArgocdIngressURL             = "%s://argocd.cnoe.localtest.me:%s"
+	ArgocdIngressURL             = "%s://argocd.%s:%s"
+	PathArgocdIngressURL         = "%s://%s:%s/%s"
 )
 
 func ArgocdBaseUrl(ctx context.Context) (string, error) {
@@ -20,7 +21,10 @@ func ArgocdBaseUrl(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error fetching idp config: %s", err)
 	}
-	return fmt.Sprintf(ArgocdIngressURL, idpConfig.Protocol, idpConfig.Port), nil
+	if idpConfig.UsePathRouting {
+		return fmt.Sprintf(PathArgocdIngressURL, idpConfig.Protocol, idpConfig.Host, idpConfig.Port, "/argocd"), nil
+	}
+	return fmt.Sprintf(ArgocdIngressURL, idpConfig.Protocol, idpConfig.Host, idpConfig.Port), nil
 }
 
 func ArgocdInitialAdminSecretObject() corev1.Secret {
