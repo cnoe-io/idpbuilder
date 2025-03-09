@@ -63,18 +63,17 @@ func populateClusterList() ([]idpTypes.Cluster, error) {
 		return nil, err
 	}
 
-	kubeConfig, err := helpers.GetKubeConfig()
+	kubeConfig, err := util.GetKubeConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Check if we need it or not like also if the new code handle the kubeconfig path passed as parameter
-	_, err = helpers.GetKubeClient(kubeConfig)
+	_, err = util.GetKubeClient(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := helpers.LoadKubeConfig()
+	config, err := util.LoadKubeConfig()
 	if err != nil {
 		//logger.Error(err, "failed to load the kube config.")
 		return nil, err

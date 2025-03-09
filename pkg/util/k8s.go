@@ -1,8 +1,8 @@
-package helpers
+package util
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -13,7 +13,6 @@ import (
 
 var (
 	KubeConfigPath string
-	scheme         *runtime.Scheme
 )
 
 func GetKubeConfigPath() string {
@@ -42,7 +41,7 @@ func GetKubeConfig() (*rest.Config, error) {
 }
 
 func GetKubeClient(kubeConfig *rest.Config) (client.Client, error) {
-	kubeClient, err := client.New(kubeConfig, client.Options{Scheme: scheme})
+	kubeClient, err := client.New(kubeConfig, client.Options{Scheme: k8s.GetScheme()})
 	if err != nil {
 		return nil, fmt.Errorf("Error creating kubernetes client: %w", err)
 	}
