@@ -21,11 +21,7 @@ const (
 	GiteaAdminName           = "giteaAdmin"
 	GiteaAdminTokenName      = "admin"
 	GiteaAdminTokenFieldName = "token"
-	// this is the URL accessible outside cluster. resolves to localhost
-	GiteaIngressURL = "%s://gitea.cnoe.localtest.me:%s"
-	// this is the URL accessible within cluster for ArgoCD to fetch resources.
-	// resolves to cluster ip
-	GiteaSvcURL = "%s://%s%s:%s%s"
+	GiteaURLTempl            = "%s://%s%s:%s%s"
 )
 
 func GiteaAdminSecretObject() corev1.Secret {
@@ -118,5 +114,8 @@ func GiteaBaseUrl(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error fetching idp config: %s", err)
 	}
-	return fmt.Sprintf(GiteaIngressURL, idpConfig.Protocol, idpConfig.Port), nil
+	if idpConfig.UsePathRouting {
+		return fmt.Sprintf(GiteaURLTempl, idpConfig.Protocol, "", idpConfig.Host, idpConfig.Port, "/gitea"), nil
+	}
+	return fmt.Sprintf(GiteaURLTempl, idpConfig.Protocol, "gitea.", idpConfig.Host, idpConfig.Port, ""), nil
 }
