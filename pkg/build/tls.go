@@ -201,6 +201,9 @@ func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubecli
 			fmt.Sprintf("*.%s", config.Host),
 		}
 	}
+	if config.IngressHost != config.Host {
+		sans = append(sans, config.IngressHost, fmt.Sprintf("*.%s", config.IngressHost))
+	}
 
 	logger.V(1).Info("Creating/getting certificate", "host", config.Host, "sans", sans)
 	cert, privateKey, err := getOrCreateIngressCertificateAndKey(ctx, kubeclient, globals.SelfSignedCertSecretName, globals.NginxNamespace, sans)
