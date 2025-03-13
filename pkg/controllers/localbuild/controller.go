@@ -115,7 +115,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// Secret containing the initial argocd password exists
 		// Lets try to update the password
-		if argocdInitialAdminPassword != "" {
+		if argocdInitialAdminPassword != "" && argocdInitialAdminPassword != util.StaticPassword {
 			err = r.updateArgocdPassword(ctx, argocdInitialAdminPassword)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -133,7 +133,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		logger.V(1).Info("Gitea admin secret found ...")
 		// Secret containing the gitea password exists
 		// Lets try to update the password
-		if giteaAdminPassword != "" {
+		if giteaAdminPassword != "" && giteaAdminPassword != util.StaticPassword {
 			err = r.updateGiteaPassword(ctx, giteaAdminPassword)
 			if err != nil {
 				return ctrl.Result{}, err
