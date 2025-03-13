@@ -108,7 +108,7 @@ func TestCreateCluster(t *testing.T, containerEngine container.Engine) {
 	defer cleanUp(t, containerEngine)
 
 	t.Log("running idpbuilder create")
-	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --recreate", IdpbuilderBinaryLocation), 0)
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s create --recreate", IdpbuilderBinaryLocation), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
@@ -130,7 +130,7 @@ func TestCreatePath(t *testing.T, containerEngine container.Engine) {
 	defer cleanUp(t, containerEngine)
 
 	t.Log("running idpbuilder create --use-path-routing")
-	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --use-path-routing", IdpbuilderBinaryLocation), 0)
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s create --use-path-routing", IdpbuilderBinaryLocation), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
@@ -152,7 +152,7 @@ func TestCreatePort(t *testing.T, containerEngine container.Engine) {
 
 	port := "2443"
 	t.Logf("running idpbuilder create --port %s", port)
-	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s create --port %s", IdpbuilderBinaryLocation, port), 0)
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s create --port %s", IdpbuilderBinaryLocation, port), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
@@ -173,7 +173,7 @@ func TestCustomPkg(t *testing.T, containerEngine container.Engine) {
 	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
 
 	t.Log(fmt.Sprintf("running %s", cmdString))
-	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s %s", IdpbuilderBinaryLocation, cmdString), 0)
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s %s", IdpbuilderBinaryLocation, cmdString), 0)
 	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
 
 	kubeClient, err := GetKubeClient()
@@ -212,7 +212,7 @@ func TestCustomPkg(t *testing.T, containerEngine container.Engine) {
 // login, build a test image, push, then pull.
 func TestGiteaRegistry(ctx context.Context, t *testing.T, containerEngine container.Engine, giteaHost, giteaPort string) {
 	t.Log("testing gitea container registry")
-	b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
 	assert.NoError(t, err)
 
 	secs := make([]types.Secret, 1)
@@ -428,7 +428,7 @@ func GetBasicAuth(ctx context.Context, containerEngine container.Engine, name st
 		case <-ctx.Done():
 			return BasicAuth{}, ctx.Err()
 		default:
-			b, err := containerEngine.RunIdpCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
+			b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
 			if err != nil {
 				lastErr = err
 				time.Sleep(httpRetryDelay)
