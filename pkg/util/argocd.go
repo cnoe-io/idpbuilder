@@ -3,7 +3,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"github.com/cnoe-io/idpbuilder/pkg/util/idp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -16,7 +15,7 @@ const (
 )
 
 func ArgocdBaseUrl(ctx context.Context) (string, error) {
-	idpConfig, err := idp.GetConfig(ctx)
+	idpConfig, err := GetConfig(ctx)
 	if err != nil {
 		return "", fmt.Errorf("error fetching idp config: %s", err)
 	}
