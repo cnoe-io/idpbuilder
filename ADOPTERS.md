@@ -8,7 +8,7 @@ This document lists the organizations that use Idpbuilder based on public inform
 If any organization would like to get added or removed please make a pull request by following these guidelines:
 
 * Please don't include your organization's logo or other trademarked material
-* Add a reference (link to a public blog post, video, slides, etc) mentioning that Idpbuilder is used
+* Add a short description on how your organization is benefiting from using idpbuilder,  is encourage to also include link to a public (blog post, video, slides, git repo, etc.) that shows or mentions how Idpbuilder is used
 
 | Organization   | Reference                                                                           |
 |----------------|-------------------------------------------------------------------------------------|
