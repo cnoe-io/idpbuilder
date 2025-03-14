@@ -74,6 +74,27 @@ All ArgoCD applications should be synced and healthy. You can check them in the 
 kubectl get application -n argocd
 ```
 
+### Upgrading a core component
+
+The process to upgrade a core component: Argo CD, Gitea, Ingress is not so complex but requires to take care about the following points:
+
+- Select the core component to be upgraded and get its current version. See the kustomization file under the `hack/<core-component>` folder and the resource YAML file of the resources to be installed
+- Create a ticket describing the new sibling version of the core component to be bumped
+- Bump the version part of the kustomization file. Example for argocd: https://github.com/cnoe-io/idpbuilder/blob/main/hack/argo-cd/kustomization.yaml#L4
+- Review the patched files to see if changes are needed (new file(s), files to be deleted or files to be changed). Example for argocd: https://github.com/cnoe-io/idpbuilder/blob/main/hack/argo-cd/kustomization.yaml#L7-L16
+- Generate the new resources YAML files using the bash script: `generate-manifests.sh`
+- Build a new idpbuilder binary
+- Test it locally like also using the e2e integration test: `make e2e`
+- Review the test cases if changes are needed too
+- Update the documentation to detail which version of the core component has been bumped like also for which version (or range of versions) of idpbuilder the new version of the component apply for.
+
+**NOTES**: 
+- For some components, it could be possible that you also have to upgrade the version of the go library within the `go.mod` file. Example for gitea: `code.gitea.io/sdk/gitea v0.16.0` 
+- For Argo CD, we use a separate GitHub project (till a better solution is implemented) packaging a subset of the Argo CD API. Review carefully this file please: https://github.com/cnoe-io/argocd-api?tab=readme-ov-file#read-this-first
+
+
+
+
 ## Preparing a Pull Request
 
 This repository requires a [Developer Certificate of Origin (DCO)](https://developercertificate.org/) signature. 
