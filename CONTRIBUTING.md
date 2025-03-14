@@ -92,9 +92,6 @@ The process to upgrade a core component: Argo CD, Gitea, Ingress is not so compl
 - For some components, it could be possible that you also have to upgrade the version of the go library within the `go.mod` file. Example for gitea: `code.gitea.io/sdk/gitea v0.16.0` 
 - For Argo CD, we use a separate GitHub project (till a better solution is implemented) packaging a subset of the Argo CD API. Review carefully this file please: https://github.com/cnoe-io/argocd-api?tab=readme-ov-file#read-this-first
 
-
-
-
 ## Preparing a Pull Request
 
 This repository requires a [Developer Certificate of Origin (DCO)](https://developercertificate.org/) signature. 
