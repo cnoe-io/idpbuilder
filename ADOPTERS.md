@@ -12,4 +12,4 @@ If any organization would like to get added or removed please make a pull reques
 
 | Organization   | Usage                                                                           |
 |----------------|-------------------------------------------------------------------------------------|
-| New-York Times | <https://thenewstack.io/building-an-idp-with-help-from-the-open-source-cnoe-framework/>                                   |
+| [The New York Times](https://www.nytimes.com) | <https://thenewstack.io/building-an-idp-with-help-from-the-open-source-cnoe-framework/>                                   |
