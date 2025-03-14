@@ -4,7 +4,7 @@ ADOPTERS
 PUBLIC REFERENCES
 -----------------
 
-This document lists the organizations that use Idpbuilder based on public information available in blog posts and videos.
+This document lists the organizations that use Idpbuilder
 If any organization would like to get added or removed please make a pull request by following these guidelines:
 
 *  For the organization column make the organization name a link that points to the orgs website if available. Please don't include your organization's logo or other trademarked material.
