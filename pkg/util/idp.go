@@ -1,18 +1,23 @@
-package idp
+package util
 
 import (
 	"context"
+	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func GetConfig(ctx context.Context) (v1alpha1.BuildCustomizationSpec, error) {
 	b := v1alpha1.BuildCustomizationSpec{}
 
-	kubeClient, err := k8s.GetKubeClient()
+	kubeConfig, err := GetKubeConfig()
 	if err != nil {
-		return b, err
+		return b, fmt.Errorf("getting kube config: %w", err)
+	}
+
+	kubeClient, err := GetKubeClient(kubeConfig)
+	if err != nil {
+		return b, fmt.Errorf("getting kube client: %w", err)
 	}
 
 	list, err := getLocalBuild(ctx, kubeClient)

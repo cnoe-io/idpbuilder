@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
-	"github.com/cnoe-io/idpbuilder/pkg/build"
-	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer"
 	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
@@ -15,9 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/client-go/util/homedir"
 	"os"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,22 +42,13 @@ var (
 func getSecretsE(cmd *cobra.Command, args []string) error {
 	ctx, ctxCancel := context.WithCancel(cmd.Context())
 	defer ctxCancel()
-	kubeConfigPath := filepath.Join(homedir.HomeDir(), ".kube", "config")
 
-	opts := build.NewBuildOptions{
-		KubeConfigPath: kubeConfigPath,
-		Scheme:         k8s.GetScheme(),
-		CancelFunc:     ctxCancel,
-	}
-
-	b := build.NewBuild(opts)
-
-	kubeConfig, err := b.GetKubeConfig()
+	kubeConfig, err := util.GetKubeConfig()
 	if err != nil {
 		return fmt.Errorf("getting kube config: %w", err)
 	}
 
-	kubeClient, err := b.GetKubeClient(kubeConfig)
+	kubeClient, err := util.GetKubeClient(kubeConfig)
 	if err != nil {
 		return fmt.Errorf("getting kube client: %w", err)
 	}
