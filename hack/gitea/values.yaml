@@ -34,6 +34,11 @@ gitea:
       SKIP_TLS_VERIFY: true
 
 service:
+  http:
+    type: NodePort
+    port: 3000
+    nodePort: 32223
+    externalTrafficPolicy: Local
   ssh:
     type: NodePort
     port: 32222
