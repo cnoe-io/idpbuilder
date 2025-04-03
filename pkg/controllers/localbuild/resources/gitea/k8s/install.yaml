@@ -374,11 +374,12 @@ metadata:
   annotations:
     {}
 spec:
-  type: ClusterIP
-  clusterIP: None
+  type: NodePort
+  externalTrafficPolicy: Local
   ports:
   - name: http
     port: 3000
+    nodePort: 32223
     targetPort: 
   selector:
     app.kubernetes.io/name: gitea
