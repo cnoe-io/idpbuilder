@@ -4,10 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/pkg/build/coredns"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	"github.com/cnoe-io/idpbuilder/pkg/util/files"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/go-logr/logr"
@@ -15,6 +21,8 @@ import (
 	kindv1alpha4 "sigs.k8s.io/kind/pkg/apis/config/v1alpha4"
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
+	kindcmd "sigs.k8s.io/kind/pkg/cmd"
+	kindload "sigs.k8s.io/kind/pkg/cmd/kind"
 	kindexec "sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/yaml"
 )
@@ -167,6 +175,74 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 	}
 	setupLog.Info("Done creating cluster", "cluster", c.name)
 
+	return nil
+}
+
+// Import the needed images for the base install into the kind nodes
+func (c *Cluster) ImportImages(ctx context.Context) error {
+	scheme := k8s.GetScheme()
+	// Does not currently support core package customization
+	argoManifests, err := localbuild.RawArgocdInstallResources(c.cfg, v1alpha1.PackageCustomization{}, scheme)
+	if err != nil {
+		return err
+	}
+	argoObjects, err := k8s.ConvertRawResourcesToObjects(scheme, argoManifests)
+	if err != nil {
+		return err
+	}
+	giteaManifests, err := localbuild.RawGiteaInstallResources(c.cfg, v1alpha1.PackageCustomization{}, scheme)
+	if err != nil {
+		return err
+	}
+	giteaObjects, err := k8s.ConvertRawResourcesToObjects(scheme, giteaManifests)
+	if err != nil {
+		return err
+	}
+	nginxManifests, err := localbuild.RawNginxInstallResources(c.cfg, v1alpha1.PackageCustomization{}, scheme)
+	if err != nil {
+		return err
+	}
+	nginxObjects, err := k8s.ConvertRawResourcesToObjects(scheme, nginxManifests)
+	if err != nil {
+		return err
+	}
+
+	corednsObjects, err := k8s.BuildCustomizedObjects("", coredns.CoreDNSTemplatePath, coredns.Templates, scheme, c.cfg)
+	images := []string{}
+	images = append(images, k8s.ObjectsImages(argoObjects)...)
+	images = append(images, k8s.ObjectsImages(giteaObjects)...)
+	images = append(images, k8s.ObjectsImages(nginxObjects)...)
+	images = append(images, k8s.ObjectsImages(corednsObjects)...)
+	uniqueImages := []string{}
+	// Deduplicate images and remove images referenced by digest
+	for _, i := range images {
+		// Skip images referenced by digest https://github.com/kubernetes-sigs/kind/issues/2394
+		if strings.Contains(i, "@sha256") {
+			continue
+		}
+		if !slices.Contains(uniqueImages, i) {
+			uniqueImages = append(uniqueImages, i)
+		}
+	}
+
+	var wg sync.WaitGroup
+	for _, image := range uniqueImages {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			setupLog.Info(fmt.Sprintf("Importing %s from host to kind node", image))
+			klog := kindcmd.NewLogger()
+			importCmd := kindload.NewCommand(klog, kindcmd.StandardIOStreams())
+			importCmd.SetArgs([]string{"load", "docker-image", image, "--name", c.name, "-q"})
+			err := importCmd.Execute()
+			if err != nil {
+				setupLog.Info(fmt.Sprintf("Failed to import %s: %s", image, err))
+				return
+			}
+			setupLog.Info(fmt.Sprintf("Imported %s", image))
+		}()
+	}
+	wg.Wait()
 	return nil
 }
 
