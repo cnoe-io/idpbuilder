@@ -53,10 +53,7 @@ func PatchPasswordSecret(ctx context.Context, kubeClient client.Client, config v
 
 	if strings.Contains(secretName, "gitea") {
 		// We should recreate a token as user/password changed
-		giteaUrl, err := GiteaBaseUrl(ctx)
-		if err != nil {
-			return fmt.Errorf("getting giteaurl: %w", err)
-		}
+		giteaUrl := GiteaBaseUrl(config)
 
 		t, err := GetGiteaToken(ctx, giteaUrl, string(username), string(pass))
 		if err != nil {
@@ -108,13 +105,9 @@ func GetGiteaToken(ctx context.Context, baseUrl, username, password string) (str
 	return token.Token, nil
 }
 
-func GiteaBaseUrl(ctx context.Context) (string, error) {
-	idpConfig, err := GetConfig(ctx)
-	if err != nil {
-		return "", fmt.Errorf("error fetching idp config: %s", err)
+func GiteaBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
+	if config.UsePathRouting {
+		return fmt.Sprintf(GiteaURLTempl, config.Protocol, "", config.Host, config.Port, "/gitea")
 	}
-	if idpConfig.UsePathRouting {
-		return fmt.Sprintf(GiteaURLTempl, idpConfig.Protocol, "", idpConfig.Host, idpConfig.Port, "/gitea"), nil
-	}
-	return fmt.Sprintf(GiteaURLTempl, idpConfig.Protocol, "gitea.", idpConfig.Host, idpConfig.Port, ""), nil
+	return fmt.Sprintf(GiteaURLTempl, config.Protocol, "gitea.", config.Host, config.Port, "")
 }

@@ -50,10 +50,12 @@ func printPackages(ctx context.Context, outWriter io.Writer, kubeClient client.C
 		return fmt.Errorf("getting namespace: %w", err)
 	}
 
-	argocdBaseUrl, err := util.ArgocdBaseUrl(ctx)
+	config, err := util.GetConfig(ctx)
 	if err != nil {
-		return fmt.Errorf("Error creating argocd Url: %v\n", err)
+		return fmt.Errorf("getting idp config: %w", err)
 	}
+
+	argocdBaseUrl := util.ArgocdBaseUrl(config)
 
 	if len(packages) == 0 {
 		// Get all custom packages
