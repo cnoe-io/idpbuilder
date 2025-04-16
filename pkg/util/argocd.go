@@ -1,8 +1,8 @@
 package util
 
 import (
-	"context"
 	"fmt"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,15 +14,11 @@ const (
 	ArgocdURLTempl               = "%s://%s%s:%s%s"
 )
 
-func ArgocdBaseUrl(ctx context.Context) (string, error) {
-	idpConfig, err := GetConfig(ctx)
-	if err != nil {
-		return "", fmt.Errorf("error fetching idp config: %s", err)
+func ArgocdBaseUrl(config v1alpha1.BuildCustomizationSpec) string {
+	if config.UsePathRouting {
+		return fmt.Sprintf(ArgocdURLTempl, config.Protocol, "", config.Host, config.Port, "/argocd")
 	}
-	if idpConfig.UsePathRouting {
-		return fmt.Sprintf(ArgocdURLTempl, idpConfig.Protocol, "", idpConfig.Host, idpConfig.Port, "/argocd"), nil
-	}
-	return fmt.Sprintf(ArgocdURLTempl, idpConfig.Protocol, "argocd.", idpConfig.Host, idpConfig.Port, ""), nil
+	return fmt.Sprintf(ArgocdURLTempl, config.Protocol, "argocd.", config.Host, config.Port, "")
 }
 
 func ArgocdInitialAdminSecretObject() corev1.Secret {
