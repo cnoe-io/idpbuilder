@@ -693,10 +693,7 @@ func (r *LocalbuildReconciler) extractGiteaAdminSecret(ctx context.Context) (str
 }
 
 func (r *LocalbuildReconciler) updateGiteaPassword(ctx context.Context, adminPassword string) error {
-	giteaBaseUrl, err := util.GiteaBaseUrl(ctx)
-	if err != nil {
-		return fmt.Errorf("generating gitea url: %w", err)
-	}
+	giteaBaseUrl := util.GiteaBaseUrl(r.Config)
 
 	client, err := gitea.NewClient(giteaBaseUrl, gitea.SetHTTPClient(util.GetHttpClient()),
 		gitea.SetBasicAuth("giteaAdmin", adminPassword), gitea.SetContext(ctx),
@@ -723,10 +720,7 @@ func (r *LocalbuildReconciler) updateGiteaPassword(ctx context.Context, adminPas
 }
 
 func (r *LocalbuildReconciler) updateArgocdPassword(ctx context.Context, adminPassword string) error {
-	argocdBaseUrl, err := util.ArgocdBaseUrl(ctx)
-	if err != nil {
-		return fmt.Errorf("Error creating argocd Url: %v\n", err)
-	}
+	argocdBaseUrl := util.ArgocdBaseUrl(r.Config)
 
 	argocdEndpoint := argocdBaseUrl + "/api/v1"
 
