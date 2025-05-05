@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.10.7/manifests/install.yaml
-  - argocd-rbac-dev.yaml
 
 patches:
   - path: dex-server.yaml
@@ -14,3 +13,4 @@ patches:
   - path: argocd-repo-server.yaml
   - path: argocd-redis.yaml
   - path: argocd-tls-certs-cm.yaml.tmpl
+  - path: argocd-rbac-dev.yaml
