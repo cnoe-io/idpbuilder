@@ -125,21 +125,49 @@ func (c *Cluster) Exists() (bool, error) {
 	return false, nil
 }
 
-func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
-	clusterExitsts, err := c.Exists()
+// getClusterHealthError returns a user-friendly error message for cluster health issues
+func (c *Cluster) getClusterHealthError(context string) error {
+	return fmt.Errorf(`%s: cluster %s is not healthy.
+
+To fix this:
+  1. Delete the existing cluster: kind delete cluster --name %s
+  2. Recreate the cluster: idpbuilder create --name %s
+
+For more options, run: idpbuilder create --help
+
+If the problem persists, check the cluster logs with: kind export logs --name %s
+`,
+		context, c.name, c.name, c.name, c.name)
+}
+
+// isHealthy checks if the cluster is in a healthy state by attempting to list nodes
+func (c *Cluster) isHealthy() bool {
+	nodes, err := c.provider.ListNodes(c.name)
 	if err != nil {
-		return err
+		setupLog.V(1).Info("Failed to list cluster nodes", "cluster", c.name, "error", err)
+		return false
+	}
+	return len(nodes) > 0
+}
+
+func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
+	clusterExists, err := c.Exists()
+	if err != nil {
+		return fmt.Errorf("checking if cluster exists: %w", err)
 	}
 
-	if clusterExitsts {
+	if clusterExists {
 		if recreate {
 			setupLog.Info("Existing cluster found. Deleting.", "cluster", c.name)
 			err := c.provider.Delete(c.name, "")
 			if err != nil {
-				return fmt.Errorf("deleting cluster %w", err)
+				return fmt.Errorf("deleting cluster: %w", err)
 			}
 		} else {
 			setupLog.Info("Cluster already exists", "cluster", c.name)
+			if !c.isHealthy() {
+				return c.getClusterHealthError("Cluster exists but is not healthy")
+			}
 			return nil
 		}
 	}
@@ -171,7 +199,16 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 }
 
 func (c *Cluster) ExportKubeConfig(name string, internal bool) error {
-	return c.provider.ExportKubeConfig(name, c.kubeConfigPath, internal)
+	// Verify cluster is healthy before exporting kubeconfig
+	if !c.isHealthy() {
+		return c.getClusterHealthError("Cannot export kubeconfig")
+	}
+
+	err := c.provider.ExportKubeConfig(name, c.kubeConfigPath, internal)
+	if err != nil {
+		return fmt.Errorf("%w\n%w", err, c.getClusterHealthError("Failed to export kubeconfig"))
+	}
+	return nil
 }
 
 func (c *Cluster) ensureCorrectConfig(in []byte) (kindv1alpha4.Cluster, error) {
