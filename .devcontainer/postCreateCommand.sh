@@ -20,3 +20,14 @@ mkdir $HOME/.kube
 echo "source <(kubectl completion bash)" >> $HOME/.bashrc
 echo "alias k=kubectl" >> $HOME/.bashrc
 echo "complete -F __start_kubectl k" >> $HOME/.bashrc
+
+# Configure git if environment variables are set
+if [ -n "$GIT_COMMITER_NAME" ]; then
+    echo "Configuring git user.name to: $GIT_COMMITER_NAME"
+    git config --global user.name "$GIT_COMMITER_NAME"
+fi
+
+if [ -n "$GIT_COMMITER_EMAIL" ]; then
+    echo "Configuring git user.email to: $GIT_COMMITER_EMAIL"
+    git config --global user.email "$GIT_COMMITER_EMAIL"
+fi
