@@ -73,6 +73,10 @@ endif
 ifeq ($(shell uname -m), arm64)
 	helm_arch ?= arm64
 endif
+ifeq ($(shell uname -m), aarch64)
+	helm_arch ?= arm64
+endif
+
 
 .PHONY: helm
 helm: ## Download helm if necessary
