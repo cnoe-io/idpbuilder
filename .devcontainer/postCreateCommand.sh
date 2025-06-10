@@ -31,3 +31,22 @@ if [ -n "$GIT_COMMITER_EMAIL" ]; then
     echo "Configuring git user.email to: $GIT_COMMITER_EMAIL"
     git config --global user.email "$GIT_COMMITER_EMAIL"
 fi
+
+# 1. Configure GPG agent
+mkdir -p ~/.gnupg
+echo "pinentry-program /usr/bin/pinentry" > ~/.gnupg/gpg-agent.conf
+echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+
+# 2. Configure GPG client
+echo "use-agent" > ~/.gnupg/gpg.conf
+echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+
+# 3. Restart GPG agent and set environment
+gpgconf --kill gpg-agent
+export GPG_TTY=$(tty)
+echo 'export GPG_TTY=$(tty)' >> ~/.bashrc
+
+# 4. Configure Git for GPG signing
+git config --global commit.gpgsign true
+git config --global tag.gpgsign true
+git config --global gpg.program gpg
