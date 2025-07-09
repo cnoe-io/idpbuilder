@@ -30,6 +30,13 @@ curl -LO  https://github.com/cnoe-io/idpbuilder/releases/download/$idpbuilder_la
 tar xvzf idpbuilder-$os-$arch.tar.gz
 ```
 
+Download latest extract idpbuilder binary
+```bash
+cd ~/bin
+curl -vskL -O https://github.com/cnoe-io/idpbuilder/releases/latest/download/idpbuilder-linux-amd64.tar.gz
+tar xvzf idpbuilder-linux-amd64.tar.gz idpbuilder
+```
+
 You can then run idpbuilder with the create argument to spin up your CNOE IDP:
 
 ```bash
