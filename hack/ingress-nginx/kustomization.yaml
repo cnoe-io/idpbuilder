@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.2/deploy/static/provider/kind/deploy.yaml
+  - https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.13.0/deploy/static/provider/kind/deploy.yaml
 
 patches:
   - path: deployment-ingress-nginx.yaml
@@ -17,3 +17,22 @@ patches:
       kind: Kustomization
       metadata:
         name: ingress-nginx-controller
+  # ArgoCD has poor support for ttlSecondsAfterFinished and it shouldnt be essential to clean these up
+  - target:
+      group: batch
+      version: v1
+      kind: Job
+      name: ingress-nginx-admission-create
+      namespace: ingress-nginx
+    patch: |
+      - op: remove
+        path: /spec/ttlSecondsAfterFinished
+  - target:
+      group: batch
+      version: v1
+      kind: Job
+      name: ingress-nginx-admission-patch
+      namespace: ingress-nginx
+    patch: |
+      - op: remove
+        path: /spec/ttlSecondsAfterFinished
