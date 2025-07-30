@@ -1,4 +1,4 @@
-redis-cluster:
+valkey-cluster:
   enabled: false
 postgresql:
   enabled: false

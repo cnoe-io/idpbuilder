@@ -3,7 +3,7 @@ set -e
 
 INSTALL_YAML="pkg/controllers/localbuild/resources/gitea/k8s/install.yaml"
 GITEA_DIR="./hack/gitea"
-CHART_VERSION="10.6.0"
+CHART_VERSION="12.1.2"
 
 echo "# GITEA INSTALL RESOURCES" >${INSTALL_YAML}
 echo "# This file is auto-generated with 'hack/gitea/generate-manifests.sh'" >>${INSTALL_YAML}
