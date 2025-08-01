@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -20,6 +19,7 @@ import (
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
+	"github.com/cnoe-io/idpbuilder/tests/e2e/container"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
@@ -74,31 +74,240 @@ func GetHttpClient() *http.Client {
 	return &http.Client{Transport: tr}
 }
 
-func TestCoreEndpoints(ctx context.Context, t *testing.T, argoBaseUrl, giteaBaseUrl string) {
-	TestArgoCDEndpoints(ctx, t, argoBaseUrl)
-	TestGiteaEndpoints(ctx, t, giteaBaseUrl)
+func TestCoreEndpoints(ctx context.Context, t *testing.T, containerEngine container.Engine, argoBaseUrl, giteaBaseUrl string) {
+	TestArgoCDEndpoints(ctx, t, containerEngine, argoBaseUrl)
+	TestGiteaEndpoints(ctx, t, containerEngine, giteaBaseUrl)
 }
 
-func RunCommand(ctx context.Context, command string, timeout time.Duration) ([]byte, error) {
-	cmdCtx, cancel := context.WithTimeout(ctx, timeout)
+func cleanUp(t *testing.T, containerEngine container.Engine) {
+	t.Log("cleaning up environment")
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	cmds := strings.Split(command, " ")
-	if len(cmds) == 0 {
-		return nil, fmt.Errorf("supply at least one command")
-	}
-	binary := cmds[0]
-	args := make([]string, 0, len(cmds)-1)
-	if len(cmds) > 1 {
-		args = append(args, cmds[1:]...)
-	}
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s ps -aqf name=localdev-control-plane", containerEngine.GetClient()), 10*time.Second)
+	assert.NoError(t, err, fmt.Sprintf("error while listing docker containers: %s, %s", err, b))
 
-	c := exec.CommandContext(cmdCtx, binary, args...)
-	b, err := c.CombinedOutput()
+	conts := strings.TrimSpace(string(b))
+	if len(conts) == 0 {
+		return
+	}
+	b, err = containerEngine.RunCommand(ctx, fmt.Sprintf("%s container rm -f %s", containerEngine.GetClient(), conts), 60*time.Second)
+	assert.NoError(t, err, fmt.Sprintf("error while removing docker containers: %s, %s", err, b))
+
+	b, err = containerEngine.RunCommand(ctx, fmt.Sprintf("%s system prune -f", containerEngine.GetClient()), 60*time.Second)
+	assert.NoError(t, err, fmt.Sprintf("error while pruning system: %s, %s", err, b))
+
+	b, err = containerEngine.RunCommand(ctx, fmt.Sprintf("%s volume prune -f", containerEngine.GetClient()), 60*time.Second)
+	assert.NoError(t, err, fmt.Sprintf("error while pruning volumes: %s, %s", err, b))
+	t.Log("finished cleaning up container engine environment")
+}
+
+// test idpbuilder create
+func TestCreateCluster(t *testing.T, containerEngine container.Engine) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	defer cleanUp(t, containerEngine)
+
+	t.Log("running idpbuilder create")
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s create --recreate", IdpbuilderBinaryLocation), 0)
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+
+	kubeClient, err := GetKubeClient()
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
+
+	TestArgoCDApps(ctx, t, kubeClient, CorePackages)
+
+	argoBaseUrl := fmt.Sprintf("https://argocd.%s:%s", DefaultBaseDomain, DefaultPort)
+	giteaBaseUrl := fmt.Sprintf("https://gitea.%s:%s", DefaultBaseDomain, DefaultPort)
+	TestCoreEndpoints(ctx, t, containerEngine, argoBaseUrl, giteaBaseUrl)
+
+	TestGiteaRegistry(ctx, t, containerEngine, fmt.Sprintf("gitea.%s", DefaultBaseDomain), DefaultPort)
+}
+
+// test idpbuilder create --use-path-routing
+func TestCreatePath(t *testing.T, containerEngine container.Engine) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	defer cleanUp(t, containerEngine)
+
+	t.Log("running idpbuilder create --use-path-routing")
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s create --use-path-routing", IdpbuilderBinaryLocation), 0)
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+
+	kubeClient, err := GetKubeClient()
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
+
+	TestArgoCDApps(ctx, t, kubeClient, CorePackages)
+
+	argoBaseUrl := fmt.Sprintf("https://%s:%s/argocd", DefaultBaseDomain, DefaultPort)
+	giteaBaseUrl := fmt.Sprintf("https://%s:%s/gitea", DefaultBaseDomain, DefaultPort)
+	TestCoreEndpoints(ctx, t, containerEngine, argoBaseUrl, giteaBaseUrl)
+
+	TestGiteaRegistry(ctx, t, containerEngine, DefaultBaseDomain, DefaultPort)
+}
+
+func TestCreatePort(t *testing.T, containerEngine container.Engine) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	defer cleanUp(t, containerEngine)
+
+	port := "2443"
+	t.Logf("running idpbuilder create --port %s", port)
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s create --port %s", IdpbuilderBinaryLocation, port), 0)
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+
+	kubeClient, err := GetKubeClient()
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
+
+	TestArgoCDApps(ctx, t, kubeClient, CorePackages)
+
+	argoBaseUrl := fmt.Sprintf("https://argocd.%s:%s", DefaultBaseDomain, port)
+	giteaBaseUrl := fmt.Sprintf("https://gitea.%s:%s", DefaultBaseDomain, port)
+	TestCoreEndpoints(ctx, t, containerEngine, argoBaseUrl, giteaBaseUrl)
+}
+
+func TestCustomPkg(t *testing.T, containerEngine container.Engine) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	defer cleanUp(t, containerEngine)
+
+	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir"
+
+	t.Log(fmt.Sprintf("running %s", cmdString))
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s %s", IdpbuilderBinaryLocation, cmdString), 0)
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+
+	kubeClient, err := GetKubeClient()
+
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
 	if err != nil {
-		return nil, fmt.Errorf("error while running %s: %s, %s", command, err, b)
+		assert.FailNow(t, "failed creating cluster")
 	}
 
-	return b, nil
+	TestArgoCDApps(ctx, t, kubeClient, CorePackages)
+
+	giteaBaseUrl := fmt.Sprintf("https://gitea.%s:%s", DefaultBaseDomain, DefaultPort)
+
+	expectedApps := map[string]string{
+		"my-app":  "argocd",
+		"my-app2": "argocd",
+	}
+	TestArgoCDApps(ctx, t, kubeClient, expectedApps)
+	repos, err := GetGiteaRepos(ctx, containerEngine, giteaBaseUrl)
+	assert.NoError(t, err)
+	expectedRepoNames := map[string]struct{}{
+		"idpbuilder-localdev-my-app-app1":  {},
+		"idpbuilder-localdev-my-app2-app2": {},
+	}
+
+	for i := range repos {
+		repo := repos[i]
+		_, ok := expectedRepoNames[repo.Name]
+		if ok {
+			delete(expectedRepoNames, repo.Name)
+		}
+	}
+	assert.Empty(t, expectedRepoNames)
+}
+
+// login, build a test image, push, then pull.
+func TestGiteaRegistry(ctx context.Context, t *testing.T, containerEngine container.Engine, giteaHost, giteaPort string) {
+	t.Log("testing gitea container registry")
+	b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	assert.NoError(t, err)
+
+	secs := make([]types.Secret, 1)
+	err = json.Unmarshal(b, &secs)
+	assert.NoError(t, err)
+
+	sec := secs[0]
+	user := sec.Username
+	pass := sec.Password
+
+	login, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", containerEngine.GetClient(), giteaHost, giteaPort, user, pass), 10*time.Second)
+	require.NoErrorf(t, err, "%s login err: %s", containerEngine.GetClient(), login)
+
+	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
+
+	build, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", containerEngine.GetClient(), tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s build err: %s", containerEngine.GetClient(), build)
+
+	push, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s push %s", containerEngine.GetClient(), tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s push err: %s", containerEngine.GetClient(), push)
+
+	pull, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s pull %s", containerEngine.GetClient(), tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s pull err: %s", containerEngine.GetClient(), pull)
+}
+
+func TestArgoCDApps(ctx context.Context, t *testing.T, kubeClient client.Client, apps map[string]string) {
+	done := false
+	for !done {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			for k := range apps {
+				ns := apps[k]
+				t.Logf("checking argocd app %s in %s ns", k, ns)
+				ready, argoErr := isArgoAppSyncedAndHealthy(ctx, kubeClient, k, ns)
+				if argoErr != nil {
+					t.Logf("error when checking ArgoCD app health: %s", argoErr)
+					continue
+				}
+				if ready {
+					t.Logf("app %s ready", k)
+					delete(apps, k)
+				}
+			}
+			if len(apps) != 0 {
+				t.Logf("waiting for apps to be ready")
+				time.Sleep(httpRetryDelay)
+				continue
+			}
+			done = true
+			t.Log("all argocd apps healthy")
+		}
+	}
+}
+
+func TestArgoCDEndpoints(ctx context.Context, t *testing.T, containerEngine container.Engine, baseUrl string) {
+	t.Log("testing argocd endpoints")
+	sessionURL := fmt.Sprintf("%s%s", baseUrl, ArgoCDSessionEndpoint)
+	appURL := fmt.Sprintf("%s%s", baseUrl, ArgoCDAppsEndpoint)
+
+	token, err := GetArgoCDSessionToken(ctx, containerEngine, sessionURL)
+	assert.Nil(t, err, fmt.Sprintf("getting argocd token: %v", err))
+
+	httpClient := GetHttpClient()
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, appURL, nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	var appResp ArgoCDAppResp
+	err = SendAndParse(ctx, &appResp, httpClient, req)
+	assert.Nil(t, err, fmt.Sprintf("getting argocd applications: %s", err))
+
+	assert.Equal(t, 3, len(appResp.Items), fmt.Sprintf("number of apps do not match: %v", appResp.Items))
+}
+
+func TestGiteaEndpoints(ctx context.Context, t *testing.T, containerEngine container.Engine, baseUrl string) {
+	t.Log("testing gitea endpoints")
+	repos, err := GetGiteaRepos(ctx, containerEngine, baseUrl)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 3, len(repos))
+	expectedRepoNames := map[string]struct{}{
+		"idpbuilder-localdev-gitea":  {},
+		"idpbuilder-localdev-nginx":  {},
+		"idpbuilder-localdev-argocd": {},
+	}
+
+	for i := range repos {
+		_, ok := expectedRepoNames[repos[i].Name]
+		if ok {
+			delete(expectedRepoNames, repos[i].Name)
+		}
+	}
+	assert.Equal(t, 0, len(expectedRepoNames))
 }
 
 func SendAndParse(ctx context.Context, target any, httpClient *http.Client, req *http.Request) error {
@@ -149,29 +358,8 @@ func SendAndParse(ctx context.Context, target any, httpClient *http.Client, req 
 	}
 }
 
-func TestGiteaEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
-	t.Log("testing gitea endpoints")
-	repos, err := GetGiteaRepos(ctx, baseUrl)
-	assert.Nil(t, err)
-
-	assert.Equal(t, 3, len(repos))
-	expectedRepoNames := map[string]struct{}{
-		"idpbuilder-localdev-gitea":  {},
-		"idpbuilder-localdev-nginx":  {},
-		"idpbuilder-localdev-argocd": {},
-	}
-
-	for i := range repos {
-		_, ok := expectedRepoNames[repos[i].Name]
-		if ok {
-			delete(expectedRepoNames, repos[i].Name)
-		}
-	}
-	assert.Equal(t, 0, len(expectedRepoNames))
-}
-
-func GetGiteaRepos(ctx context.Context, baseUrl string) ([]gitea.Repository, error) {
-	auth, err := GetBasicAuth(ctx, "gitea-credential")
+func GetGiteaRepos(ctx context.Context, containerEngine container.Engine, baseUrl string) ([]gitea.Repository, error) {
+	auth, err := GetBasicAuth(ctx, containerEngine, "gitea-credential")
 	if err != nil {
 		return nil, fmt.Errorf("getting gitea credentials %w", err)
 	}
@@ -232,27 +420,7 @@ func GetGiteaSessionToken(ctx context.Context, auth BasicAuth, baseUrl string) (
 	return sess.Token, nil
 }
 
-func TestArgoCDEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
-	t.Log("testing argocd endpoints")
-	sessionURL := fmt.Sprintf("%s%s", baseUrl, ArgoCDSessionEndpoint)
-	appURL := fmt.Sprintf("%s%s", baseUrl, ArgoCDAppsEndpoint)
-
-	token, err := GetArgoCDSessionToken(ctx, sessionURL)
-	assert.Nil(t, err, fmt.Sprintf("getting argocd token: %v", err))
-
-	httpClient := GetHttpClient()
-
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, appURL, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-	var appResp ArgoCDAppResp
-	err = SendAndParse(ctx, &appResp, httpClient, req)
-	assert.Nil(t, err, fmt.Sprintf("getting argocd applications: %s", err))
-
-	assert.Equal(t, 3, len(appResp.Items), fmt.Sprintf("number of apps do not match: %v", appResp.Items))
-}
-
-func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
+func GetBasicAuth(ctx context.Context, containerEngine container.Engine, name string) (BasicAuth, error) {
 	var lastErr error
 
 	for attempt := 0; attempt < 5; attempt++ {
@@ -260,7 +428,7 @@ func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
 		case <-ctx.Done():
 			return BasicAuth{}, ctx.Err()
 		default:
-			b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
+			b, err := containerEngine.RunCommand(ctx, fmt.Sprintf("%s get secrets -o json", IdpbuilderBinaryLocation), 10*time.Second)
 			if err != nil {
 				lastErr = err
 				time.Sleep(httpRetryDelay)
@@ -295,8 +463,8 @@ func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {
 	return BasicAuth{}, fmt.Errorf("failed after 5 attempts: %w", lastErr)
 }
 
-func GetArgoCDSessionToken(ctx context.Context, endpoint string) (string, error) {
-	auth, err := GetBasicAuth(ctx, "argocd-initial-admin-secret")
+func GetArgoCDSessionToken(ctx context.Context, containerEngine container.Engine, endpoint string) (string, error) {
+	auth, err := GetBasicAuth(ctx, containerEngine, "argocd-initial-admin-secret")
 	if err != nil {
 		return "", err
 	}
@@ -327,37 +495,6 @@ func GetArgoCDSessionToken(ctx context.Context, endpoint string) (string, error)
 	return tokenResp.Token, nil
 }
 
-func TestArgoCDApps(ctx context.Context, t *testing.T, kubeClient client.Client, apps map[string]string) {
-	done := false
-	for !done {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			for k := range apps {
-				ns := apps[k]
-				t.Logf("checking argocd app %s in %s ns", k, ns)
-				ready, argoErr := isArgoAppSyncedAndHealthy(ctx, kubeClient, k, ns)
-				if argoErr != nil {
-					t.Logf("error when checking ArgoCD app health: %s", argoErr)
-					continue
-				}
-				if ready {
-					t.Logf("app %s ready", k)
-					delete(apps, k)
-				}
-			}
-			if len(apps) != 0 {
-				t.Logf("waiting for apps to be ready")
-				time.Sleep(httpRetryDelay)
-				continue
-			}
-			done = true
-			t.Log("all argocd apps healthy")
-		}
-	}
-}
-
 func isArgoAppSyncedAndHealthy(ctx context.Context, kubeClient client.Client, name, namespace string) (bool, error) {
 	app := argov1alpha1.Application{}
 
@@ -375,33 +512,4 @@ func GetKubeClient() (client.Client, error) {
 		return nil, err
 	}
 	return client.New(conf, client.Options{Scheme: k8s.GetScheme()})
-}
-
-// login, build a test image, push, then pull.
-func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaPort string) {
-	t.Log("testing gitea container registry")
-	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
-	assert.NoError(t, err)
-
-	secs := make([]types.Secret, 1)
-	err = json.Unmarshal(b, &secs)
-	assert.NoError(t, err)
-
-	sec := secs[0]
-	user := sec.Username
-	pass := sec.Password
-
-	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
-	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
-
-	tag := fmt.Sprintf("%s:%s/giteaadmin/test:latest", giteaHost, giteaPort)
-
-	build, err := RunCommand(ctx, fmt.Sprintf("%s build -f test-dockerfile -t %s .", cmd, tag), 10*time.Second)
-	require.NoErrorf(t, err, "%s build err: %s", cmd, build)
-
-	push, err := RunCommand(ctx, fmt.Sprintf("%s push %s", cmd, tag), 10*time.Second)
-	require.NoErrorf(t, err, "%s push err: %s", cmd, push)
-
-	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, tag), 10*time.Second)
-	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
 }
