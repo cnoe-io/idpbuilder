@@ -34,6 +34,7 @@ type Build struct {
 	kubeVersion          string
 	extraPortsMapping    string
 	registryConfig       []string
+	customPackageFiles   []string
 	customPackageDirs    []string
 	customPackageUrls    []string
 	packageCustomization map[string]v1alpha1.PackageCustomization
@@ -50,6 +51,7 @@ type NewBuildOptions struct {
 	KubeVersion          string
 	ExtraPortsMapping    string
 	RegistryConfig       []string
+	CustomPackageFiles   []string
 	CustomPackageDirs    []string
 	CustomPackageUrls    []string
 	PackageCustomization map[string]v1alpha1.PackageCustomization
@@ -66,6 +68,7 @@ func NewBuild(opts NewBuildOptions) *Build {
 		kubeVersion:          opts.KubeVersion,
 		extraPortsMapping:    opts.ExtraPortsMapping,
 		registryConfig:       opts.RegistryConfig,
+		customPackageFiles:   opts.CustomPackageFiles,
 		customPackageDirs:    opts.CustomPackageDirs,
 		customPackageUrls:    opts.CustomPackageUrls,
 		packageCustomization: opts.PackageCustomization,
@@ -258,6 +261,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 					Enabled: true,
 				},
 				CustomPackageDirs:        b.customPackageDirs,
+				CustomPackageFiles:       b.customPackageFiles,
 				CustomPackageUrls:        b.customPackageUrls,
 				CorePackageCustomization: b.packageCustomization,
 			},

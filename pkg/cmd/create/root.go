@@ -113,15 +113,17 @@ func create(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var absDirPaths []string
+	var localFiles []string
+	var localDirs []string
 	var remotePaths []string
 
 	if len(extraPackages) > 0 {
-		r, l, pErr := helpers.ParsePackageStrings(extraPackages)
+		r, f, d, pErr := helpers.ParsePackageStrings(extraPackages)
 		if pErr != nil {
 			return pErr
 		}
-		absDirPaths = l
+		localFiles = f
+		localDirs = d
 		remotePaths = r
 	}
 
@@ -164,7 +166,8 @@ func create(cmd *cobra.Command, args []string) error {
 			StaticPassword: devPassword,
 		},
 
-		CustomPackageDirs:    absDirPaths,
+		CustomPackageFiles:   localFiles,
+		CustomPackageDirs:    localDirs,
 		CustomPackageUrls:    remotePaths,
 		ExitOnSync:           exitOnSync,
 		PackageCustomization: o,
@@ -204,7 +207,7 @@ func validate() error {
 		}
 	}
 
-	_, _, err = helpers.ParsePackageStrings(extraPackages)
+	_, _, _, err = helpers.ParsePackageStrings(extraPackages)
 	return err
 }
 

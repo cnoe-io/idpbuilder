@@ -35,8 +35,8 @@ func ValidateKubernetesYamlFile(absPath string) error {
 	return nil
 }
 
-func ParsePackageStrings(pkgStrings []string) ([]string, []string, error) {
-	remote, local := make([]string, 0, 2), make([]string, 0, 2)
+func ParsePackageStrings(pkgStrings []string) ([]string, []string, []string, error) {
+	remote, files, dirs := make([]string, 0, 2), make([]string, 0, 2), make([]string, 0, 2)
 	for i := range pkgStrings {
 		loc := pkgStrings[i]
 		_, err := util.NewKustomizeRemote(loc)
@@ -47,13 +47,20 @@ func ParsePackageStrings(pkgStrings []string) ([]string, []string, error) {
 
 		absPath, err := getAbsPath(loc, true)
 		if err == nil {
-			local = append(local, absPath)
+			dirs = append(dirs, absPath)
 			continue
 		}
-		return nil, nil, err
+
+		absPath, err = getAbsPath(loc, false)
+		if err == nil {
+			files = append(files, absPath)
+			continue
+		}
+
+		return nil, nil, nil, err
 	}
 
-	return remote, local, nil
+	return remote, files, dirs, nil
 }
 
 func getAbsPath(path string, isDir bool) (string, error) {
@@ -65,11 +72,13 @@ func getAbsPath(path string, isDir bool) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to validate path %s : %w", absPath, err)
 	}
+
 	if isDir && !f.IsDir() {
 		return "", fmt.Errorf("given path is not a directory. %s", absPath)
 	}
+
 	if !isDir && !f.Mode().IsRegular() {
-		return "", fmt.Errorf("give path is not a file. %s", absPath)
+		return "", fmt.Errorf("given path is not a file. %s", absPath)
 	}
 	return absPath, nil
 }

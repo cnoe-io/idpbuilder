@@ -42,6 +42,7 @@ type EmbeddedArgoApplicationsPackageConfigSpec struct {
 type PackageConfigsSpec struct {
 	Argo                     ArgoPackageConfigSpec                     `json:"argoPackageConfigs,omitempty"`
 	EmbeddedArgoApplications EmbeddedArgoApplicationsPackageConfigSpec `json:"embeddedArgoApplicationsPackageConfigs,omitempty"`
+	CustomPackageFiles       []string                                  `json:"customPackageFiles,omitempty"`
 	CustomPackageDirs        []string                                  `json:"customPackageDirs,omitempty"`
 	CustomPackageUrls        []string                                  `json:"customPackageUrls,omitempty"`
 	// +kubebuilder:validation:Optional

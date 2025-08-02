@@ -255,6 +255,13 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 		}
 	}
 
+	for _, s := range resource.Spec.PackageConfigs.CustomPackageFiles {
+		result, err := r.reconcileCustomPkgFile(ctx, resource, s)
+		if err != nil {
+			return result, err
+		}
+	}
+
 	for _, s := range resource.Spec.PackageConfigs.CustomPackageUrls {
 		result, err := r.reconcileCustomPkgUrl(ctx, resource, s)
 		if err != nil {
@@ -559,6 +566,41 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 		if rErr != nil {
 			logger.Error(rErr, "reconciling custom pkg", "file", filePath, "pkgDir", pkgDir)
 		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *LocalbuildReconciler) reconcileCustomPkgFile(ctx context.Context, resource *v1alpha1.Localbuild, pkgFile string) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	file, err := os.Open(pkgFile)
+	defer file.Close()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("opening file, %s: %w", pkgFile, err)
+	}
+
+	fType, err := file.Stat()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("getting file info, %s: %w", pkgFile, err)
+	}
+
+	if !fType.Mode().IsRegular() {
+		return ctrl.Result{}, fmt.Errorf("file is not a regular file, %s: %w", pkgFile, err)
+	}
+
+	if !util.IsYamlFile(file.Name()) {
+		return ctrl.Result{}, fmt.Errorf("file is not a yaml file, %s: %w", pkgFile, err)
+	}
+
+	b, fErr := os.ReadFile(pkgFile)
+	if fErr != nil {
+		return ctrl.Result{}, fmt.Errorf("reading file, %s: %w", pkgFile, err)
+	}
+
+	rErr := r.reconcileCustomPkg(ctx, resource, b, pkgFile, nil)
+	if rErr != nil {
+		logger.Error(rErr, "reconciling custom pkg", "file", pkgFile)
 	}
 
 	return ctrl.Result{}, nil
