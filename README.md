@@ -31,7 +31,7 @@ This can be useful in several ways:
 + Nightly Version
 
    ```bash
-   brew install cnoe-io/tap/idpbuilder@nightly
+   brew install cnoe-io/tap/idpbuilder-nightly
    ```
 
 ### From Releases
