@@ -1,3 +1,4 @@
+version: 2
 project_name: idpbuilder
 
 before:
@@ -27,7 +28,8 @@ builds:
       - goos: linux
         goarch: '386'
 brews:
-  - name: idpbuilder
+# For non version installations
+  - name: "idpbuilder" 
     homepage: "https://cnoe.io"
     repository:
       owner: cnoe-io
@@ -40,7 +42,22 @@ brews:
     install: |
       bin.install "idpbuilder"
     test: |
-      system "#{bin}/idpbuilder --version"
+      system "#{bin}/idpbuilder version"
+# For versioned and nightly installations
+  - name: "{{ if contains .Tag \"nightly\" }}idpbuilder@nightly{{ else }}idpbuilder@{{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ end }}"
+    homepage: "https://cnoe.io"
+    repository:
+      owner: cnoe-io
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TOKEN }}"
+    commit_author:
+      name: "CNOEAutomation"
+      email: "noreply@cnoe.io"
+    directory: Formula
+    install: |
+      bin.install "idpbuilder"
+    test: |
+      system "#{bin}/idpbuilder version"
 archives:
   - format: tar.gz
     name_template: >-
