@@ -465,6 +465,11 @@ func (in *PackageConfigsSpec) DeepCopyInto(out *PackageConfigsSpec) {
 	*out = *in
 	out.Argo = in.Argo
 	out.EmbeddedArgoApplications = in.EmbeddedArgoApplications
+	if in.CustomPackageFiles != nil {
+		in, out := &in.CustomPackageFiles, &out.CustomPackageFiles
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.CustomPackageDirs != nil {
 		in, out := &in.CustomPackageDirs, &out.CustomPackageDirs
 		*out = make([]string, len(*in))

@@ -41,34 +41,38 @@ func TestParsePackageStrings(t *testing.T) {
 		expectErr  bool
 		inputPaths []string
 		remote     int
-		local      int
+		files      int
+		dirs       int
 	}{
-		"allLocal": {expectErr: false, inputPaths: []string{"test-data", "."}, remote: 0, local: 2},
+		"allDirs":  {expectErr: false, inputPaths: []string{"test-data", "."}, remote: 0, files: 0, dirs: 2},
+		"allFiles": {expectErr: false, inputPaths: []string{"test-data/valid.yaml"}, remote: 0, files: 1, dirs: 0},
 		"allRemote": {expectErr: false, inputPaths: []string{
 			"https://github.com/kubernetes-sigs/kustomize//examples/multibases/dev/?timeout=120&ref=v3.3.1",
 			"git@github.com:owner/repo//examples",
-		}, remote: 2, local: 0},
+		}, remote: 2, files: 0, dirs: 0},
 		"mix": {expectErr: false, inputPaths: []string{
 			"https://github.com/kubernetes-sigs/kustomize//examples/multibases/dev/?timeout=120&ref=v3.3.1",
 			"test-data",
-		}, remote: 1, local: 1},
+			"test-data/valid.yaml",
+		}, remote: 1, files: 1, dirs: 1},
 		"invalidLocalPath": {expectErr: true, inputPaths: []string{
 			"does-not-exist",
-		}, remote: 0, local: 0},
+		}, remote: 0, files: 0, dirs: 0},
 		"invalidRemotePath": {expectErr: true, inputPaths: []string{
 			"https://   github.com/kubernetes-sigs/kustomize//examples",
-		}, remote: 0, local: 0},
+		}, remote: 0, files: 0, dirs: 0},
 	}
 
 	for k := range cases {
 		c := cases[k]
-		remote, local, err := ParsePackageStrings(c.inputPaths)
+		remote, files, dirs, err := ParsePackageStrings(c.inputPaths)
 		if cases[k].expectErr {
 			assert.NotNil(t, err)
 		} else {
 			assert.Nil(t, err)
 		}
 		assert.Equal(t, c.remote, len(remote))
-		assert.Equal(t, c.local, len(local))
+		assert.Equal(t, c.files, len(files))
+		assert.Equal(t, c.dirs, len(dirs))
 	}
 }

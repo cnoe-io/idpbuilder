@@ -71,6 +71,10 @@ spec:
                     items:
                       type: string
                     type: array
+                  customPackageFiles:
+                    items:
+                      type: string
+                    type: array
                   customPackageUrls:
                     items:
                       type: string
