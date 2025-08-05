@@ -16,9 +16,26 @@ This can be useful in several ways:
 * Use within CI to perform integration testing.
 * Use as a local development environment for platform engineers.
 
-## Getting Started
+## Installation
+### Using [Homebrew](https://brew.sh)
++ Stable Version
 
-The easiest way to get started is to grab the idpbuilder binary for your platform and run it. You can visit our [nightly releases](https://github.com/cnoe-io/idpbuilder/releases/latest) page to download the version for your system, or run the following commands:
+   ```bash
+   brew install cnoe-io/tap/idpbuilder
+   ```
++ Specific Stable Version
+
+   ```bash
+   brew install cnoe-io/tap/idpbuilder@<version>
+   ```
++ Nightly Version
+
+   ```bash
+   brew install cnoe-io/tap/idpbuilder@nightly
+   ```
+
+### From Releases
+Another way to get started is to grab the idpbuilder binary for your platform and run it. You can visit our [releases](https://github.com/cnoe-io/idpbuilder/releases) page to download the version for your system, or run the following commands:
 
 ```bash
 arch=$(if [[ "$(uname -m)" == "x86_64" ]]; then echo "amd64"; else uname -m; fi)
@@ -37,13 +54,15 @@ curl -vskL -O https://github.com/cnoe-io/idpbuilder/releases/latest/download/idp
 tar xvzf idpbuilder-linux-amd64.tar.gz idpbuilder
 ```
 
+## Getting Started
+
 You can then run idpbuilder with the create argument to spin up your CNOE IDP:
 
 ```bash
 ./idpbuilder create
 ```
 
-For more detailed information, checkout our [documentation website](https://cnoe.io/docs/reference-implementation/idpbuilder) on getting started with idpbuilder.
+For more detailed information, checkout our [documentation](https://cnoe.io/docs/idpbuilder) on getting started with idpbuilder.
 
 ## Community
 
