@@ -17,7 +17,7 @@ patches:
       kind: Kustomization
       metadata:
         name: ingress-nginx-controller
-  # ArgoCD has poor support for ttlSecondsAfterFinished and it shouldnt be essential to clean these up
+  # ArgoCD has poor support for ttlSecondsAfterFinished and it shouldn't be essential to clean these up
   - target:
       group: batch
       version: v1
