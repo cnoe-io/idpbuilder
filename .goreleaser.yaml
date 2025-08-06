@@ -73,4 +73,14 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
-
+  use: github
+  format: "{{.SHA}}: {{.Message}} [{{.AuthorName}}](@{{.AuthorUsername}})" 
+  groups:
+    - title: "✨ Features"
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "🐛 Bug fixes"
+      regexp: '^.*?(fix|bug)(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "🔧 Others"
+      order: 999
