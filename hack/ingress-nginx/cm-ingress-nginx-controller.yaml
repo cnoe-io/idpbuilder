@@ -6,4 +6,5 @@ metadata:
 data:
   allow-snippet-annotations: "true"
   proxy-buffer-size: "32k"
+  proxy-busy-buffers-size: "32k"
   use-forwarded-headers: "true"
