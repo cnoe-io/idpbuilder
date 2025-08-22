@@ -4,10 +4,14 @@
     "ghcr.io/devcontainers/features/go:1": {
       "version": "1.22"
     },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
   },
+  "remoteUser": "vscode",
   "postCreateCommand": ".devcontainer/postCreateCommand.sh",
-  "postStartCommand": ".devcontainer/postStartCommand.sh",
   "workspaceFolder": "/home/vscode/idpbuilder",
   "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/idpbuilder,type=bind",
   "hostRequirements": {
@@ -15,5 +19,15 @@
   },
   "remoteEnv": {
     "PATH": "${containerEnv:PATH}:/home/vscode/idpbuilder"
-  }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "anthropic.claude-dev"
+      ]
+    }
+  },
+  "forwardPorts": [6789, 8080]
 }
