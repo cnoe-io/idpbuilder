@@ -69,3 +69,37 @@ Starting with file creation in order:
 - ✅ Production-ready code quality
 
 Ready for commit and push to git.
+
+## [2025-08-25 00:12] CRITICAL SIZE VIOLATION DETECTION & FIX 🚨
+
+### Issue Discovered
+- **Problem**: Entire idpbuilder codebase was imported (10,147 lines)
+- **Root Cause**: Implementation pulled entire repository instead of just OCI files
+- **Impact**: MASSIVE 12.7x size violation blocking wave completion
+- **Severity**: CRITICAL - Wave completion blocked
+
+### Files That Were Incorrectly Imported
+```
+pkg/build/* pkg/cmd/* pkg/controllers/* pkg/k8s/*
+pkg/kind/* pkg/logger/* pkg/printer/* pkg/resources/* pkg/util/*
++ 137 files total including root files (go.mod, main.go, etc.)
+```
+
+### Fix Applied (00:13)
+1. **Removed ALL unnecessary packages** (9,552 lines deleted)
+2. **Kept ONLY the 6 OCI files per SPLIT-INSTRUCTIONS.md**
+3. **Verified size reduction**: 10,147 → 595 lines ✅
+4. **Committed fix**: 9be41d2 - comprehensive deletion
+5. **Pushed**: phase1/wave1/registry-auth-types-split-001
+
+### Final Status
+- ✅ **Size**: 595 lines (under 800 limit)
+- ✅ **Files**: Correct OCI-only implementation 
+- ✅ **Branch**: Successfully pushed with fixes
+- ✅ **Compliance**: WAVE CAN PROCEED
+- ✅ **Fix Time**: 20 minutes total
+
+### Key Learning
+- Always verify selective implementation vs full codebase import
+- Use line-counter.sh immediately after initial implementation
+- Size violations must be fixed before any other work continues
