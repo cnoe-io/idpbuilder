@@ -1,0 +1,13 @@
+{{ if .UsePathRouting -}}
+server = "https://{{ .Host }}:{{ .Port }}"
+
+[host."https://{{ .Host }}"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true
+{{ else -}}
+server = "https://gitea.{{ .Host }}:{{ .Port }}"
+
+[host."https://gitea.{{ .Host }}"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true
+{{ end -}}

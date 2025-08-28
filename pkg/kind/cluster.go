@@ -55,10 +55,19 @@ type IProvider interface {
 
 func (c *Cluster) getConfig() ([]byte, error) {
 	rawConfigTempl, err := loadConfig(c.kindConfigPath, c.httpClient)
+	if err != nil {
+		return nil, fmt.Errorf("loading config template: %w", err)
+	}
 
 	portMappingPairs := parsePortMappings(c.extraPortsMapping)
 
 	registryConfig := findRegistryConfig(c.registryConfig)
+
+	registryCertsDir, err := renderRegistryCertsDir(c.cfg)
+
+	if err != nil {
+		return nil, fmt.Errorf("rendering insecure registry config: %w", err)
+	}
 
 	if len(c.registryConfig) > 0 && registryConfig == "" {
 		return nil, errors.New("--registry-config flag used but no registry config was found")
@@ -70,6 +79,7 @@ func (c *Cluster) getConfig() ([]byte, error) {
 		KubernetesVersion:      c.kubeVersion,
 		ExtraPortsMapping:      portMappingPairs,
 		RegistryConfig:         registryConfig,
+		RegistryCertsDir:       registryCertsDir,
 	}); err != nil {
 		return nil, err
 	}
