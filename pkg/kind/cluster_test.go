@@ -12,9 +12,12 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"regexp"
 	"sigs.k8s.io/kind/pkg/cluster/nodes"
 	"sigs.k8s.io/kind/pkg/exec"
 )
+
+var re = regexp.MustCompile(`(.*?)hostPath: /tmp/idpbuilder-registry-certs.d-.*(.*?)`)
 
 func TestGetConfig(t *testing.T) {
 
@@ -47,12 +50,12 @@ nodes:
   - containerPort: 32222
     hostPort: 32222
     protocol: TCP
+  extraMounts:
+  - containerPath: /etc/containerd/certs.d
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.cnoe.localtest.me:8443"]
-    endpoint = ["https://gitea.cnoe.localtest.me"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.cnoe.localtest.me".tls]
-    insecure_skip_verify = true`,
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"`,
 		},
 		{
 			host:           "cnoe.localtest.me",
@@ -75,14 +78,13 @@ nodes:
     hostPort: 32222
     protocol: TCP
   extraMounts:
+  - containerPath: /etc/containerd/certs.d
   - containerPath: /var/lib/kubelet/config.json
     hostPath: testdata/empty.json
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."cnoe.localtest.me:8443"]
-    endpoint = ["https://cnoe.localtest.me"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."cnoe.localtest.me".tls]
-    insecure_skip_verify = true`,
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"`,
 		},
 	}
 
@@ -97,7 +99,9 @@ containerdConfigPatches:
 
 		cfg, err := cluster.getConfig()
 		assert.NoError(t, err)
-		assert.YAMLEq(t, c.expectConfig, string(cfg))
+		expectStripped := re.ReplaceAllString(c.expectConfig, `$1$2`)
+		cfgStripped := re.ReplaceAllString(string(cfg), `$1$2`)
+		assert.YAMLEq(t, expectStripped, cfgStripped)
 	}
 }
 
@@ -134,14 +138,16 @@ nodes:
   - containerPort: 32222
     hostPort: 22
     protocol: TCP
+  extraMounts:
+  - containerPath: /etc/containerd/certs.d
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.cnoe.localtest.me:8443"]
-    endpoint = ["https://gitea.cnoe.localtest.me"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.cnoe.localtest.me".tls]
-    insecure_skip_verify = true`
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"`
 
-	assert.YAMLEq(t, expectConfig, string(cfg))
+	expectStripped := re.ReplaceAllString(expectConfig, `$1$2`)
+	cfgStripped := re.ReplaceAllString(string(cfg), `$1$2`)
+	assert.YAMLEq(t, expectStripped, cfgStripped)
 }
 
 func TestGetConfigCustom(t *testing.T) {
