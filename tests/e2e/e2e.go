@@ -20,10 +20,14 @@ import (
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/util/retry"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -404,4 +408,76 @@ func TestGiteaRegistry(ctx context.Context, t *testing.T, cmd, giteaHost, giteaP
 
 	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, tag), 10*time.Second)
 	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
+}
+
+// login, build a test image, push, then pull.
+func TestGiteaRegistryInCluster(ctx context.Context, t *testing.T, cmd, giteaHost, giteaPort string, kubeClient client.Client) {
+	t.Log("testing using gitea container registry in cluster")
+	b, err := RunCommand(ctx, fmt.Sprintf("%s get secrets -o json -p gitea", IdpbuilderBinaryLocation), 10*time.Second)
+	assert.NoError(t, err)
+
+	secs := make([]types.Secret, 1)
+	err = json.Unmarshal(b, &secs)
+	assert.NoError(t, err)
+
+	sec := secs[0]
+	user := sec.Username
+	pass := sec.Password
+
+	login, err := RunCommand(ctx, fmt.Sprintf("%s login %s:%s -u %s -p %s", cmd, giteaHost, giteaPort, user, pass), 10*time.Second)
+	require.NoErrorf(t, err, "%s login err: %s", cmd, login)
+
+	upstreamImage := "nginx"
+	tag := fmt.Sprintf("%s:%s/giteaadmin/nginx:latest", giteaHost, giteaPort)
+
+	pull, err := RunCommand(ctx, fmt.Sprintf("%s pull %s", cmd, upstreamImage), 10*time.Second)
+	require.NoErrorf(t, err, "%s pull err: %s", cmd, pull)
+
+	retag, err := RunCommand(ctx, fmt.Sprintf("%s tag %s %s", cmd, upstreamImage, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s tag err: %s", cmd, retag)
+
+	push, err := RunCommand(ctx, fmt.Sprintf("%s push %s", cmd, tag), 10*time.Second)
+	require.NoErrorf(t, err, "%s push err: %s", cmd, push)
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "default"},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:  "nginx",
+				Image: tag,
+			}},
+		},
+	}
+
+	err = kubeClient.Create(ctx, pod)
+	require.NoErrorf(t, err, "pod creation err")
+
+	// Retry for 30 seconds
+	backoff := wait.Backoff{
+		Steps:    3,
+		Duration: 10 * time.Second,
+		Jitter:   0.0,
+	}
+
+	retriable := func(_ error) bool {
+		// Retry all errors
+		return true
+	}
+
+	testfunc := func() error {
+		foundPod := &corev1.Pod{}
+		err = kubeClient.Get(ctx, client.ObjectKey{Name: pod.Name, Namespace: pod.Namespace}, foundPod)
+		if err != nil {
+			return err
+		}
+
+		if foundPod.Status.Phase != "Running" {
+			return fmt.Errorf("Pod phase not running: %s", foundPod.Status.Phase)
+		}
+
+		return nil
+	}
+
+	err = retry.OnError(backoff, retriable, testfunc)
+	require.NoErrorf(t, err, "pod startup err")
 }
