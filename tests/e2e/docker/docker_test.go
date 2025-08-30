@@ -94,6 +94,7 @@ func testCreatePath(t *testing.T) {
 	e2e.TestCoreEndpoints(ctx, t, argoBaseUrl, giteaBaseUrl)
 
 	e2e.TestGiteaRegistry(ctx, t, "docker", e2e.DefaultBaseDomain, e2e.DefaultPort)
+	e2e.TestGiteaRegistryInCluster(ctx, t, "docker", e2e.DefaultBaseDomain, e2e.DefaultPort, kubeClient)
 }
 
 func testCreatePort(t *testing.T) {
