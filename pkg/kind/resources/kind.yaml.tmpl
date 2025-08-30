@@ -20,21 +20,14 @@ nodes:
     hostPort: {{ .HostPort }}
     protocol: TCP
   {{- end }}
-{{- if .RegistryConfig }}
   extraMounts:
+  - containerPath: /etc/containerd/certs.d
+    hostPath: {{ .RegistryCertsDir }}
+{{- if .RegistryConfig }}
   - containerPath: /var/lib/kubelet/config.json
     hostPath: {{ .RegistryConfig }}
 {{- end }}
 containerdConfigPatches:
 - |-
-  {{ if .UsePathRouting -}}
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{{ .Host }}:{{ .Port }}"]
-    endpoint = ["https://{{ .Host }}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."{{ .Host }}".tls]
-    insecure_skip_verify = true
-  {{- else -}}
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gitea.{{ .Host }}:{{ .Port }}"]
-    endpoint = ["https://gitea.{{ .Host }}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."gitea.{{ .Host }}".tls]
-    insecure_skip_verify = true
-  {{- end -}}
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"

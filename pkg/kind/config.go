@@ -6,9 +6,11 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/pkg/util/files"
 )
 
 type PortMapping struct {
@@ -21,6 +23,7 @@ type TemplateConfig struct {
 	KubernetesVersion string
 	ExtraPortsMapping []PortMapping
 	RegistryConfig    string
+	RegistryCertsDir  string
 }
 
 //go:embed resources/* testdata/custom-kind.yaml.tmpl
@@ -82,4 +85,43 @@ func findRegistryConfig(registryConfigPaths []string) string {
 		}
 	}
 	return ""
+}
+
+func renderRegistryCertsDir(cfg v1alpha1.BuildCustomizationSpec) (string, error) {
+	// Render out the template
+	rawConfigTempl, err := fs.ReadFile(configFS, "resources/hosts.toml.tmpl")
+	if err != nil {
+		return "", fmt.Errorf("reading insecure registry config %w", err)
+	}
+
+	var retBuff []byte
+	if retBuff, err = files.ApplyTemplate(rawConfigTempl, cfg); err != nil {
+		return "", fmt.Errorf("templating insecure registry config %w", err)
+	}
+
+	// Generate the directory structure and write the file to hosts.toml
+	dir, err := os.MkdirTemp("", "idpbuilder-registry-certs.d-*")
+	if err != nil {
+		return "", fmt.Errorf("creating temp dir %w", err)
+	}
+
+	var hostAndPort string
+	if cfg.UsePathRouting {
+		hostAndPort = fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+	} else {
+		hostAndPort = fmt.Sprintf("gitea.%s:%s", cfg.Host, cfg.Port)
+	}
+	hostCertsDir := filepath.Join(dir, hostAndPort)
+	err = os.Mkdir(hostCertsDir, 0700)
+	if err != nil {
+		return "", fmt.Errorf("creating temp dir for host %w", err)
+	}
+	hostsFile := filepath.Join(hostCertsDir, "hosts.toml")
+
+	err = os.WriteFile(hostsFile, retBuff, 0700)
+	if err != nil {
+		return "", fmt.Errorf("writing insecure registry config %w", err)
+	}
+
+	return dir, nil
 }
