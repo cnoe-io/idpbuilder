@@ -17,8 +17,6 @@ import (
 	"sigs.k8s.io/kind/pkg/exec"
 )
 
-var re = regexp.MustCompile(`(.*?)hostPath: /tmp/idpbuilder-registry-certs.d-.*(.*?)`)
-
 func TestGetConfig(t *testing.T) {
 
 	type tc struct {
@@ -35,8 +33,7 @@ func TestGetConfig(t *testing.T) {
 			port:           "8443",
 			registryConfig: []string{},
 			usePathRouting: false,
-			expectConfig: `
-kind: Cluster
+			expectConfig: `kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
@@ -52,6 +49,7 @@ nodes:
     protocol: TCP
   extraMounts:
   - containerPath: /etc/containerd/certs.d
+    hostPath: /tmp/idpbuilder-registry-certs.d-\d+
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry]
@@ -62,8 +60,7 @@ containerdConfigPatches:
 			port:           "8443",
 			registryConfig: []string{"testdata/doesnt-exist.json", "testdata/empty.json"},
 			usePathRouting: true,
-			expectConfig: `
-kind: Cluster
+			expectConfig: `kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
@@ -79,6 +76,7 @@ nodes:
     protocol: TCP
   extraMounts:
   - containerPath: /etc/containerd/certs.d
+    hostPath: /tmp/idpbuilder-registry-certs.d-\d+
   - containerPath: /var/lib/kubelet/config.json
     hostPath: testdata/empty.json
 containerdConfigPatches:
@@ -99,9 +97,8 @@ containerdConfigPatches:
 
 		cfg, err := cluster.getConfig()
 		assert.NoError(t, err)
-		expectStripped := re.ReplaceAllString(c.expectConfig, `$1$2`)
-		cfgStripped := re.ReplaceAllString(string(cfg), `$1$2`)
-		assert.YAMLEq(t, expectStripped, cfgStripped)
+		re := regexp.MustCompile("(?m)" + c.expectConfig)
+		assert.Regexp(t, re, string(cfg), "config did not match expected config regexp")
 	}
 }
 
@@ -120,8 +117,7 @@ func TestExtraPortMappings(t *testing.T) {
 		t.Errorf("Error getting kind config: %v", err)
 	}
 
-	expectConfig := `# Kind kubernetes release images https://github.com/kubernetes-sigs/kind/releases
-kind: Cluster
+	expectConfig := `kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
@@ -140,14 +136,14 @@ nodes:
     protocol: TCP
   extraMounts:
   - containerPath: /etc/containerd/certs.d
+    hostPath: /tmp/idpbuilder-registry-certs.d-\d+
 containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry]
     config_path = "/etc/containerd/certs.d"`
 
-	expectStripped := re.ReplaceAllString(expectConfig, `$1$2`)
-	cfgStripped := re.ReplaceAllString(string(cfg), `$1$2`)
-	assert.YAMLEq(t, expectStripped, cfgStripped)
+	re := regexp.MustCompile("(?m)" + expectConfig)
+	assert.Regexp(t, re, string(cfg), "config did not match expected config regexp")
 }
 
 func TestGetConfigCustom(t *testing.T) {
