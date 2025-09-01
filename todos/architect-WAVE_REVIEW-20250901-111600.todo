@@ -1,0 +1,19 @@
+# Architect TODOs - Trigger: WAVE_REVIEW_ANALYSIS
+# State: WAVE_REVIEW
+# Timestamp: 2025-09-01T11:16:00Z
+
+## Phase 1 Wave 2 Review Status
+- [IN_PROGRESS] Reviewing Phase 1 Wave 2 architecture
+- [IN_PROGRESS] Locating actual Wave 2 implementation files
+- [PENDING] Assess certificate validation pipeline implementation
+- [PENDING] Analyze fallback strategies design and size violations
+- [PENDING] Evaluate integration with Wave 1 efforts
+- [PENDING] Review test coverage and quality metrics
+- [PENDING] Assess upstream bug impact
+- [PENDING] Create ARCHITECT-WAVE2-REVIEW.md report
+
+## Key Findings So Far
+- E1.2.1 (certificate-validation-pipeline): 568 lines, completed, passed review (84.6% coverage)
+- E1.2.2 (fallback-strategies): 3,285 lines total, SIZE VIOLATIONS, split into 4 parts
+- Integration branch has upstream bug documented
+- Implementation files not visible in integration workspace
