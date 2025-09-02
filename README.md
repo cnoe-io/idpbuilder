@@ -86,3 +86,8 @@ Checkout the [contribution doc](./CONTRIBUTING.md) for contribution guidelines a
 
 [commit-activity-badge]: https://img.shields.io/github/commit-activity/m/cnoe-io/idpbuilder
 [commit-activity-link]: https://github.com/cnoe-io/idpbuilder/pulse
+
+## Adopters
+
+Do you use idpbuilder part of your Engineering Platform ?
+Submit a PR and add your details to [ADOPTERS.md](ADOPTERS.md)
