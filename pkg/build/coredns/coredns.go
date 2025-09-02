@@ -1,4 +1,4 @@
-package build
+package coredns
 
 import (
 	"context"
@@ -16,13 +16,13 @@ import (
 )
 
 const (
-	coreDNSTemplatePath = "templates/coredns"
+	CoreDNSTemplatePath = "templates/coredns"
 )
 
 //go:embed templates
-var templates embed.FS
+var Templates embed.FS
 
-func setupCoreDNS(ctx context.Context, kubeClient client.Client, scheme *runtime.Scheme, templateData v1alpha1.BuildCustomizationSpec) error {
+func SetupCoreDNS(ctx context.Context, kubeClient client.Client, scheme *runtime.Scheme, templateData v1alpha1.BuildCustomizationSpec) error {
 	checkCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "coredns-conf-default",
@@ -34,7 +34,7 @@ func setupCoreDNS(ctx context.Context, kubeClient client.Client, scheme *runtime
 		return nil
 	}
 
-	objs, err := k8s.BuildCustomizedObjects("", coreDNSTemplatePath, templates, scheme, templateData)
+	objs, err := k8s.BuildCustomizedObjects("", CoreDNSTemplatePath, Templates, scheme, templateData)
 	if err != nil {
 		return fmt.Errorf("rendering embedded coredns files: %w", err)
 	}

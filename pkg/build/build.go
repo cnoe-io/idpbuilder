@@ -8,6 +8,7 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
+	"github.com/cnoe-io/idpbuilder/pkg/build/coredns"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -91,6 +92,11 @@ func (b *Build) ReconcileKindCluster(ctx context.Context, recreateCluster bool) 
 	if err := cluster.Reconcile(ctx, recreateCluster); err != nil {
 		setupLog.Error(err, "Error starting kind cluster")
 		return err
+	}
+
+	// Import images into Kind nodes, this currently ignores errors as it is an optimization and not critical
+	if err := cluster.ImportImages(ctx); err != nil {
+		setupLog.Error(err, "Error Importing Images")
 	}
 
 	// Create Kube Config for Kind cluster
@@ -207,7 +213,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	setupLog.V(1).Info("Created temp directory for cloning repositories", "dir", dir)
 
 	setupLog.Info("Setting up CoreDNS")
-	err = setupCoreDNS(ctx, kubeClient, b.scheme, b.cfg)
+	err = coredns.SetupCoreDNS(ctx, kubeClient, b.scheme, b.cfg)
 	if err != nil {
 		return err
 	}
