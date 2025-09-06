@@ -50,7 +50,7 @@ func NewTrustStore() *DefaultTrustStore {
 
 // AddCertificate adds a certificate for a registry
 func (ts *DefaultTrustStore) AddCertificate(registry string, cert *x509.Certificate) error {
-	if !isFeatureEnabled("REGISTRY_TLS_TRUST_ENABLED") {
+	if !isRegistryFeatureEnabled("REGISTRY_TLS_TRUST_ENABLED") {
 		return fmt.Errorf("REGISTRY_TLS_TRUST feature disabled")
 	}
 	
@@ -257,7 +257,7 @@ func getConfigDir() string {
 	return filepath.Join(home, ".idpbuilder")
 }
 
-func isFeatureEnabled(flag string) bool {
+func isRegistryFeatureEnabled(flag string) bool {
 	value := strings.ToLower(os.Getenv("IDPBUILDER_" + flag))
 	return value == "true" || value == "1" || value == "enabled"
 }

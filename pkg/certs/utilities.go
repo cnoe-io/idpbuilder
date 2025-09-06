@@ -225,16 +225,16 @@ type ValidationResult struct {
 	Actions []string
 }
 
-// CertValidator provides certificate validation
-type CertValidator struct{}
+// RegistryCertValidator provides certificate validation
+type RegistryCertValidator struct{}
 
-// NewCertValidator creates a certificate validator
-func NewCertValidator() *CertValidator {
-	return &CertValidator{}
+// NewRegistryCertValidator creates a certificate validator
+func NewRegistryCertValidator() *RegistryCertValidator {
+	return &RegistryCertValidator{}
 }
 
 // ValidateCertificate validates a certificate
-func (v *CertValidator) ValidateCertificate(cert *x509.Certificate) *ValidationResult {
+func (v *RegistryCertValidator) ValidateCertificate(cert *x509.Certificate) *ValidationResult {
 	now := time.Now()
 	
 	if now.Before(cert.NotBefore) {
