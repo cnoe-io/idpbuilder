@@ -30,8 +30,8 @@ func parseCertificate(pemData []byte) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-// isFeatureEnabled checks if a feature flag is enabled
-func isFeatureEnabled(flag string) bool {
+// isKindFeatureEnabled checks if a Kind-specific feature flag is enabled
+func isKindFeatureEnabled(flag string) bool {
 	// Check environment variable
 	envVar := fmt.Sprintf("IDPBUILDER_%s", flag)
 	value := os.Getenv(envVar)

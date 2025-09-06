@@ -42,7 +42,7 @@ func TestParseCertificate(t *testing.T) {
 	}
 }
 
-func TestIsFeatureEnabled(t *testing.T) {
+func TestIsKindFeatureEnabled(t *testing.T) {
 	tests := []struct {
 		name     string
 		envVar   string
@@ -67,9 +67,9 @@ func TestIsFeatureEnabled(t *testing.T) {
 				defer os.Unsetenv(envVar)
 			}
 
-			got := isFeatureEnabled(tt.envVar)
+			got := isKindFeatureEnabled(tt.envVar)
 			if got != tt.expected {
-				t.Errorf("isFeatureEnabled(%s) = %v, want %v", tt.envVar, got, tt.expected)
+				t.Errorf("isKindFeatureEnabled(%s) = %v, want %v", tt.envVar, got, tt.expected)
 			}
 		})
 	}

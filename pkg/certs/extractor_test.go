@@ -75,7 +75,7 @@ func (m *MockKindClient) ExecInPod(ctx context.Context, podName string, command 
 	return "command output", nil
 }
 
-// MockCertValidator implements CertValidator for testing
+// MockCertValidator implements KindCertValidator for testing
 type MockCertValidator struct {
 	shouldFailValidation bool
 }

@@ -13,7 +13,7 @@ import (
 type KindCertExtractor struct {
 	client    KindClient
 	storage   CertificateStorage
-	validator CertValidator
+	validator KindCertValidator
 	config    ExtractorConfig
 }
 
@@ -27,12 +27,12 @@ type ExtractorConfig struct {
 	RetryAttempts    int
 }
 
-// CertValidator interface for certificate validation
-type CertValidator interface {
+// KindCertValidator interface for certificate validation
+type KindCertValidator interface {
 	ValidateCertificate(cert *x509.Certificate) error
 }
 
-// DefaultCertValidator implements basic certificate validation
+// DefaultCertValidator implements KindCertValidator interface for basic certificate validation
 type DefaultCertValidator struct{}
 
 // ValidateCertificate performs basic certificate validation
@@ -91,7 +91,7 @@ func NewKindCertExtractor(config ExtractorConfig) (*KindCertExtractor, error) {
 // ExtractGiteaCert extracts the Gitea certificate from Kind cluster
 func (e *KindCertExtractor) ExtractGiteaCert(ctx context.Context) (*x509.Certificate, error) {
 	// 1. Check feature flag
-	if !isFeatureEnabled("KIND_CERT_EXTRACTION_ENABLED") {
+	if !isKindFeatureEnabled("KIND_CERT_EXTRACTION_ENABLED") {
 		return nil, ErrFeatureDisabled
 	}
 
