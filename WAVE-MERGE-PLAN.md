@@ -1,98 +1,24 @@
-# Phase 1 Wave 1 Integration Merge Plan
+# Wave 2 Rebase Plan - Image Builder Branch
 
-## Critical Context (R327 Re-Integration)
-- **Integration Branch**: `idpbuilder-oci-build-push/phase1/wave1/integration-20250912-032401`
-- **Integration Directory**: `/home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase1/wave1/integration-workspace`
-- **Base**: Fresh from main branch (post-R321 fixes)
-- **Created**: 2025-09-12 03:24:01
-- **Purpose**: Re-integrate Wave 1 with proper R321 fixes applied
+## Critical Context (Phase 2 Wave 1 Rebase)
+- **Source Branch**: `idpbuilder-oci-build-push/phase2/wave1/image-builder`
+- **Target Base**: `origin/idpbuilder-oci-build-push/phase1/integration` (commit: 2c39501)
+- **Purpose**: Update image-builder to latest Phase 1 integration foundation
+- **Date**: 2025-09-14
 
-## Critical Requirements (R269, R270)
-- ✅ Use ONLY original effort branches (no integration branches)
-- ✅ Exclude parent 'too-large' branches for split efforts
-- ✅ Include only split branches for efforts that were split
-- ✅ Determine merge order based on dependencies
-- ✅ Document conflict resolution strategies
+## Rebase Purpose
+This rebase updates the image-builder branch from an old phase1/integration commit to the latest complete Phase 1 integration. The latest base includes:
+- All Wave 1 work (kind-cert-extraction, registry-tls-trust, registry-auth-types)
+- All Wave 2 work (cert-validation, fallback-strategies)
+- Complete Phase 1 foundation for Phase 2 efforts
 
-## Effort Summary
-
-### Wave 1 Efforts
-1. **E1.1.1-kind-cert-extraction** [650 lines]
-   - Branch: `idpbuilder-oci-build-push/phase1/wave1/kind-cert-extraction`
-   - Status: Within limit, use main branch
-   - Location: `/efforts/phase1/wave1/kind-cert-extraction`
-
-2. **E1.1.2-registry-tls-trust** [700 lines]
-   - Branch: `idpbuilder-oci-build-push/phase1/wave1/registry-tls-trust`
-   - Status: Within limit, use main branch
-   - Location: `/efforts/phase1/wave1/registry-tls-trust`
-
-3. **E1.1.3-registry-auth-types** [SPLIT]
-   - DO NOT USE: Parent branch (too large)
-   - Split-001: `idpbuilder-oci-build-push/phase1/wave1/registry-auth-types-split-001`
-   - Split-002: `idpbuilder-oci-build-push/phase1/wave1/registry-auth-types-split-002`
-   - Location: `/efforts/phase1/wave1/registry-auth-types-split-00X`
-
-### Wave 2 Efforts (Part of Wave 1 Completion)
-4. **E1.2.1-cert-validation** [SPLIT]
-   - DO NOT USE: Parent branch (too large)
-   - Split-001: `idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-001`
-   - Split-002: `idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-002`
-   - Split-003: `idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-003`
-   - Location: `/efforts/phase1/wave2/cert-validation-split-00X`
-
-5. **E1.2.2-fallback-strategies** [560 lines]
-   - Branch: `idpbuilder-oci-build-push/phase1/wave2/fallback-strategies`
-   - Status: Within limit, use main branch
-   - Location: `/efforts/phase1/wave2/fallback-strategies`
-
-## Optimal Merge Order
-
-Based on dependency analysis and file modifications:
-
-### Merge Sequence
-1. **kind-cert-extraction** (Foundation - Kind cluster certificate extraction)
-2. **registry-tls-trust** (Builds on cert extraction - TLS trust management)
-3. **registry-auth-types-split-001** (Types and constants)
-4. **registry-auth-types-split-002** (Implementation using types)
-5. **cert-validation-split-001** (Validation foundations)
-6. **cert-validation-split-002** (Validation implementation)
-7. **cert-validation-split-003** (Validation completion)
-8. **fallback-strategies** (Uses all previous functionality)
-
-## Potential Conflicts Analysis
-
-### Expected Conflicts
-
-1. **pkg/testutil/** (Multiple efforts add test utilities)
-   - Affected: kind-cert-extraction, registry-tls-trust, cert-validation splits
-   - Resolution: Accept all additions, they should be complementary
-
-2. **pkg/certs/** (Modified by multiple efforts)
-   - registry-tls-trust: Adds trust.go, utilities.go
-   - cert-validation-split-001: Adds validation_errors.go, storage.go, extractor.go
-   - Resolution: These are additive changes, should merge cleanly
-
-3. **go.mod/go.sum** (Dependency additions)
-   - Multiple efforts may add dependencies
-   - Resolution: Accept all additions, run `go mod tidy` after each merge
-
-4. **pkg/util/** (Shared utilities)
-   - kind-cert-extraction modifies pkg/util/env
-   - Resolution: Accept all changes, they should be independent
-
-### Low Conflict Risk Areas
-- **pkg/kind/**: Only modified by kind-cert-extraction
-- **pkg/oci/**: Only modified by registry-auth-types splits
-- **pkg/controllers/**: Minimal modifications, should merge cleanly
-
-## Exact Git Commands for Integration Agent
-
-### Prerequisites
+## Phase 2 Wave 1 Context
+The image-builder effort is part of Phase 2 Wave 1 and should be based on the complete Phase 1 work.
 ```bash
 # Navigate to integration workspace
 cd /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase1/wave1/integration-workspace
 
+<<<<<<< HEAD
 # Verify clean state
 git status --short
 
@@ -321,3 +247,205 @@ After successful integration:
 **Created**: 2025-09-12 03:30:00 UTC
 **Created By**: Code Reviewer Agent (WAVE_MERGE_PLANNING state)
 **Integration Target**: idpbuilder-oci-build-push/phase1/wave1/integration-20250912-032401
+=======
+# Verify we're on the integration branch
+git branch --show-current
+# Expected: idpbuilder-oci-build-push/phase1/wave1/integration
+
+# Ensure clean working directory
+git status
+# Expected: nothing to commit, working tree clean
+
+# Fetch latest changes
+git fetch origin
+```
+
+### Step 2: Add Effort Remotes (if not already added)
+```bash
+# Add remotes for the effort branches
+git remote add kind-cert ../kind-cert-extraction || true
+git remote add registry-tls ../registry-tls-trust || true
+
+# Fetch from the effort remotes
+git fetch kind-cert
+git fetch registry-tls
+```
+
+### Step 3: Merge E1.1.1 - Kind Certificate Extraction
+```bash
+# Merge E1.1.1 into integration
+git merge origin/phase1/wave1/effort-kind-cert-extraction --no-ff \
+  -m "feat: integrate E1.1.1 - Kind Certificate Extraction
+
+- Adds certificate extraction from Kind clusters
+- Implements KindCertValidator interface
+- Provides kubectl-based client for pod access
+- Feature flag: KIND_CERT_EXTRACTION_ENABLED"
+
+# Verify no conflicts
+if [ $? -ne 0 ]; then
+    echo "❌ Merge conflict detected - manual resolution required"
+    exit 1
+fi
+
+# Quick build test
+go build ./... || echo "⚠️ Build issue detected - review required"
+```
+
+### Step 4: Validate E1.1.1 Integration
+```bash
+# Run tests for E1.1.1 functionality
+go test ./pkg/certs/... -v
+
+# Verify renamed functions are present
+grep -r "KindCertValidator" pkg/
+grep -r "isKindFeatureEnabled" pkg/
+
+# Check for any remaining duplicates
+grep -r "^type CertValidator interface" pkg/ | wc -l
+# Expected: 1 (only KindCertValidator should exist at this point)
+```
+
+### Step 5: Merge E1.1.2 - Registry TLS Trust Integration
+```bash
+# Merge E1.1.2 into integration
+git merge origin/phase1/wave1/effort-registry-tls-trust --no-ff \
+  -m "feat: integrate E1.1.2 - Registry TLS Trust Integration
+
+- Adds TLS trust store management for registries
+- Implements RegistryCertValidator interface  
+- Provides go-containerregistry transport configuration
+- Feature flag: REGISTRY_TLS_TRUST_ENABLED"
+
+# Verify no conflicts
+if [ $? -ne 0 ]; then
+    echo "❌ Merge conflict detected - manual resolution required"
+    exit 1
+fi
+```
+
+### Step 6: Final Integration Validation
+```bash
+# Full build test
+echo "🔨 Running full build..."
+go build ./...
+
+# Run all tests
+echo "🧪 Running all tests..."
+go test ./... -v
+
+# Verify both renamed interfaces exist
+echo "✅ Verifying interface naming..."
+grep -r "KindCertValidator" pkg/ | head -2
+grep -r "RegistryCertValidator" pkg/ | head -2
+
+# Verify both renamed functions exist
+echo "✅ Verifying function naming..."
+grep -r "isKindFeatureEnabled" pkg/ | head -2
+grep -r "isRegistryFeatureEnabled" pkg/ | head -2
+
+# Check for any duplicate declarations
+echo "🔍 Checking for duplicates..."
+DUPLICATES=$(grep -r "^type CertValidator interface\|^func isFeatureEnabled" pkg/ | wc -l)
+if [ $DUPLICATES -gt 0 ]; then
+    echo "❌ Found duplicate declarations!"
+    grep -r "^type CertValidator interface\|^func isFeatureEnabled" pkg/
+    exit 1
+else
+    echo "✅ No duplicate declarations found"
+fi
+
+# Final line count
+echo "📏 Total integration size:"
+git diff --stat origin/main
+```
+
+### Step 7: Push Integration Branch
+```bash
+# Commit any integration-specific files if needed
+git add -A
+git commit -m "chore: wave 1 integration complete" || true
+
+# Push the integration branch
+git push origin idpbuilder-oci-build-push/phase1/wave1/integration
+```
+
+## ✅ Success Criteria
+
+The integration is successful when:
+1. ✅ Both effort branches merged without conflicts
+2. ✅ No duplicate type/function declarations
+3. ✅ All tests pass
+4. ✅ Build succeeds without errors
+5. ✅ Both feature flags can be toggled independently
+6. ✅ Integration branch pushed to remote
+
+## ⚠️ Rollback Plan
+
+If integration fails:
+```bash
+# Reset to pre-merge state
+git reset --hard origin/idpbuilder-oci-build-push/phase1/wave1/integration
+
+# Investigate specific failure
+# - Check for missed duplicate declarations
+# - Review test failures
+# - Examine build errors
+
+# Report issues back to orchestrator for ERROR_RECOVERY
+```
+
+## 📊 Expected Outcomes
+
+### File Structure After Integration
+```
+pkg/certs/
+├── extractor.go         # E1.1.1 - KindCertValidator
+├── extractor_test.go    # E1.1.1 tests
+├── helpers.go           # E1.1.1 - isKindFeatureEnabled
+├── helpers_test.go      # E1.1.1 tests
+├── kubectl_client.go    # E1.1.1
+├── storage.go           # E1.1.1
+├── trust.go            # E1.1.2 - isRegistryFeatureEnabled
+├── utilities.go        # E1.1.2 - RegistryCertValidator
+├── transport.go        # E1.1.2
+└── transport_test.go   # E1.1.2 tests
+```
+
+### Interface Summary
+- `KindCertValidator` - Interface for Kind certificate validation (E1.1.1)
+- `RegistryCertValidator` - Interface for registry certificate validation (E1.1.2)
+- No generic `CertValidator` interface should exist
+
+### Function Summary
+- `isKindFeatureEnabled()` - Check Kind feature flag (E1.1.1)
+- `isRegistryFeatureEnabled()` - Check registry feature flag (E1.1.2)
+- No generic `isFeatureEnabled()` function should exist
+
+## 🔍 Integration Verification Checklist
+
+- [ ] Integration workspace is clean
+- [ ] Both effort branches fetched
+- [ ] E1.1.1 merged successfully
+- [ ] E1.1.1 tests pass
+- [ ] E1.1.2 merged successfully
+- [ ] E1.1.2 tests pass
+- [ ] No duplicate declarations
+- [ ] Full build succeeds
+- [ ] All tests pass
+- [ ] Integration branch pushed
+
+## 📝 Notes for Integration Agent
+
+1. **Execute steps sequentially** - Do not parallelize merge operations
+2. **Stop on first failure** - Do not continue if any step fails
+3. **Document any issues** - Create ERROR-REPORT.md if problems occur
+4. **Verify each step** - Run validation commands after each merge
+5. **Use --no-ff** - Preserve merge commit history for tracking
+
+---
+
+**Plan Status**: READY FOR EXECUTION  
+**Created By**: Code Reviewer Agent  
+**For Execution By**: Integration Agent  
+>>>>>>> dccee8f (docs: add integration plan and work log)
