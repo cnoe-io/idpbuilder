@@ -15,3 +15,9 @@ Status: In Progress
 - Previous base was old phase1/integration commit 4f0e259
 - New base includes complete Phase 1 (Wave 1 + Wave 2) work
 - This provides proper foundation for Phase 2 development
+
+## Operation 2: Conflict Resolution
+Time: 2025-09-14T16:47:00Z
+Status: Resolving merge conflicts during rebase
+Conflicts: Documentation files (WAVE-MERGE-PLAN.md, work-log.md, INTEGRATION-REPORT.md)
+Resolution: Keeping Phase 2 image-builder context, preserving rebase purpose
