@@ -191,6 +191,11 @@ func NewRegistryCertValidator() *RegistryCertValidator {
 	return &RegistryCertValidator{}
 }
 
+// NewCertValidator creates a certificate validator (alias for NewRegistryCertValidator)
+func NewCertValidator() *RegistryCertValidator {
+	return NewRegistryCertValidator()
+}
+
 // ValidateCertificate validates a certificate
 func (v *RegistryCertValidator) ValidateCertificate(cert *x509.Certificate) *ValidationResult {
 	now := time.Now()

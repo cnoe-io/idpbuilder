@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// createTestCertificate is defined in helpers_test.go and shared across all test files
 
 func TestNewDefaultTrustStoreManager(t *testing.T) {
 	// Create trust store manager
