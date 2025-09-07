@@ -82,3 +82,54 @@ Result: SUCCESS - Branch pushed to remote
 End: 2025-09-06 22:30:00 UTC
 Total Duration: 4 minutes
 Final Status: ✅ SUCCESSFUL - Wave 1 fully integrated
+
+---
+
+# Split 001 Implementation Log - Certificate Validation Pipeline
+
+## Split 001 Details
+- **Effort Name**: E1.2.1 certificate-validation-pipeline (SPLIT-001)
+- **Phase**: 1
+- **Wave**: 2
+- **Split**: 001 of 3 (Core Types and Error Definitions)
+- **Target Size**: 200 lines (soft limit)
+- **Hard Limit**: 800 lines
+- **Agent**: sw-engineer
+- **State**: SPLIT_IMPLEMENTATION
+
+### [2025-09-07 16:53] Split 001 Implementation Started
+- Directory: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase1/wave2/cert-validation-SPLIT-001
+- Branch: idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-001
+- Verified workspace isolation and environment setup
+
+### [2025-09-07 16:54] Directory Structure Created
+- Created pkg/certs/ directory structure
+- Status: ✅ COMPLETED
+
+### [2025-09-07 16:55] validation_errors.go Implementation
+- Implemented ValidationErrorType enum with 18 error types
+- Created ValidationError struct with comprehensive error information
+- Added constructor, error interface, and utility methods
+- Lines added: 171
+- Status: ✅ COMPLETED
+
+### [2025-09-07 16:56] diagnostics.go Implementation
+- Implemented CertDiagnostics struct for diagnostic information
+- Added certificate identification, validity, chain, and technical details
+- Lines added: 36
+- Status: ✅ COMPLETED
+
+### [2025-09-07 16:57] Size Measurement
+- validation_errors.go: 171 lines
+- diagnostics.go: 36 lines
+- **Total Split 001 Size: 207 lines**
+- Target: 200 lines (7 lines over soft target, but acceptable)
+- Hard limit: 800 lines (593 lines under hard limit)
+- Status: ✅ WITHIN ACCEPTABLE RANGE
+
+## Split 001 Summary
+- **Files Created**: 2/2 as per split plan
+- **Total Lines**: 207
+- **Dependencies**: None (foundational split)
+- **Implementation Completeness**: 100%
+- **Ready for**: Commit and push
