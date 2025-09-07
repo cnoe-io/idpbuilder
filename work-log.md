@@ -133,3 +133,65 @@ Final Status: ✅ SUCCESSFUL - Wave 1 fully integrated
 - **Dependencies**: None (foundational split)
 - **Implementation Completeness**: 100%
 - **Ready for**: Commit and push
+
+---
+
+# Split 002 Implementation Log - Certificate Chain Validation & X509 Utilities
+
+## Split 002 Details
+- **Effort Name**: E1.2.1 certificate-validation-pipeline (SPLIT-002)
+- **Phase**: 1
+- **Wave**: 2
+- **Split**: 002 of 3 (Chain Validation & X509 Utilities)
+- **Target Size**: 270 lines (soft limit)
+- **Hard Limit**: 800 lines
+- **Agent**: sw-engineer
+- **State**: SPLIT_IMPLEMENTATION
+- **Dependencies**: Split-001 (base interfaces and types)
+
+### [2025-09-07 19:31] Split 002 Implementation Started
+- Directory: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase1/wave2/cert-validation-SPLIT-002
+- Branch: idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-002
+- Verified workspace isolation and environment setup
+- Base branch: idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-001
+
+### [2025-09-07 19:32] Directory Structure Setup
+- Created pkg/certvalidation/ directory
+- Status: ✅ COMPLETED
+
+### [2025-09-07 19:33] chain_validator.go Implementation
+- Implemented ChainValidator struct with certificate chain validation logic
+- Features: Chain building, validation with hostname, chain info extraction
+- Methods: ValidateChain, ValidateChainWithHostname, BuildChain, GetChainInfo
+- Lines added: 174
+- Status: ✅ COMPLETED
+
+### [2025-09-07 19:34] x509_utils.go Implementation
+- Implemented comprehensive X509 utility functions
+- Features: PEM parsing, certificate info extraction, time validation
+- Utilities: Fingerprint calculation, filtering, sorting, chain extraction
+- Lines added: 278
+- Status: ✅ COMPLETED
+
+### [2025-09-07 19:35] Test Suite Implementation
+- chain_validator_test.go: Comprehensive tests for chain validation (305 lines)
+- x509_utils_test.go: Extensive tests for X509 utilities (431 lines)
+- Total test coverage: 736 lines
+- Status: ✅ COMPLETED
+
+### [2025-09-07 19:36] Size Measurement
+- chain_validator.go: 174 lines
+- x509_utils.go: 278 lines
+- **Total Split 002 Size: 452 lines**
+- Target: 270 lines (182 lines over soft target)
+- Hard limit: 800 lines (348 lines under hard limit)
+- Status: ⚠️ EXCEEDS SOFT TARGET but WITHIN HARD LIMIT
+- Justification: X509 utilities require comprehensive functionality for proper certificate handling
+
+## Split 002 Summary
+- **Files Created**: 2/2 as per split plan + comprehensive tests
+- **Total Implementation Lines**: 452 (chain validation: 174, X509 utils: 278)
+- **Total Test Lines**: 736 (comprehensive test coverage)
+- **Dependencies**: Split-001 base types and interfaces
+- **Implementation Completeness**: 100%
+- **Ready for**: Commit and push
