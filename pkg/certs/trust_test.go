@@ -1,57 +1,12 @@
 package certs
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"math/big"
 	"os"
 	"strings"
 	"testing"
-	"time"
 )
 
-// createTestCertificate creates a test certificate for testing
-func createTestCertificate(t *testing.T) *x509.Certificate {
-	// Create a private key
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		t.Fatalf("Failed to generate private key: %v", err)
-	}
-
-	// Create certificate template
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			Organization:  []string{"Test Corp"},
-			Country:       []string{"US"},
-			Province:      []string{""},
-			Locality:      []string{"Test City"},
-			StreetAddress: []string{""},
-			PostalCode:    []string{""},
-		},
-		NotBefore:    time.Now().Add(-1 * time.Hour),
-		NotAfter:     time.Now().Add(24 * time.Hour),
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  nil,
-	}
-
-	// Create the certificate
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	if err != nil {
-		t.Fatalf("Failed to create certificate: %v", err)
-	}
-
-	// Parse the certificate
-	cert, err := x509.ParseCertificate(certDER)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	return cert
-}
+// createTestCertificate is defined in helpers_test.go and shared across all test files
 
 func TestNewDefaultTrustStoreManager(t *testing.T) {
 	// Create trust store manager
