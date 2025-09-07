@@ -1,0 +1,20 @@
+# E1.1.2 Duplicate Declaration Fixes Complete
+# Timestamp: 2025-09-06 20:49:46 UTC
+
+## Fixed Issues:
+1. ✅ CertValidator -> RegistryCertValidator (utilities.go line 229)
+2. ✅ isFeatureEnabled -> isRegistryFeatureEnabled (trust.go line 260)  
+3. ✅ Updated all references to use new names
+
+## Build Status:
+- ✅ pkg/certs builds successfully
+- ✅ Full project builds successfully
+- ✅ No duplicate declaration conflicts with E1.1.1
+
+## Commit:
+- Branch: phase1/wave1/effort-registry-tls-trust
+- Commit: 4f8abb7c880af5425e560c90346eafb1318c14d3
+- Pushed to remote: ✅
+
+## Integration Ready:
+The E1.1.2 effort branch can now be safely integrated without conflicts.
