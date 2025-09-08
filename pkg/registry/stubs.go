@@ -3,175 +3,173 @@ package registry
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
-	
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/types"
+	"sync"
+	"time"
 )
 
-// Temporary stubs for missing dependencies until E2.1.1 (image-builder) is complete.
-// These stubs allow the registry client to be tested and merged independently.
-
-// ImageLoader interface defines image loading operations
-// This will be implemented by E2.1.1 image-builder effort
-type ImageLoader interface {
-	LoadImage(ctx context.Context, source string) (v1.Image, error)
-	ListImages(ctx context.Context) ([]string, error)
+type MockRegistry struct {
+	mu           sync.RWMutex
+	repositories map[string]*MockRepository
+	errors       map[string]error
+	delays       map[string]time.Duration
+	callCounts   map[string]int
 }
 
-// MockImageLoader provides a stub implementation for testing
-// This is a temporary implementation until the real ImageLoader from E2.1.1 is available
-type MockImageLoader struct{}
-
-// NewMockImageLoader creates a new mock image loader for testing
-func NewMockImageLoader() ImageLoader {
-	return &MockImageLoader{}
+type MockRepository struct {
+	Name   string
+	Images map[string]*MockImage
 }
 
-// LoadImage returns a test image for push operations
-func (m *MockImageLoader) LoadImage(ctx context.Context, source string) (v1.Image, error) {
-	// Create a minimal test image
-	return &testImage{
-		configFile: &v1.ConfigFile{
-			Architecture: "amd64",
-			OS:          "linux",
-		},
-	}, nil
+type MockImage struct {
+	Tag    string
+	Digest string
+	Size   int64
+	Data   []byte
 }
 
-// ListImages returns a test list of images
-func (m *MockImageLoader) ListImages(ctx context.Context) ([]string, error) {
-	return []string{
-		"test/image:latest",
-		"test/app:v1.0.0",
-	}, nil
+func NewMockRegistry() *MockRegistry {
+	return &MockRegistry{
+		repositories: make(map[string]*MockRepository),
+		errors:       make(map[string]error),
+		delays:       make(map[string]time.Duration),
+		callCounts:   make(map[string]int),
+	}
 }
 
-// testImage implements v1.Image for testing purposes
-type testImage struct {
-	configFile *v1.ConfigFile
+func (m *MockRegistry) InjectError(operation string, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.errors[operation] = err
 }
 
-// Layers returns empty layers for test image
-func (t *testImage) Layers() ([]v1.Layer, error) {
-	layer := &testLayer{}
-	return []v1.Layer{layer}, nil
+func (m *MockRegistry) InjectDelay(operation string, delay time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.delays[operation] = delay
 }
 
-// MediaType returns the media type for test image
-func (t *testImage) MediaType() (types.MediaType, error) {
-	return types.DockerManifestSchema2, nil
+func (m *MockRegistry) GetCallCount(operation string) int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.callCounts[operation]
 }
 
-// Size returns the size of test image
-func (t *testImage) Size() (int64, error) {
-	return 1024, nil
+func (m *MockRegistry) checkError(operation string) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	m.callCounts[operation]++
+	
+	if delay, exists := m.delays[operation]; exists {
+		time.Sleep(delay)
+	}
+	
+	if err, exists := m.errors[operation]; exists {
+		return err
+	}
+	
+	return nil
 }
 
-// ConfigName returns config hash for test image
-func (t *testImage) ConfigName() (v1.Hash, error) {
-	return v1.Hash{
-		Algorithm: "sha256",
-		Hex:       "test-config-hash",
-	}, nil
+func (m *MockRegistry) Push(ctx context.Context, image string, content io.Reader) error {
+	if err := m.checkError("Push"); err != nil { return err }
+	
+	repository, tag, err := ParseImageRef(image)
+	if err != nil { return err }
+	
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	if _, exists := m.repositories[repository]; !exists {
+		m.repositories[repository] = &MockRepository{Name: repository, Images: make(map[string]*MockImage)}
+	}
+	
+	data, err := io.ReadAll(content)
+	if err != nil { return err }
+	
+	m.repositories[repository].Images[tag] = &MockImage{Tag: tag, Digest: calculateDigest(data), Size: int64(len(data)), Data: data}
+	return nil
 }
 
-// ConfigFile returns config file for test image
-func (t *testImage) ConfigFile() (*v1.ConfigFile, error) {
-	return t.configFile, nil
+func (m *MockRegistry) List(ctx context.Context) ([]string, error) {
+	if err := m.checkError("List"); err != nil { return nil, err }
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	repositories := make([]string, 0, len(m.repositories))
+	for name := range m.repositories { repositories = append(repositories, name) }
+	return repositories, nil
 }
 
-// RawConfigFile returns raw config for test image
-func (t *testImage) RawConfigFile() ([]byte, error) {
-	return []byte(`{"architecture":"amd64","os":"linux"}`), nil
+func (m *MockRegistry) Exists(ctx context.Context, repository string) (bool, error) {
+	if err := m.checkError("Exists"); err != nil { return false, err }
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	_, exists := m.repositories[repository]
+	return exists, nil
 }
 
-// Digest returns digest for test image
-func (t *testImage) Digest() (v1.Hash, error) {
-	return v1.Hash{
-		Algorithm: "sha256", 
-		Hex:       "test-image-digest",
-	}, nil
+func (m *MockRegistry) Delete(ctx context.Context, repository string) error {
+	if err := m.checkError("Delete"); err != nil { return err }
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, exists := m.repositories[repository]; !exists { return fmt.Errorf("repository %s not found", repository) }
+	delete(m.repositories, repository)
+	return nil
 }
 
-// Manifest returns manifest for test image
-func (t *testImage) Manifest() (*v1.Manifest, error) {
-	return &v1.Manifest{
+func (m *MockRegistry) Close() error {
+	return m.checkError("Close")
+}
+
+func (m *MockRegistry) AddRepository(name string) *MockRepository {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	repo := &MockRepository{Name: name, Images: make(map[string]*MockImage)}
+	m.repositories[name] = repo
+	return repo
+}
+
+func (m *MockRegistry) AddImage(repository, tag string, size int64) *MockImage {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	if _, exists := m.repositories[repository]; !exists {
+		m.repositories[repository] = &MockRepository{Name: repository, Images: make(map[string]*MockImage)}
+	}
+	
+	data := bytes.Repeat([]byte("mock"), int(size/4)+1)[:size]
+	image := &MockImage{Tag: tag, Digest: calculateDigest(data), Size: size, Data: data}
+	m.repositories[repository].Images[tag] = image
+	return image
+}
+
+func (m *MockRegistry) ClearAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.repositories = make(map[string]*MockRepository)
+	m.errors = make(map[string]error)
+	m.delays = make(map[string]time.Duration)
+	m.callCounts = make(map[string]int)
+}
+
+type TestHelper struct{ mock *MockRegistry }
+
+func NewTestHelper() *TestHelper { return &TestHelper{NewMockRegistry()} }
+
+func (th *TestHelper) GetMockRegistry() *MockRegistry { return th.mock }
+
+func (th *TestHelper) SetupBasicScenario() {
+	th.mock.AddRepository("nginx")
+	th.mock.AddImage("nginx", "latest", 50*1024*1024)
+}
+
+func (th *TestHelper) CreateTestManifest() *Manifest {
+	return &Manifest{
 		SchemaVersion: 2,
-		MediaType:     types.DockerManifestSchema2,
-		Config: v1.Descriptor{
-			MediaType: types.DockerConfigJSON,
-			Size:      100,
-			Digest: v1.Hash{
-				Algorithm: "sha256",
-				Hex:       "test-config-hash",
-			},
-		},
-		Layers: []v1.Descriptor{
-			{
-				MediaType: types.DockerLayer,
-				Size:      1024,
-				Digest: v1.Hash{
-					Algorithm: "sha256",
-					Hex:       "test-layer-hash",
-				},
-			},
-		},
-	}, nil
-}
-
-// RawManifest returns raw manifest for test image
-func (t *testImage) RawManifest() ([]byte, error) {
-	return []byte(`{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json"}`), nil
-}
-
-// LayerByDigest returns a layer by digest for test image
-func (t *testImage) LayerByDigest(h v1.Hash) (v1.Layer, error) {
-	return &testLayer{}, nil
-}
-
-// LayerByDiffID returns a layer by diff ID for test image
-func (t *testImage) LayerByDiffID(h v1.Hash) (v1.Layer, error) {
-	return &testLayer{}, nil
-}
-
-// testLayer implements v1.Layer for testing
-type testLayer struct{}
-
-// Digest returns digest for test layer
-func (l *testLayer) Digest() (v1.Hash, error) {
-	return v1.Hash{
-		Algorithm: "sha256",
-		Hex:       "test-layer-digest",
-	}, nil
-}
-
-// DiffID returns diff ID for test layer
-func (l *testLayer) DiffID() (v1.Hash, error) {
-	return v1.Hash{
-		Algorithm: "sha256", 
-		Hex:       "test-layer-diffid",
-	}, nil
-}
-
-// Compressed returns compressed layer content
-func (l *testLayer) Compressed() (io.ReadCloser, error) {
-	data := []byte("test layer content")
-	return io.NopCloser(bytes.NewReader(data)), nil
-}
-
-// Uncompressed returns uncompressed layer content  
-func (l *testLayer) Uncompressed() (io.ReadCloser, error) {
-	data := []byte("test layer content")
-	return io.NopCloser(bytes.NewReader(data)), nil
-}
-
-// Size returns size of test layer
-func (l *testLayer) Size() (int64, error) {
-	return 1024, nil
-}
-
-// MediaType returns media type for test layer
-func (l *testLayer) MediaType() (types.MediaType, error) {
-	return types.DockerLayer, nil
+		MediaType:     "application/vnd.docker.distribution.manifest.v2+json",
+		Config:        Layer{Digest: "sha256:cfg", Size: 1024, Data: bytes.NewReader([]byte("config"))},
+		Layers: []Layer{{Digest: "sha256:layer1", Size: 2048, Data: bytes.NewReader([]byte("layer1"))}},
+	}
 }
