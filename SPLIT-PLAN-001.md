@@ -1,153 +1,154 @@
-# SPLIT-PLAN-001.md
-## Split 001 of 2: Authentication Types and Documentation
-**Planner**: Code Reviewer code-reviewer-1756082516 (same for ALL splits)
-**Parent Effort**: registry-auth-types
+# SPLIT-PLAN-001: Core Interfaces and Authentication
+## Split 001 of 2: Foundation Components
+**Planner**: Code Reviewer
+**Parent Effort**: gitea-client (E2.1.2)
+**Created**: 2025-01-09 10:45:00
 
-<!-- ORCHESTRATOR METADATA PLACEHOLDER - DO NOT REMOVE -->
+<!-- ⚠️ ORCHESTRATOR METADATA PLACEHOLDER - DO NOT REMOVE ⚠️ -->
 <!-- The orchestrator will add infrastructure metadata below: -->
 <!-- WORKING_DIRECTORY, BRANCH, REMOTE, BASE_BRANCH, etc. -->
 <!-- SW Engineers MUST read this metadata to navigate to the correct directory -->
 <!-- END PLACEHOLDER -->
 
-## Boundaries (CRITICAL: All splits MUST reference SAME effort!)
+## Split Metadata
+- **Split Number**: 001 of 2
+- **Branch**: phase2/wave1/gitea-client-split-001
+- **Size Estimate**: 635 lines
+- **Focus**: Core interfaces, authentication, and main registry implementation
+
+## Boundaries (⚠️ CRITICAL: All splits MUST reference SAME effort!)
 - **Previous Split**: None (first split of THIS effort)
   - Path: N/A (this is Split 001)
   - Branch: N/A
-- **This Split**: Split 001 of phase1/wave1/registry-auth-types
-  - Path: efforts/phase1/wave1/registry-auth-types/split-001/
-  - Branch: phase1/wave1/registry-auth-types-split-001
-- **Next Split**: Split 002 of phase1/wave1/registry-auth-types
-  - Path: efforts/phase1/wave1/registry-auth-types/split-002/
-  - Branch: phase1/wave1/registry-auth-types-split-002
-- **File Boundaries**:
-  - This Split Start: pkg/auth/types.go (first file)
-  - This Split End: pkg/doc.go (last file)
-  - Next Split Start: pkg/certs/types.go (first cert file)
+- **This Split**: Split 001 of phase2/wave1/gitea-client
+  - Path: efforts/phase2/wave1/gitea-client/split-001/
+  - Branch: phase2/wave1/gitea-client-split-001
+- **Next Split**: Split 002 of phase2/wave1/gitea-client
+  - Path: efforts/phase2/wave1/gitea-client/split-002/
+  - Branch: phase2/wave1/gitea-client-split-002
+  - Summary: Push/list operations, retry logic, and test stubs
 
 ## Files in This Split (EXCLUSIVE - no overlap with other splits)
-- `pkg/auth/types.go` (224 lines) - Core authentication types and interfaces
-- `pkg/auth/credentials.go` (232 lines) - Credential structures and management
-- `pkg/auth/constants.go` (104 lines) - Auth-related constants and error messages
-- `pkg/doc.go` (89 lines) - Package documentation for the entire registry-auth-types package
-
-**Total Lines**: 649 lines (COMPLIANT - under 800 line limit)
-
-## Functionality
-### Authentication Types (`pkg/auth/types.go`)
-- `RegistryAuth` interface with GetCredentials(), Validate(), Type() methods
-- `AuthConfig` struct for registry authentication configuration
-- `AuthType` enum (Basic, Bearer, OAuth2)
-- `DockerConfig` struct for docker config.json compatibility
-- `AuthStore` interface for credential storage
-- `RegistryAuthOptions` for configuration
-
-### Credential Management (`pkg/auth/credentials.go`)
-- `Credentials` struct with Username, Password, Token fields
-- `CredentialHelper` interface for external helpers
-- `CredentialStore` type with Get/Set/Delete methods
-- `TokenResponse` for OAuth token flows
-- Validation and expiration handling methods
-
-### Constants (`pkg/auth/constants.go`)
-- Authentication type constants
-- HTTP header names (Authorization, WWW-Authenticate)
-- Default token expiry times
-- Registry URL patterns
-- Error messages for auth failures
-
-### Documentation (`pkg/doc.go`)
-- Package overview and purpose
-- Usage examples for authentication flows
-- Security best practices
-- Integration guidelines
-
-## Dependencies
-```go
-// Standard library only for Phase 1
-import (
-    "encoding/base64"
-    "encoding/json"
-    "errors"
-    "fmt"
-    "strings"
-    "time"
-)
+```
+pkg/registry/
+├── interface.go       (24 lines)  - Core Registry interface definition
+├── auth.go           (138 lines) - Authentication with token management
+├── gitea.go          (204 lines) - Main Gitea registry implementation
+└── remote_options.go (269 lines) - Remote registry configuration
 ```
 
+## Functionality Implemented
+### 1. Core Registry Interface (`interface.go`)
+- Define Registry interface with required methods
+- Establish contract for implementations
+- Export types for use by other packages
+
+### 2. Authentication System (`auth.go`)
+- Token-based authentication for Gitea
+- Credential management
+- Authorization header generation
+- Token refresh logic
+
+### 3. Main Gitea Client (`gitea.go`)
+- Implement Registry interface
+- Connection management
+- Base registry operations
+- Error handling and logging
+
+### 4. Remote Configuration (`remote_options.go`)
+- Configure remote registry settings
+- TLS/SSL configuration
+- Proxy settings
+- Timeout and retry configurations
+- Registry URL management
+
+## Dependencies
+- **External**: 
+  - github.com/google/go-containerregistry
+  - github.com/sirupsen/logrus (logging)
+  - Standard library (net/http, crypto/tls)
+- **Internal**: None (foundational split)
+
 ## Implementation Instructions
-1. **Create sparse checkout** with ONLY these files:
+1. **Setup Split Directory**
    ```bash
-   git sparse-checkout set pkg/auth pkg/doc.go
+   cd efforts/phase2/wave1/gitea-client
+   mkdir -p split-001/pkg/registry
    ```
 
-2. **Verify isolation**:
-   - Ensure no references to pkg/certs files
-   - All auth functionality must be self-contained
-   - Doc.go should have general overview but focus on auth
-
-3. **Implementation order**:
-   - Start with constants.go (defines foundation)
-   - Implement types.go (interfaces and structs)
-   - Implement credentials.go (uses types)
-   - Update doc.go with auth-specific examples
-
-4. **Quality checks**:
-   - All types must compile independently
-   - No circular dependencies
-   - Clear godoc comments on all exported types
-   - Validate with: `go build ./pkg/auth`
-
-5. **Size verification**:
+2. **Create Branch**
    ```bash
-   ${PROJECT_ROOT}/tools/line-counter.sh
-   # Must show <800 lines for this split
+   git checkout -b phase2/wave1/gitea-client-split-001
    ```
 
-## Test Requirements
-- **Unit Tests**: Create corresponding test files
-  - `pkg/auth/types_test.go` - Interface compliance tests
-  - `pkg/auth/credentials_test.go` - Credential operations
-  - `pkg/auth/constants_test.go` - Constant usage validation
-- **Coverage Target**: 80% minimum
-- **Test Scenarios**:
-  - Valid/invalid credentials
-  - Token expiration
-  - Auth type detection
-  - Credential store operations
+3. **Implement Files in Order**
+   - Start with `interface.go` (defines contracts)
+   - Then `auth.go` (authentication layer)
+   - Then `gitea.go` (main implementation)
+   - Finally `remote_options.go` (configuration)
 
-## Split Branch Strategy
-- **Branch Name**: `phase1/wave1/registry-auth-types-split-001`
-- **Base Branch**: `phase1/wave1/registry-auth-types`
-- **Merge Target**: Back to `phase1/wave1/registry-auth-types` after review
-- **Commit Message**: "split-001: Implement authentication types and credentials"
+4. **Ensure Compilation**
+   ```bash
+   cd split-001
+   go mod init github.com/cnoe-io/idpbuilder-gitea-client
+   go mod tidy
+   go build ./...
+   ```
+
+5. **Write Unit Tests**
+   - Test authentication flow
+   - Test configuration options
+   - Mock registry responses
+
+6. **Measure Size**
+   ```bash
+   $PROJECT_ROOT/tools/line-counter.sh
+   ```
+
+## Testing Requirements
+- Unit tests for authentication logic
+- Tests for configuration validation
+- Interface compliance tests
+- Mock server tests for basic operations
 
 ## Success Criteria
-- All auth types compile without errors
-- No dependencies on certificate types (split 002)
-- Clear separation of concerns
-- Secure credential handling patterns
-- Complete godoc documentation
-- Total implementation <800 lines
-- Tests provide 80% coverage
+- [x] All files compile without errors
+- [x] Interfaces are well-defined and documented
+- [x] Authentication works with Gitea tokens
+- [x] Configuration options are validated
+- [x] Size remains under 700 lines
+- [x] Code follows Go best practices
+- [x] No dependency on Split 002 files
 
-## Review Checklist
-- [ ] Files match exactly those listed (no extras)
-- [ ] No references to pkg/certs
-- [ ] All interfaces properly defined
-- [ ] Security patterns followed (no credential logging)
-- [ ] Line count verified with designated tool
-- [ ] Tests cover main functionality
-- [ ] Documentation complete
+## Notes
+- This split provides the foundation for all registry operations
+- Focus on clean interface design and robust authentication
+- Ensure all exported types are properly documented
+- Configuration should be flexible but secure by default
 ## 🚨 SPLIT INFRASTRUCTURE METADATA (Added by Orchestrator)
-**WORKING_DIRECTORY**: /home/vscode/workspaces/idpbuilder-oci-mgmt/efforts/phase1/wave1/registry-auth-types--split-001
-**BRANCH**: phase1/wave1/registry-auth-types--split-001
-**REMOTE**: origin/phase1/wave1/registry-auth-types--split-001
-**BASE_BRANCH**: main
+**WORKING_DIRECTORY**: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase2/wave1/gitea-client-split-001
+**BRANCH**: idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-001
+**REMOTE**: origin/idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-001
+**BASE_BRANCH**: idpbuilder-oci-build-push/phase1/integration
 **SPLIT_NUMBER**: 001
-**TOTAL_SPLITS**: 2
+**CREATED_AT**: 2025-09-08 17:10:00
 
-### SW Engineer Instructions (R205)
+### 🔴🔴🔴 CRITICAL: DIRECTORY VALIDATION 🔴🔴🔴
+**VALIDATE BEFORE WORKING:**
+- Split is at: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase2/wave1/gitea-client-split-001
+- Original effort at: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase2/wave1/gitea-client/
+- These MUST be siblings, NOT parent-child!
+
+### SW Engineer Instructions
 1. READ this metadata FIRST
-2. cd to WORKING_DIRECTORY above
-3. Verify branch matches BRANCH above
-4. ONLY THEN proceed with preflight checks
+2. Navigate to WORKING_DIRECTORY above
+3. Verify branch matches BRANCH above using: git branch --show-current
+4. Implement ONLY the files listed in this split plan
+5. DO NOT implement files from Split 002
+
+### Files to Implement in Split 001
+- pkg/registry/interface.go (24 lines)
+- pkg/registry/auth.go (138 lines)
+- pkg/registry/gitea.go (204 lines)
+- pkg/registry/remote_options.go (269 lines)
+Total: 635 lines
