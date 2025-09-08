@@ -125,3 +125,30 @@ pkg/registry/
 - Focus on clean interface design and robust authentication
 - Ensure all exported types are properly documented
 - Configuration should be flexible but secure by default
+## 🚨 SPLIT INFRASTRUCTURE METADATA (Added by Orchestrator)
+**WORKING_DIRECTORY**: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase2/wave1/gitea-client-split-001
+**BRANCH**: idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-001
+**REMOTE**: origin/idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-001
+**BASE_BRANCH**: idpbuilder-oci-build-push/phase1/integration
+**SPLIT_NUMBER**: 001
+**CREATED_AT**: 2025-09-08 17:10:00
+
+### 🔴🔴🔴 CRITICAL: DIRECTORY VALIDATION 🔴🔴🔴
+**VALIDATE BEFORE WORKING:**
+- Split is at: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase2/wave1/gitea-client-split-001
+- Original effort at: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase2/wave1/gitea-client/
+- These MUST be siblings, NOT parent-child!
+
+### SW Engineer Instructions
+1. READ this metadata FIRST
+2. Navigate to WORKING_DIRECTORY above
+3. Verify branch matches BRANCH above using: git branch --show-current
+4. Implement ONLY the files listed in this split plan
+5. DO NOT implement files from Split 002
+
+### Files to Implement in Split 001
+- pkg/registry/interface.go (24 lines)
+- pkg/registry/auth.go (138 lines)
+- pkg/registry/gitea.go (204 lines)
+- pkg/registry/remote_options.go (269 lines)
+Total: 635 lines
