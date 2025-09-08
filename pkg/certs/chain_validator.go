@@ -13,10 +13,10 @@ type ValidationMode int
 const (
 	// StrictMode performs full certificate validation including chain verification
 	StrictMode ValidationMode = iota
-	
+
 	// LenientMode performs basic certificate validation with relaxed chain requirements
 	LenientMode
-	
+
 	// InsecureMode performs minimal validation (for development/testing only)
 	InsecureMode
 )
@@ -39,25 +39,25 @@ func (vm ValidationMode) String() string {
 type ChainValidationOptions struct {
 	// MaxChainLength specifies the maximum allowed certificate chain length
 	MaxChainLength int
-	
+
 	// AllowSelfSigned allows self-signed certificates in the chain
 	AllowSelfSigned bool
-	
+
 	// RequireLeafKeyUsage specifies required key usage for leaf certificate
 	RequireLeafKeyUsage []x509.KeyUsage
-	
+
 	// RequireLeafExtKeyUsage specifies required extended key usage for leaf certificate
 	RequireLeafExtKeyUsage []x509.ExtKeyUsage
-	
+
 	// AllowExpiredIntermediates allows expired intermediate certificates in chain
 	AllowExpiredIntermediates bool
-	
+
 	// VerifyHostname specifies whether to verify hostname against leaf certificate
 	VerifyHostname bool
-	
+
 	// Hostname is the expected hostname for verification
 	Hostname string
-	
+
 	// CurrentTime specifies the time for validity checks (defaults to now)
 	CurrentTime time.Time
 }
@@ -92,7 +92,7 @@ func (cv *ChainValidator) ValidateChain(chain []*x509.Certificate, registry stri
 	if options == nil {
 		options = cv.getDefaultOptions()
 	}
-	
+
 	// Set current time if not specified
 	if options.CurrentTime.IsZero() {
 		options.CurrentTime = time.Now()
@@ -140,21 +140,21 @@ func (cv *ChainValidator) validateChainLength(chain []*x509.Certificate, options
 	if maxLength == 0 {
 		maxLength = cv.getMaxChainLengthForMode()
 	}
-	
+
 	if len(chain) > maxLength {
 		leafSubject := "unknown"
 		if len(chain) > 0 {
 			leafSubject = chain[0].Subject.String()
 		}
-		
-		validationErr := NewValidationError(ChainTooLong, 
+
+		validationErr := NewValidationError(ChainTooLong,
 			fmt.Sprintf("certificate chain too long: %d certificates (max: %d)", len(chain), maxLength),
 			leafSubject)
 		validationErr.AddDetail("chain_length", len(chain))
 		validationErr.AddDetail("max_allowed", maxLength)
 		return validationErr
 	}
-	
+
 	return nil
 }
 
@@ -163,11 +163,11 @@ func (cv *ChainValidator) validateChainOrdering(chain []*x509.Certificate) error
 	if len(chain) < 2 {
 		return nil // Single certificate or empty chain
 	}
-	
+
 	for i := 0; i < len(chain)-1; i++ {
 		cert := chain[i]
 		issuer := chain[i+1]
-		
+
 		// Check if the next certificate is the issuer of the current certificate
 		if !cv.isIssuedBy(cert, issuer) {
 			return NewValidationError(ChainIncomplete,
@@ -175,7 +175,7 @@ func (cv *ChainValidator) validateChainOrdering(chain []*x509.Certificate) error
 				cert.Subject.String())
 		}
 	}
-	
+
 	return nil
 }
 
@@ -185,12 +185,12 @@ func (cv *ChainValidator) isIssuedBy(cert, issuer *x509.Certificate) bool {
 	if cert.Issuer.String() != issuer.Subject.String() {
 		return false
 	}
-	
+
 	// Verify authority key identifier if present
 	if len(cert.AuthorityKeyId) > 0 && len(issuer.SubjectKeyId) > 0 {
 		return string(cert.AuthorityKeyId) == string(issuer.SubjectKeyId)
 	}
-	
+
 	return true
 }
 
@@ -230,26 +230,26 @@ func (cv *ChainValidator) validateIndividualCertificate(cert *x509.Certificate, 
 // validateCertificateTimes checks certificate validity periods
 func (cv *ChainValidator) validateCertificateTimes(cert *x509.Certificate, options *ChainValidationOptions, isLeaf bool) error {
 	now := options.CurrentTime
-	
+
 	// Check if certificate is not yet valid
 	if now.Before(cert.NotBefore) {
 		return NewValidationError(NotYetValid,
 			fmt.Sprintf("certificate not yet valid (valid from: %v)", cert.NotBefore),
 			cert.Subject.String())
 	}
-	
+
 	// Check if certificate is expired
 	if now.After(cert.NotAfter) {
 		// For intermediate certificates in lenient mode, allow expired if configured
 		if !isLeaf && options.AllowExpiredIntermediates && cv.mode == LenientMode {
 			return nil // Allow expired intermediate
 		}
-		
+
 		return NewValidationError(Expired,
 			fmt.Sprintf("certificate expired (expired on: %v)", cert.NotAfter),
 			cert.Subject.String())
 	}
-	
+
 	return nil
 }
 
@@ -263,13 +263,13 @@ func (cv *ChainValidator) validateLeafKeyUsage(cert *x509.Certificate, options *
 				cert.Subject.String())
 		}
 	}
-	
+
 	// Check required extended key usage
 	certExtUsages := make(map[x509.ExtKeyUsage]bool)
 	for _, usage := range cert.ExtKeyUsage {
 		certExtUsages[usage] = true
 	}
-	
+
 	for _, requiredExtUsage := range options.RequireLeafExtKeyUsage {
 		if !certExtUsages[requiredExtUsage] {
 			return NewValidationError(ExtendedKeyUsageMismatch,
@@ -277,7 +277,7 @@ func (cv *ChainValidator) validateLeafKeyUsage(cert *x509.Certificate, options *
 				cert.Subject.String())
 		}
 	}
-	
+
 	return nil
 }
 
@@ -287,21 +287,21 @@ func (cv *ChainValidator) validateHostname(cert *x509.Certificate, hostname stri
 	if cert.Subject.CommonName == hostname {
 		return nil
 	}
-	
+
 	// Check DNS names
 	for _, dnsName := range cert.DNSNames {
 		if cv.matchHostname(hostname, dnsName) {
 			return nil
 		}
 	}
-	
+
 	// Check IP addresses
 	for _, ip := range cert.IPAddresses {
 		if ip.String() == hostname {
 			return nil
 		}
 	}
-	
+
 	return NewValidationError(HostnameMismatch,
 		fmt.Sprintf("certificate hostname mismatch: %s", hostname),
 		cert.Subject.String())
@@ -312,7 +312,7 @@ func (cv *ChainValidator) matchHostname(hostname, pattern string) bool {
 	if pattern == hostname {
 		return true
 	}
-	
+
 	// Basic wildcard matching
 	if strings.HasPrefix(pattern, "*.") {
 		suffix := pattern[2:]
@@ -323,7 +323,7 @@ func (cv *ChainValidator) matchHostname(hostname, pattern string) bool {
 			return len(hostLabels) == len(suffixLabels)+1
 		}
 	}
-	
+
 	return false
 }
 
@@ -337,13 +337,13 @@ func (cv *ChainValidator) validateSignatureAlgorithm(cert *x509.Certificate) err
 		x509.DSAWithSHA1:   true,
 		x509.ECDSAWithSHA1: true,
 	}
-	
+
 	if weakAlgorithms[cert.SignatureAlgorithm] {
 		return NewValidationError(WeakSignatureAlgorithm,
 			fmt.Sprintf("weak signature algorithm: %v", cert.SignatureAlgorithm),
 			cert.Subject.String())
 	}
-	
+
 	return nil
 }
 
@@ -352,14 +352,14 @@ func (cv *ChainValidator) validateSignatures(chain []*x509.Certificate) error {
 	for i := 0; i < len(chain)-1; i++ {
 		cert := chain[i]
 		issuer := chain[i+1]
-		
+
 		if err := cert.CheckSignatureFrom(issuer); err != nil {
 			return NewValidationError(SignatureVerificationFailed,
 				fmt.Sprintf("signature verification failed: %v", err),
 				cert.Subject.String())
 		}
 	}
-	
+
 	return nil
 }
 
@@ -370,30 +370,30 @@ func (cv *ChainValidator) validateTrustStrict(chain []*x509.Certificate, registr
 			"registry marked insecure but strict mode requires trusted certificates",
 			chain[0].Subject.String())
 	}
-	
+
 	// Get trusted certificates for the registry
 	trustedCerts, err := cv.trustStore.GetTrustedCerts(registry)
 	if err != nil {
 		return fmt.Errorf("failed to get trusted certificates: %w", err)
 	}
-	
+
 	// Root certificate must be in trust store
 	rootCert := chain[len(chain)-1]
-	
+
 	// Check if root is self-signed
 	if cv.isSelfSigned(rootCert) && !options.AllowSelfSigned {
 		return NewValidationError(UntrustedCA,
 			"self-signed root certificate not allowed in strict mode",
 			rootCert.Subject.String())
 	}
-	
+
 	// Verify root is trusted
 	if !cv.isCertificateTrusted(rootCert, trustedCerts) {
 		return NewValidationError(UntrustedCA,
 			"root certificate not found in trust store",
 			rootCert.Subject.String())
 	}
-	
+
 	return nil
 }
 
@@ -403,13 +403,13 @@ func (cv *ChainValidator) validateTrustLenient(chain []*x509.Certificate, regist
 		// Allow insecure registries in lenient mode
 		return nil
 	}
-	
+
 	// Get trusted certificates for the registry
 	trustedCerts, err := cv.trustStore.GetTrustedCerts(registry)
 	if err != nil {
 		return fmt.Errorf("failed to get trusted certificates: %w", err)
 	}
-	
+
 	// If no trusted certificates configured, allow if self-signed is permitted
 	if len(trustedCerts) == 0 {
 		rootCert := chain[len(chain)-1]
@@ -420,14 +420,14 @@ func (cv *ChainValidator) validateTrustLenient(chain []*x509.Certificate, regist
 			"no trusted certificates configured for registry",
 			rootCert.Subject.String())
 	}
-	
+
 	// Check if any certificate in chain is trusted
 	for _, cert := range chain {
 		if cv.isCertificateTrusted(cert, trustedCerts) {
 			return nil
 		}
 	}
-	
+
 	return NewValidationError(UntrustedCA,
 		"no certificates in chain found in trust store",
 		chain[0].Subject.String())
@@ -459,12 +459,12 @@ func (cv *ChainValidator) isCertificateTrusted(cert *x509.Certificate, trustedCe
 func (cv *ChainValidator) getDefaultOptions() *ChainValidationOptions {
 	options := &ChainValidationOptions{
 		MaxChainLength:            cv.getMaxChainLengthForMode(),
-		AllowSelfSigned:          cv.mode != StrictMode,
+		AllowSelfSigned:           cv.mode != StrictMode,
 		AllowExpiredIntermediates: cv.mode == LenientMode,
-		VerifyHostname:           cv.mode == StrictMode,
-		CurrentTime:              time.Now(),
+		VerifyHostname:            cv.mode == StrictMode,
+		CurrentTime:               time.Now(),
 	}
-	
+
 	// Set default key usage requirements for strict mode
 	if cv.mode == StrictMode {
 		options.RequireLeafKeyUsage = []x509.KeyUsage{
@@ -474,7 +474,7 @@ func (cv *ChainValidator) getDefaultOptions() *ChainValidationOptions {
 			x509.ExtKeyUsageServerAuth,
 		}
 	}
-	
+
 	return options
 }
 

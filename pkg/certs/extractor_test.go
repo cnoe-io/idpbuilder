@@ -18,12 +18,12 @@ import (
 
 // MockKindClient implements KindClient for testing
 type MockKindClient struct {
-	clusters        []string
-	pods            map[string][]string
-	podFiles        map[string][]byte
-	shouldFailCopy  bool
-	shouldFailExec  bool
-	shouldFailPods  bool
+	clusters          []string
+	pods              map[string][]string
+	podFiles          map[string][]byte
+	shouldFailCopy    bool
+	shouldFailExec    bool
+	shouldFailPods    bool
 	shouldFailCluster bool
 }
 
@@ -343,11 +343,11 @@ func TestDefaultCertValidator_ValidateCertificate(t *testing.T) {
 
 	// Test certificate with no subject names
 	emptyCert := &x509.Certificate{
-		NotBefore: time.Now().Add(-1 * time.Hour),
-		NotAfter:  time.Now().Add(1 * time.Hour),
-		Subject:   pkix.Name{}, // Empty subject
-		DNSNames:  []string{},  // No DNS names
-		IPAddresses: []net.IP{}, // No IP addresses
+		NotBefore:   time.Now().Add(-1 * time.Hour),
+		NotAfter:    time.Now().Add(1 * time.Hour),
+		Subject:     pkix.Name{}, // Empty subject
+		DNSNames:    []string{},  // No DNS names
+		IPAddresses: []net.IP{},  // No IP addresses
 	}
 	err = validator.ValidateCertificate(emptyCert)
 	if err == nil {

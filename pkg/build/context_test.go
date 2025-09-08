@@ -45,7 +45,7 @@ func TestCreateTarFromContextWithExclusions(t *testing.T) {
 	contextDir := t.TempDir()
 	os.WriteFile(filepath.Join(contextDir, "file.txt"), []byte("content"), 0644)
 	os.WriteFile(filepath.Join(contextDir, "exclude.tmp"), []byte("excluded"), 0644)
-	
+
 	tempDir := filepath.Join(contextDir, "temp")
 	os.MkdirAll(tempDir, 0755)
 	os.WriteFile(filepath.Join(tempDir, "tempfile.txt"), []byte("temp"), 0644)

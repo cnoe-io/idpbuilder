@@ -98,7 +98,7 @@ func (e *KindCertExtractor) ExtractGiteaCert(ctx context.Context) (*x509.Certifi
 	// 2. Get cluster information
 	clusterName, err := e.getClusterName()
 	if err != nil {
-		return nil, NewCertError("extraction", "cluster_discovery", 
+		return nil, NewCertError("extraction", "cluster_discovery",
 			fmt.Errorf("failed to get cluster name: %w", err))
 	}
 

@@ -29,12 +29,12 @@ func TestBuildImageFeatureDisabled(t *testing.T) {
 	tempDir := t.TempDir()
 	builder, _ := NewBuilder(tempDir)
 	contextDir := createTestContext(t)
-	
+
 	result, err := builder.BuildImage(context.Background(), BuildOptions{
 		ContextPath: contextDir,
 		Tag:         "test:latest",
 	})
-	
+
 	assert.Error(t, err)
 	assert.Equal(t, ErrFeatureDisabled, err)
 	assert.Nil(t, result)
@@ -53,7 +53,7 @@ func TestBuildImageSuccess(t *testing.T) {
 		Tag:         "test:latest",
 		Labels:      map[string]string{"test.label": "test-value"},
 	})
-	
+
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 	assert.NotEmpty(t, result.ImageID)
@@ -64,7 +64,7 @@ func TestBuildImageSuccess(t *testing.T) {
 	// Verify storage file exists and tag is registered
 	_, err = os.Stat(result.StoragePath)
 	assert.NoError(t, err)
-	
+
 	storagePath, exists := builder.GetStoragePath("test:latest")
 	assert.True(t, exists)
 	assert.Equal(t, result.StoragePath, storagePath)
@@ -107,10 +107,6 @@ func TestGetStoragePathAndStubs(t *testing.T) {
 	_, exists = builder.GetStoragePath("nonexistent")
 	assert.False(t, exists)
 
-	// Test stub methods
-	assert.Nil(t, builder.ListImages())
-	assert.Error(t, builder.RemoveImage("test:tag"))
-	assert.Error(t, builder.TagImage("source", "target"))
 }
 
 // createTestContext creates a temporary directory with test files
@@ -118,10 +114,10 @@ func createTestContext(t *testing.T) string {
 	contextDir := t.TempDir()
 	os.WriteFile(filepath.Join(contextDir, "file1.txt"), []byte("content1"), 0644)
 	os.WriteFile(filepath.Join(contextDir, "file2.txt"), []byte("content2"), 0644)
-	
+
 	subDir := filepath.Join(contextDir, "subdir")
 	os.MkdirAll(subDir, 0755)
 	os.WriteFile(filepath.Join(subDir, "subfile.txt"), []byte("subcontent"), 0644)
-	
+
 	return contextDir
 }

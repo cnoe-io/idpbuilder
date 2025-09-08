@@ -19,10 +19,10 @@ var (
 	ErrStorageFull       = errors.New("certificate storage is full")
 
 	// Validation errors
-	ErrCertExpired          = errors.New("certificate has expired")
-	ErrCertNotYetValid      = errors.New("certificate is not yet valid")
-	ErrCertInvalidKeyUsage  = errors.New("certificate has invalid key usage")
-	ErrCertSelfSigned       = errors.New("certificate is self-signed")
+	ErrCertExpired         = errors.New("certificate has expired")
+	ErrCertNotYetValid     = errors.New("certificate is not yet valid")
+	ErrCertInvalidKeyUsage = errors.New("certificate has invalid key usage")
+	ErrCertSelfSigned      = errors.New("certificate is self-signed")
 
 	// Feature flag errors
 	ErrFeatureDisabled = errors.New("certificate extraction feature is disabled")

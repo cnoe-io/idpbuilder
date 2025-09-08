@@ -63,7 +63,7 @@ func sanitizeTagForFilename(tag string) string {
 	if safe == "" {
 		safe = "unnamed"
 	}
-	
+
 	// Truncate if too long
 	if len(safe) > 100 {
 		safe = safe[:100]

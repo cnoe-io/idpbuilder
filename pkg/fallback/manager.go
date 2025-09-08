@@ -131,7 +131,7 @@ func (fm *FallbackManager) executeWithRetry(ctx context.Context, strategy Fallba
 			break
 		}
 
-		fm.warningCallback(fmt.Sprintf("⚠️  Strategy '%s' attempt %d failed for %s: %v", 
+		fm.warningCallback(fmt.Sprintf("⚠️  Strategy '%s' attempt %d failed for %s: %v",
 			strategy.Name(), attempt+1, registry, lastErr))
 	}
 

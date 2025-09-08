@@ -125,7 +125,7 @@ func (s *LocalCertStorage) ListCertificates() ([]string, error) {
 		if file.IsDir() {
 			continue
 		}
-		
+
 		name := file.Name()
 		if strings.HasSuffix(name, ".pem") {
 			// Return name without extension

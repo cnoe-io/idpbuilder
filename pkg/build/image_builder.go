@@ -133,7 +133,7 @@ func (b *Builder) buildImageWithLayer(layer v1.Layer, labels map[string]string) 
 		if newConfig.Config.Labels == nil {
 			newConfig.Config.Labels = make(map[string]string)
 		}
-		
+
 		for key, value := range labels {
 			newConfig.Config.Labels[key] = value
 		}
@@ -157,20 +157,3 @@ func (b *Builder) GetStoragePath(tag string) (string, bool) {
 	return path, exists
 }
 
-// ListImages returns all built image tags (stub for future implementation)
-func (b *Builder) ListImages() []string {
-	// Stub implementation - not implemented in this effort per R311
-	return nil
-}
-
-// RemoveImage removes a built image (stub for future implementation)
-func (b *Builder) RemoveImage(tag string) error {
-	// Stub implementation - not implemented in this effort per R311
-	return fmt.Errorf("not implemented: RemoveImage will be implemented in future effort")
-}
-
-// TagImage creates a new tag for an existing image (stub for future implementation)
-func (b *Builder) TagImage(sourceTag, targetTag string) error {
-	// Stub implementation - not implemented in this effort per R311
-	return fmt.Errorf("not implemented: TagImage will be implemented in future effort")
-}

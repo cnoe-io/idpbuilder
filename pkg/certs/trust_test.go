@@ -95,14 +95,14 @@ func TestIsFeatureEnabled(t *testing.T) {
 	envVar := "IDPBUILDER_TEST_FEATURE"
 	for _, tc := range testCases {
 		os.Setenv(envVar, tc.envValue)
-		
+
 		// We need to test the actual function, so let's create a test version
 		result := testParseEnvBool(tc.envValue)
 		if result != tc.expected {
 			t.Errorf("For value %q, expected %v, got %v", tc.envValue, tc.expected, result)
 		}
 	}
-	
+
 	// Clean up
 	os.Unsetenv(envVar)
 }
