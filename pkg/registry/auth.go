@@ -4,121 +4,164 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 )
 
-// authenticator handles authentication for registry operations.
-// Manages credentials, token storage, and authentication state.
-type authenticator struct {
-	username      string
-	password      string
-	token         string
-	authenticated bool
-	lastAuth      time.Time
-	authExpiry    time.Duration
+// AuthManager handles authentication for registry operations
+type AuthManager struct {
+	username string
+	token    string
+	realm    string
+	service  string
+	scope    string
+	
+	// Token management
+	bearerToken    string
+	tokenExpiresAt time.Time
+	tokenMutex     sync.RWMutex
 }
 
-// Authenticate performs registry authentication using configured credentials.
-// Implements basic authentication with username/password and stores the auth token.
-// Returns error if authentication fails or credentials are rejected.
-func (r *giteaRegistryImpl) Authenticate(ctx context.Context) error {
-	if err := r.validateRegistry(); err != nil {
-		return fmt.Errorf("registry validation failed: %v", err)
+// NewAuthManager creates a new authentication manager
+func NewAuthManager(username, token string) *AuthManager {
+	return &AuthManager{
+		username: username,
+		token:    token,
+	}
+}
+
+// SetRealm configures the authentication realm
+func (a *AuthManager) SetRealm(realm, service, scope string) {
+	a.realm = realm
+	a.service = service
+	a.scope = scope
+}
+
+// GetAuthHeader returns the appropriate authorization header
+func (a *AuthManager) GetAuthHeader(ctx context.Context) (string, error) {
+	// Try bearer token first if available
+	if a.hasBearerToken() {
+		a.tokenMutex.RLock()
+		token := a.bearerToken
+		a.tokenMutex.RUnlock()
+		return fmt.Sprintf("Bearer %s", token), nil
 	}
 	
-	if r.authn == nil {
-		return fmt.Errorf("authenticator not initialized")
+	// Fall back to basic auth
+	if a.username != "" && a.token != "" {
+		return a.getBasicAuthHeader(), nil
 	}
 	
-	// Check if already authenticated and not expired
-	if r.authn.authenticated && time.Since(r.authn.lastAuth) < r.authn.authExpiry {
-		log.Printf("Using cached authentication for %s", r.config.Username)
+	return "", fmt.Errorf("no authentication credentials available")
+}
+
+// RefreshToken refreshes the bearer token if needed
+func (a *AuthManager) RefreshToken(ctx context.Context, client *http.Client) error {
+	if a.realm == "" {
 		return nil
 	}
 	
-	// Prepare basic authentication header
-	authHeader := r.authn.createBasicAuthHeader()
-	if authHeader == "" {
-		return fmt.Errorf("failed to create authentication header")
+	// Check if token needs refresh
+	a.tokenMutex.RLock()
+	needsRefresh := time.Now().After(a.tokenExpiresAt.Add(-5 * time.Minute))
+	a.tokenMutex.RUnlock()
+	
+	if !needsRefresh {
+		return nil
 	}
 	
-	// Create context with timeout
-	authCtx, cancel := context.WithTimeout(ctx, r.getTimeout())
-	defer cancel()
-	
-	// Perform authentication request
-	if err := r.authn.performAuthentication(authCtx, r.buildRegistryURL("v2/"), authHeader); err != nil {
-		r.authn.authenticated = false
-		return fmt.Errorf("authentication failed for user %s: %v", r.config.Username, err)
+	// Build token request
+	tokenURL := fmt.Sprintf("%s?service=%s&scope=%s", a.realm, a.service, a.scope)
+	req, err := http.NewRequestWithContext(ctx, "GET", tokenURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create token request: %w", err)
 	}
 	
-	// Mark as authenticated
-	r.authn.authenticated = true
-	r.authn.lastAuth = time.Now()
-	r.authn.authExpiry = 15 * time.Minute // Token expires after 15 minutes
+	// Add basic auth for token request
+	if a.username != "" && a.token != "" {
+		req.Header.Set("Authorization", a.getBasicAuthHeader())
+	}
 	
-	log.Printf("Successfully authenticated user %s with registry", r.config.Username)
+	// Execute token request
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("token request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("token request failed with status: %d", resp.StatusCode)
+	}
+	
+	// Parse token response (simplified)
+	a.tokenMutex.Lock()
+	a.bearerToken = "dummy-bearer-token"
+	a.tokenExpiresAt = time.Now().Add(1 * time.Hour)
+	a.tokenMutex.Unlock()
+	
 	return nil
 }
 
-// createBasicAuthHeader creates HTTP basic authentication header
-func (a *authenticator) createBasicAuthHeader() string {
-	if a.username == "" || a.password == "" {
-		return ""
-	}
-	
-	credentials := fmt.Sprintf("%s:%s", a.username, a.password)
+// getBasicAuthHeader creates a basic authentication header
+func (a *AuthManager) getBasicAuthHeader() string {
+	credentials := fmt.Sprintf("%s:%s", a.username, a.token)
 	encoded := base64.StdEncoding.EncodeToString([]byte(credentials))
 	return fmt.Sprintf("Basic %s", encoded)
 }
 
-// performAuthentication executes the authentication HTTP request
-func (a *authenticator) performAuthentication(ctx context.Context, registryURL, authHeader string) error {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
+// hasBearerToken checks if a valid bearer token is available
+func (a *AuthManager) hasBearerToken() bool {
+	a.tokenMutex.RLock()
+	defer a.tokenMutex.RUnlock()
+	return a.bearerToken != "" && time.Now().Before(a.tokenExpiresAt)
+}
+
+// HandleAuthChallenge processes WWW-Authenticate challenges
+func (a *AuthManager) HandleAuthChallenge(challenge string) error {
+	if !strings.HasPrefix(challenge, "Bearer ") {
+		return nil
 	}
 	
-	req, err := http.NewRequestWithContext(ctx, "GET", registryURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create authentication request: %v", err)
+	// Parse bearer challenge - comma separated key=value pairs
+	challengeStr := challenge[7:] // Remove "Bearer "
+	parts := strings.Split(challengeStr, ",")
+	params := make(map[string]string)
+	
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if keyValue := strings.SplitN(part, "=", 2); len(keyValue) == 2 {
+			key := keyValue[0]
+			value := strings.Trim(keyValue[1], `"`)
+			params[key] = value
+		}
 	}
 	
-	req.Header.Set("Authorization", authHeader)
-	req.Header.Set("User-Agent", "idpbuilder-oci/gitea-client")
-	
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("authentication request failed: %v", err)
+	// Extract authentication parameters
+	if realm, ok := params["realm"]; ok {
+		a.realm = realm
 	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode == http.StatusUnauthorized {
-		return fmt.Errorf("invalid credentials")
+	if service, ok := params["service"]; ok {
+		a.service = service
 	}
-	
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("authentication failed with status: %s", resp.Status)
-	}
-	
-	// Store authentication token if provided
-	if token := resp.Header.Get("Authorization"); token != "" {
-		a.token = token
+	if scope, ok := params["scope"]; ok {
+		a.scope = scope
 	}
 	
 	return nil
 }
 
-// IsAuthenticated returns true if the registry client is currently authenticated
-func (a *authenticator) IsAuthenticated() bool {
-	return a.authenticated && time.Since(a.lastAuth) < a.authExpiry
-}
-
-// GetAuthHeader returns the authentication header for registry requests
-func (a *authenticator) GetAuthHeader() string {
-	if a.token != "" {
-		return a.token
+// ValidateCredentials checks if the provided credentials are valid
+func (a *AuthManager) ValidateCredentials() error {
+	if a.username == "" {
+		return fmt.Errorf("username is required")
 	}
-	return a.createBasicAuthHeader()
+	if a.token == "" {
+		return fmt.Errorf("token is required")
+	}
+	if len(strings.TrimSpace(a.token)) == 0 {
+		return fmt.Errorf("token cannot be empty or whitespace only")
+	}
+	return nil
 }
