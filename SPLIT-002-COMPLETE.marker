@@ -1,0 +1,18 @@
+Split Number: 002
+Completed at: 2025-09-08 22:11:01 UTC
+Effort: gitea-client
+Phase: 2
+Wave: 1
+Branch: idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-002
+Total lines: 636 lines (target: 633 lines)
+Final commit: db5ae5e feat: implement Split-002 - push/list operations and utilities
+Status: SPLIT 002 COMPLETE (FINAL SPLIT)
+
+Files implemented:
+- pkg/registry/push.go: Image push operations with chunked upload
+- pkg/registry/list.go: Repository and tag listing functionality
+- pkg/registry/retry.go: Exponential backoff retry logic
+- pkg/registry/stubs.go: Mock registry and test utilities
+
+Integration: Successfully integrates with Split-001 interfaces
+Compilation: ✅ All files compile successfully
