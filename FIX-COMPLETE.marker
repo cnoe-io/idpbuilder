@@ -1,6 +1,17 @@
-Completed at: 2025-09-09 15:29:34 UTC
-Bug Fixed: Import paths in pkg/registry/gitea.go
-Changes Made: Updated 3 import statements from jessesanford to cnoe-io namespace
-Commit: bf3d6e0 fix: correct import paths in registry package (R266 bug fix)
-Branch: idpbuilder-oci-build-push/phase2/wave1/gitea-client
-Status: FIX COMPLETE - Ready for integration
+Completed at: 2025-09-09 16:39:36 UTC
+Fixes applied: 11 bugs fixed
+Status: FIXES COMPLETE
+
+Bug #2 Fixes (Phase 1 API Mismatches):
+- Changed certs.NewTrustStoreManager() to certs.NewTrustStore()
+- Updated struct types to use correct Phase 1 implementations
+- Fixed fallback, trust store, and validator method calls
+- Updated constructor calls to use correct Phase 1 APIs
+
+Bug #3 Fixes (go-containerregistry API Issues):  
+- Fixed remote.WithTimeout() to use remote.WithContext() with timeout
+- Fixed remote.WithProgress() to use proper chan<- v1.Update interface
+- Fixed testImage to implement all required v1.Image methods
+- Fixed testLayer Compressed/Uncompressed methods
+
+R307 Compliance: Branch now compiles independently ✓
