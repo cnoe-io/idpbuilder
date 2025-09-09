@@ -11,9 +11,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	
 	// Phase 1 Certificate Infrastructure Integration
-	"github.com/jessesanford/idpbuilder/pkg/certs"
-	"github.com/jessesanford/idpbuilder/pkg/certvalidation"
-	"github.com/jessesanford/idpbuilder/pkg/fallback"
+	"github.com/cnoe-io/idpbuilder/pkg/certs"
+	"github.com/cnoe-io/idpbuilder/pkg/certvalidation"
+	"github.com/cnoe-io/idpbuilder/pkg/fallback"
 )
 
 // giteaRegistryImpl implements the Registry interface for Gitea container registry.
