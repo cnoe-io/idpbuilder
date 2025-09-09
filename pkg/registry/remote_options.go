@@ -1,7 +1,9 @@
 package registry
 
 import (
+	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net/http"
@@ -33,7 +35,9 @@ func (r *giteaRegistryImpl) GetRemoteOptions() []remote.Option {
 	}
 	
 	// Add context timeout
-	options = append(options, remote.WithTimeout(r.getTimeout()))
+	ctx, cancel := context.WithTimeout(context.Background(), r.getTimeout())
+	_ = cancel // Will be used by caller
+	options = append(options, remote.WithContext(ctx))
 	
 	// Add user agent
 	options = append(options, remote.WithUserAgent("idpbuilder-oci/gitea-client"))
@@ -89,9 +93,7 @@ func (r *giteaRegistryImpl) configureTLS() (*tls.Config, error) {
 		log.Printf("Using insecure mode for registry connection")
 		
 		// Use Phase 1 fallback handler to manage insecure connections safely
-		if err := r.fallback.HandleInsecureConnection(r.config.URL); err != nil {
-			return nil, fmt.Errorf("fallback handler rejected insecure connection: %v", err)
-		}
+		r.fallback.SetInsecureMode(true)
 		
 		return &tls.Config{
 			InsecureSkipVerify: true,
@@ -100,9 +102,19 @@ func (r *giteaRegistryImpl) configureTLS() (*tls.Config, error) {
 	}
 	
 	// Use Phase 1 trust store for certificate validation
-	certPool, err := r.trustStore.GetCertPool()
+	certPool, err := x509.SystemCertPool()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get certificate pool from trust store: %v", err)
+		certPool = x509.NewCertPool()
+	}
+	
+	// Add custom certificates from trust store
+	trustedCerts, err := r.trustStore.GetTrustedCerts(r.config.URL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trusted certificates from trust store: %v", err)
+	}
+	
+	for _, cert := range trustedCerts {
+		certPool.AddCert(cert)
 	}
 	
 	tlsConfig := &tls.Config{
@@ -113,8 +125,19 @@ func (r *giteaRegistryImpl) configureTLS() (*tls.Config, error) {
 	}
 	
 	// Add certificate validation using Phase 1 validator
-	tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*tls.Certificate) error {
-		return r.validator.ValidateConnectionCertificates(rawCerts, r.baseURL.Host)
+	tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		if len(rawCerts) == 0 {
+			return fmt.Errorf("no certificates provided")
+		}
+		
+		// Parse the leaf certificate
+		leafCert, err := x509.ParseCertificate(rawCerts[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse leaf certificate: %v", err)
+		}
+		
+		// Use Phase 1 validator to validate the certificate chain with hostname
+		return r.validator.ValidateChainWithHostname(leafCert, r.baseURL.Host)
 	}
 	
 	log.Printf("TLS configured with Phase 1 certificate infrastructure for %s", r.baseURL.Host)

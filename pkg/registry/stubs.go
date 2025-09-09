@@ -1,11 +1,11 @@
 package registry
 
 import (
+	"bytes"
 	"context"
 	"io"
 	
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
@@ -125,6 +125,16 @@ func (t *testImage) RawManifest() ([]byte, error) {
 	return []byte(`{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json"}`), nil
 }
 
+// LayerByDigest returns a layer by digest for test image
+func (t *testImage) LayerByDigest(h v1.Hash) (v1.Layer, error) {
+	return &testLayer{}, nil
+}
+
+// LayerByDiffID returns a layer by diff ID for test image
+func (t *testImage) LayerByDiffID(h v1.Hash) (v1.Layer, error) {
+	return &testLayer{}, nil
+}
+
 // testLayer implements v1.Layer for testing
 type testLayer struct{}
 
@@ -146,12 +156,14 @@ func (l *testLayer) DiffID() (v1.Hash, error) {
 
 // Compressed returns compressed layer content
 func (l *testLayer) Compressed() (io.ReadCloser, error) {
-	return io.NopCloser(io.LimitReader(empty.Image{}.RawConfigFile, 1024)), nil
+	data := []byte("test layer content")
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
 // Uncompressed returns uncompressed layer content  
 func (l *testLayer) Uncompressed() (io.ReadCloser, error) {
-	return io.NopCloser(io.LimitReader(empty.Image{}.RawConfigFile, 1024)), nil
+	data := []byte("test layer content")
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
 // Size returns size of test layer

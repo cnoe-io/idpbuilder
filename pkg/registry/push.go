@@ -82,13 +82,19 @@ func (r *giteaRegistryImpl) performPushWithRetry(ctx context.Context, ref name.R
 
 // executePush performs the actual push operation
 func (r *giteaRegistryImpl) executePush(ctx context.Context, ref name.Reference, image v1.Image, options []remote.Option) error {
-	// Create progress tracking
-	progress := &pushProgressTracker{
-		reference: ref.Name(),
-	}
+	// Create progress tracking channel
+	progressChan := make(chan v1.Update, 100)
+	
+	// Start a goroutine to handle progress updates
+	go func() {
+		for update := range progressChan {
+			r.logProgress(ref.Name(), update)
+		}
+	}()
+	defer close(progressChan)
 	
 	// Add progress tracking to options
-	progressOption := remote.WithProgress(progress)
+	progressOption := remote.WithProgress(progressChan)
 	allOptions := append(options, progressOption)
 	
 	// Execute the push
@@ -151,4 +157,20 @@ func (p *pushProgressTracker) Write(data []byte) (int, error) {
 	}
 	
 	return n, nil
+}
+
+// logProgress logs progress updates for push operations
+func (r *giteaRegistryImpl) logProgress(reference string, update v1.Update) {
+	if update.Error != nil {
+		log.Printf("Push error for %s: %v", reference, update.Error)
+		return
+	}
+	
+	if update.Total > 0 {
+		percentage := (update.Complete * 100) / update.Total
+		log.Printf("Push progress for %s: %d%% (%d/%d bytes)", 
+			reference, percentage, update.Complete, update.Total)
+	} else {
+		log.Printf("Push progress for %s: %d bytes completed", reference, update.Complete)
+	}
 }

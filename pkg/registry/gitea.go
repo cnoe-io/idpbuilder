@@ -1,15 +1,11 @@
 package registry
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/url"
 	"time"
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
-	
 	// Phase 1 Certificate Infrastructure Integration
 	"github.com/cnoe-io/idpbuilder/pkg/certs"
 	"github.com/cnoe-io/idpbuilder/pkg/certvalidation"
@@ -21,9 +17,9 @@ import (
 // and provides comprehensive error handling and retry logic.
 type giteaRegistryImpl struct {
 	config       RegistryConfig
-	trustStore   certs.TrustStoreManager
-	validator    certvalidation.CertValidator  
-	fallback     fallback.FallbackHandler
+	trustStore   *certs.DefaultTrustStore
+	validator    *certvalidation.ChainValidator  
+	fallback     *fallback.FallbackManager
 	authn        *authenticator
 	baseURL      *url.URL
 	initialized  bool
@@ -55,20 +51,11 @@ func NewGiteaRegistry(config RegistryConfig) (Registry, error) {
 	}
 	
 	// Initialize Phase 1 Certificate Infrastructure Components
-	trustStore, err := certs.NewTrustStoreManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize trust store: %v", err)
-	}
+	trustStore := certs.NewTrustStore()
 	
-	validator, err := certvalidation.NewCertValidator()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize certificate validator: %v", err)
-	}
+	validator := certvalidation.NewChainValidator()
 	
-	fallbackHandler, err := fallback.NewFallbackHandler()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize fallback handler: %v", err)
-	}
+	fallbackHandler := fallback.NewFallbackManager(trustStore)
 	
 	// Create authenticator for credential management
 	auth := &authenticator{
