@@ -1,0 +1,6 @@
+Completed at: 2025-09-09 15:29:34 UTC
+Bug Fixed: Import paths in pkg/registry/gitea.go
+Changes Made: Updated 3 import statements from jessesanford to cnoe-io namespace
+Commit: bf3d6e0 fix: correct import paths in registry package (R266 bug fix)
+Branch: idpbuilder-oci-build-push/phase2/wave1/gitea-client
+Status: FIX COMPLETE - Ready for integration
