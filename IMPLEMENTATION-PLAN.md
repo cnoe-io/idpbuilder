@@ -1442,22 +1442,22 @@ export IDPBUILDER_KEY_FILE=/path/to/key.pem
 ## 🎬 Demo Requirements (R330)
 
 ### Demo Objectives
-1. Demonstrate Gitea registry authentication with token management
-2. Showcase repository listing and existence checking
-3. Illustrate TLS configuration with custom certificates
-4. Display flexible remote options configuration
-5. Prove foundation for Split-002 operations
+1. Demonstrate image push operations with progress tracking
+2. Showcase repository listing with pagination
+3. Illustrate retry logic with exponential backoff
+4. Display repository deletion capabilities
+5. Prove integration with Split-001 authentication
 
 ### Demo Deliverables
 - **demo-features.sh** (executable) - Main demo script with 4 scenarios
-- **DEMO.md** (documentation) - Setup guide and validation steps
-- **test-data/** (sample files) - CA certificates and configurations
+- **DEMO.md** (documentation) - Complete operation guide
+- **test-data/** (sample files) - Test images and configurations
 
 ### Demo Scenarios Summary
-1. **Authentication** - Token-based Gitea authentication
-2. **List Repos** - Discover available repositories
-3. **Check Existence** - Verify repository presence
-4. **TLS Config** - Custom CA and insecure mode demo
+1. **Push with Progress** - Multi-layer image upload with tracking
+2. **List Repositories** - Paginated repository discovery
+3. **Retry Logic** - Network resilience demonstration
+4. **Delete Repo** - Repository cleanup operations
 
 ## 📚 References
 
@@ -1471,7 +1471,7 @@ export IDPBUILDER_KEY_FILE=/path/to/key.pem
 - Certificate Handling Guide: (to be created)
 - Security Best Practices: (to be created)
 - Demo Retrofit Plan: `DEMO-RETROFIT-PLAN.md`
-- Split-002 Integration: `../gitea-client-split-002/DEMO-RETROFIT-PLAN.md`
+- Split-001 Integration: `../gitea-client-split-001/DEMO-RETROFIT-PLAN.md`
 
 ---
 
