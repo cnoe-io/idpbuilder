@@ -63,11 +63,9 @@ func runPush(cmd *cobra.Command, args []string) error {
 	} else {
 		// Use certificate infrastructure from Phase 1
 		helpers.PrintColoredOutput("Configuring certificates for secure connection...\n")
-		certManager := certs.NewManager()
-		if err := certManager.ExtractAndConfigure(); err != nil {
-			return fmt.Errorf("certificate configuration failed: %w", err)
-		}
-
+		certManager := certs.NewTrustStore()
+		// Note: Certificate extraction/configuration is handled internally by registry
+		
 		client, err = gitea.NewClient(pushRegistry, certManager)
 	}
 

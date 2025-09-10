@@ -1,0 +1,25 @@
+# Orchestrator TODO State
+# State: MONITOR_IMPLEMENTATION → SPAWN_ENGINEERS_FOR_FIXES
+# Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+# Trigger: Code review found issues requiring fixes
+
+## Completed Tasks
+✅ Monitor implementation status of E2.2.1-cli-commands
+✅ Verify E2.2.1-cli-commands implementation is complete
+✅ Spawn Code Reviewer for E2.2.1-cli-commands review
+
+## Current Task
+⏳ Process Code Reviewer feedback - NEEDS_FIXES
+   - Missing dependencies: pkg/certs and pkg/gitea from Phase 2 Wave 1
+   - Integration issue: Packages not accessible via import paths
+
+## Pending Tasks
+⏸️ Spawn SW Engineer to fix dependency issues in E2.2.1
+⏸️ Update orchestrator state to SPAWN_ENGINEERS_FOR_FIXES
+⏸️ Save TODO state and commit per R287
+
+## Notes
+- Code review completed with 375 lines (compliant)
+- Critical blocker: Missing Phase 2 Wave 1 package dependencies
+- SW Engineer needs to resolve import path issues
+- R307 compliance issue: Branch cannot merge independently
