@@ -1,0 +1,23 @@
+Completed at: 2025-09-11 00:26:38 UTC
+Effort: image-builder
+Branch: idpbuilder-oci-build-push/phase2/wave1/image-builder
+Total demo lines: ~1087 lines
+Final commit: 984c2df demo: implement R291 demos for image-builder
+Status: DEMO IMPLEMENTATION COMPLETE
+
+R291 Compliance:
+✅ demo-features.sh executable with 4 scenarios
+✅ All scenarios tested and exit 0
+✅ DEMO.md comprehensive documentation
+✅ test-data/ sample files and configurations
+✅ Demo works with existing implementation
+✅ Integration hooks properly configured
+✅ Committed and pushed successfully
+
+Demo Features Implemented:
+✅ build-image: OCI image creation from directory contexts
+✅ generate-certs: TLS certificate generation and management  
+✅ push-with-tls: Secure registry operations with custom CA
+✅ status: Feature flag configuration and control
+
+Integration Ready: DEMO_READY=true
