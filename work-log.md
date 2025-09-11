@@ -47,3 +47,14 @@ Result: Conflict in work-log.md - resolved by keeping integration work-log
 CONFLICT_RESOLUTION: Kept integration work-log, discarded effort work-log (different purposes)
 MERGED: idpbuilder-oci-build-push/phase1/wave1/registry-tls-trust at 2025-09-11 13:01:30 UTC
 Status: SUCCESS (conflict resolved)
+
+## Operation 7: Merge E1.1.3-SPLIT-001 - registry-auth-types part 1
+Time: 2025-09-11 13:02:00 UTC
+Command: git merge registry-auth-types-split-001/idpbuilder-oci-build-push/phase1/wave1/registry-auth-types-split-001 --no-edit
+Result: Multiple conflicts - resolving
+CONFLICTS:
+- work-log.md: Kept integration work-log
+- .devcontainer/postCreateCommand.sh: Will check and resolve
+- go.mod/go.sum: Deleted per split-001 (OCI package doesn't need them)
+MERGED: idpbuilder-oci-build-push/phase1/wave1/registry-auth-types-split-001 at 2025-09-11 13:02:00 UTC
+Status: IN PROGRESS (resolving conflicts)
