@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-
-exec .devcontainer/setup-ssh.sh
-
-exec .devcontainer/install-kubectl.sh 
-
-exec .devcontainer/install-kind.sh 
-
-exec .devcontainer/install-claude-code.sh
+echo "running setup-ssh.sh"
+.devcontainer/setup-ssh.sh
+echo "running install-kubectl.sh"
+.devcontainer/install-kubectl.sh 
+echo "running install-kind.sh"
+.devcontainer/install-kind.sh 
+echo "running install-claude-code.sh"
+.devcontainer/install-claude-code.sh
 
 
 # Configure git if environment variables are set
