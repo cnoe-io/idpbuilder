@@ -1,29 +1,36 @@
-# Demo Configuration for Gitea Client
-# R291 Compliance Configuration
+# Demo Configuration for Gitea Client Split-002
+# This file enables demo mode and provides default settings
 
-# Demo script settings
-DEMO_SCRIPT=demo-features.sh
-DEMO_TIMEOUT=60
-DEMO_LOG_LEVEL=info
+DEMO_MODE=true
+DEMO_REGISTRY_URL=https://gitea.local:3000
+DEMO_SIMULATION=true
 
-# Integration settings
-DEMO_READY_VAR=DEMO_READY
-DEMO_SUCCESS_EXIT_CODE=0
+# Integration with Split-001
+AUTH_SPLIT_001_AVAILABLE=true
+TLS_SPLIT_001_INTEGRATION=true
+
+# Demo performance settings
+CHUNK_SIZE=5MB
+MAX_RETRIES=5
+PROGRESS_ENABLED=true
 
 # Feature flags for demo
-IDPBUILDER_CERT_INFRASTRUCTURE_ENABLED=true
-IDPBUILDER_KIND_CERT_EXTRACTION_ENABLED=true
-IDPBUILDER_REGISTRY_TLS_TRUST_ENABLED=true
+REGISTRY_PUSH_ENABLED=true
+REGISTRY_LIST_ENABLED=true
+REGISTRY_RETRY_ENABLED=true
+REGISTRY_DELETE_ENABLED=true
 
-# Test data location
-TEST_DATA_DIR=test-data
-SAMPLE_CONFIG=test-data/sample-config.yaml
-EXAMPLE_CERT=test-data/example-certificate.pem
-DEMO_SCENARIO=test-data/demo-scenario.sh
+# Demo timing (for realistic simulation)
+UPLOAD_SIMULATION_DELAY=0.5s
+RETRY_SIMULATION_DELAY=1s
+PROGRESS_UPDATE_INTERVAL=0.2s
 
-# Demo metadata
-DEMO_VERSION=1.0
-DEMO_CREATED=2025-09-11
-DEMO_EFFORT=gitea-client
-DEMO_PHASE=phase2
-DEMO_WAVE=wave1
+# Safety settings
+DEMO_SAFE_MODE=true
+REQUIRE_CONFIRM_DELETE=true
+DRY_RUN_MODE=false
+
+# Version information
+DEMO_VERSION=1.0.0
+SPLIT_VERSION=002
+INTEGRATION_VERSION=2.1.0

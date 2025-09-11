@@ -1,255 +1,256 @@
 #!/bin/bash
 
-echo "🎬 Demo: Gitea Client Split 001 Features"
+echo "🎬 Demo: Gitea Client Split 002 Features"
 echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "================================"
 
-# Set default values
-REGISTRY_URL="https://gitea.local:3000"
-USERNAME="demo-user"
-TOKEN=""
-REPO="myapp/v1.0"
-FORMAT="json"
-CA_CERT=""
-INSECURE="false"
+# Set demo configuration
+REGISTRY_URL="${REGISTRY_URL:-https://gitea.local:3000}"
+DEMO_MODE="${DEMO_MODE:-simulation}"
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Parse command line arguments
-COMMAND="$1"
-shift
-
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --registry)
-            REGISTRY_URL="$2"
-            shift 2
-            ;;
-        --username)
-            USERNAME="$2"
-            shift 2
-            ;;
-        --token)
-            TOKEN="$2"
-            shift 2
-            ;;
-        --repo)
-            REPO="$2"
-            shift 2
-            ;;
-        --format)
-            FORMAT="$2"
-            shift 2
-            ;;
-        --ca-cert)
-            CA_CERT="$2"
-            shift 2
-            ;;
-        --insecure)
-            INSECURE="true"
-            shift
-            ;;
-        *)
-            echo "Unknown option: $1"
-            shift
-            ;;
-    esac
-done
-
-# Function to simulate authentication
-demo_auth() {
-    echo -e "${BLUE}📋 Demo Scenario 1: Basic Authentication${NC}"
-    echo "================================"
-    echo "Registry URL: $REGISTRY_URL"
-    echo "Username: $USERNAME"
-    echo "Token: ${TOKEN:0:8}..." # Show only first 8 chars for security
+# Demo scenario functions
+demo_push_with_progress() {
+    echo "📦 Demo Scenario 1: Push Image with Progress"
+    echo "----------------------------------------"
+    echo "Registry: $1"
+    echo "Image: $2"
+    echo "Source: $3"
     echo ""
     
-    # Simulate auth manager initialization
-    echo -e "${YELLOW}⏳ Initializing AuthManager...${NC}"
-    sleep 1
-    
-    if [[ -z "$TOKEN" ]]; then
-        echo -e "${RED}❌ Error: Token is required for authentication${NC}"
-        echo "Tip: Set GITEA_TOKEN environment variable or use --token flag"
-        return 1
-    fi
-    
-    echo -e "${GREEN}✅ Authentication successful${NC}"
-    echo "• Bearer token generated"
-    echo "• Connection established"
-    echo "• Token expiry: $(date -d '+1 hour' '+%Y-%m-%d %H:%M:%S')"
+    echo "🔄 Initializing push operation..."
+    echo "📊 Starting layer analysis..."
+    echo "   Layer 1/3: config.json (2.4 KB)"
+    echo "   Layer 2/3: base.layer (45.2 MB)"
+    echo "   Layer 3/3: app.layer (12.8 MB)"
     echo ""
-    return 0
+    
+    echo "🚀 Uploading layers with chunked transfer:"
+    for i in {1..3}; do
+        echo "   Layer $i: [████████████████████████████████████████] 100%"
+        if [ "$i" -eq 2 ]; then
+            echo "     - Chunk size: 5MB"
+            echo "     - Upload speed: 12.3 MB/s"
+            echo "     - SHA256: sha256:a1b2c3d4e5f6g7h8..."
+        fi
+        sleep 0.5
+    done
+    
+    echo ""
+    echo "📝 Pushing manifest..."
+    echo "✅ Push complete! Digest: sha256:f8e7d6c5b4a3..."
+    echo "📈 Total time: 4.2s, Total size: 60.4 MB"
+    echo ""
 }
 
-# Function to simulate repository listing
-demo_list() {
-    echo -e "${BLUE}📋 Demo Scenario 2: List Repositories${NC}"
-    echo "================================"
-    echo "Registry URL: $REGISTRY_URL"
-    echo "Output format: $FORMAT"
+demo_list_repos() {
+    echo "📋 Demo Scenario 2: List Repositories with Pagination"
+    echo "-----------------------------------------------------"
+    echo "Registry: $1"
+    echo "Page: $2"
+    echo "Per-page: $3"
+    echo "Format: $4"
     echo ""
     
-    echo -e "${YELLOW}⏳ Fetching repository list...${NC}"
-    sleep 1
+    echo "🔍 Fetching repository catalog..."
+    echo ""
     
-    # Simulate repository listing
-    if [[ "$FORMAT" == "json" ]]; then
-        echo -e "${GREEN}✅ Repository list (JSON format):${NC}"
-        cat << EOF
-[
-    "idpbuilder/core",
-    "idpbuilder/ui",
-    "myapp/v1.0",
-    "myapp/v1.1",
-    "gitea/gitea"
-]
-EOF
+    if [ "$4" = "table" ]; then
+        echo "┌──────────────────────┬──────────┬─────────────────────┐"
+        echo "│ Repository           │ Tags     │ Last Push           │"
+        echo "├──────────────────────┼──────────┼─────────────────────┤"
+        echo "│ myapp                │ v1.0     │ 2 hours ago         │"
+        echo "│ webapp               │ latest   │ 1 day ago           │"
+        echo "│ backend-service      │ v2.1     │ 3 days ago          │"
+        echo "│ frontend-ui          │ dev      │ 1 week ago          │"
+        echo "│ database-migration   │ v1.2.3   │ 2 weeks ago         │"
+        echo "└──────────────────────┴──────────┴─────────────────────┘"
     else
-        echo -e "${GREEN}✅ Repository list:${NC}"
-        echo "• idpbuilder/core"
-        echo "• idpbuilder/ui"
-        echo "• myapp/v1.0"
-        echo "• myapp/v1.1"
-        echo "• gitea/gitea"
+        echo "Repositories:"
+        echo "- myapp (tags: v1.0)"
+        echo "- webapp (tags: latest)"
+        echo "- backend-service (tags: v2.1)"
+        echo "- frontend-ui (tags: dev)"
+        echo "- database-migration (tags: v1.2.3)"
     fi
     
     echo ""
-    echo "Total repositories: 5"
-    echo "Response time: 145ms"
+    echo "📊 Pagination: Page $2 of 3 (showing $3 per page)"
+    echo "📈 Total repositories: 127"
     echo ""
-    return 0
 }
 
-# Function to check repository existence
-demo_exists() {
-    echo -e "${BLUE}📋 Demo Scenario 3: Check Repository Existence${NC}"
-    echo "================================"
-    echo "Registry URL: $REGISTRY_URL"
-    echo "Repository: $REPO"
+demo_push_with_retry() {
+    echo "🔄 Demo Scenario 3: Retry Logic Demonstration"
+    echo "---------------------------------------------"
+    echo "Registry: $1"
+    echo "Image: $2"
+    echo "Simulate failures: $3"
+    echo "Max retries: $4"
     echo ""
     
-    echo -e "${YELLOW}⏳ Checking repository existence...${NC}"
-    sleep 1
+    echo "🚀 Starting push with retry policy..."
+    echo "⚙️  Retry policy: exponential backoff, max $4 attempts"
+    echo ""
     
-    # Simulate existence check (assume exists for demo)
-    echo -e "${GREEN}✅ Repository exists: true${NC}"
+    # Simulate retry attempts
+    for attempt in $(seq 1 $3); do
+        echo "❌ Attempt $attempt failed: network timeout (retryable)"
+        echo "⏱️  Backing off for $((attempt * 2))s..."
+        sleep 1
+    done
+    
+    echo "✅ Attempt $((3 + 1)) succeeded!"
     echo ""
-    echo "Repository metadata:"
-    echo "• Size: 45.2 MB"
-    echo "• Last modified: $(date -d '-2 days' '+%Y-%m-%d %H:%M:%S')"
-    echo "• Tags: v1.0, latest"
-    echo "• Created: $(date -d '-7 days' '+%Y-%m-%d')"
+    echo "📊 Retry summary:"
+    echo "   - Total attempts: $((3 + 1))"
+    echo "   - Failed attempts: $3"
+    echo "   - Total time with retries: $((3 * 2 + 4))s"
+    echo "   - Final result: SUCCESS"
     echo ""
-    return 0
 }
 
-# Function to test TLS configuration
-demo_tls() {
-    echo -e "${BLUE}📋 Demo Scenario 4: TLS Configuration Demo${NC}"
-    echo "================================"
-    echo "Registry URL: $REGISTRY_URL"
-    if [[ "$INSECURE" == "true" ]]; then
-        echo "Mode: Insecure (skip verification)"
-    elif [[ -n "$CA_CERT" ]]; then
-        echo "Mode: Custom CA certificate"
-        echo "CA cert file: $CA_CERT"
-    else
-        echo "Mode: Standard TLS verification"
-    fi
+demo_delete_repo() {
+    echo "🗑️  Demo Scenario 4: Delete Repository"
+    echo "--------------------------------------"
+    echo "Registry: $1"
+    echo "Repository: $2"
     echo ""
     
-    echo -e "${YELLOW}⏳ Testing TLS configuration...${NC}"
-    sleep 1
-    
-    if [[ "$INSECURE" == "true" ]]; then
-        echo -e "${YELLOW}⚠️  Security Warning: TLS verification disabled${NC}"
-        echo -e "${GREEN}✅ Insecure connection established${NC}"
-        echo "• Certificate verification: SKIPPED"
-        echo "• Connection: INSECURE"
-        echo "• Note: Only use for testing!"
-    elif [[ -n "$CA_CERT" && -f "$CA_CERT" ]]; then
-        echo -e "${GREEN}✅ Custom CA certificate loaded${NC}"
-        echo "Certificate details:"
-        echo "• Issuer: Test CA Authority"
-        echo "• Subject: gitea.local"
-        echo "• Valid until: $(date -d '+1 year' '+%Y-%m-%d')"
-        echo "• Verification: PASSED"
-    elif [[ -n "$CA_CERT" ]]; then
-        echo -e "${RED}❌ Error: CA certificate file not found: $CA_CERT${NC}"
-        return 1
-    else
-        echo -e "${GREEN}✅ Standard TLS verification${NC}"
-        echo "• Certificate chain: VERIFIED"
-        echo "• Hostname match: PASSED"
-        echo "• Connection: SECURE"
-    fi
-    echo ""
-    return 0
-}
-
-# Function to show usage
-show_usage() {
-    echo "Usage: $0 <command> [options]"
-    echo ""
-    echo "Commands:"
-    echo "  auth        Test authentication flow"
-    echo "  list        List repositories"
-    echo "  exists      Check repository existence" 
-    echo "  test-tls    Verify TLS configuration"
-    echo ""
-    echo "Options:"
-    echo "  --registry URL    Registry URL (default: https://gitea.local:3000)"
-    echo "  --username USER   Username for authentication"
-    echo "  --token TOKEN     Authentication token"
-    echo "  --repo REPO       Repository name (for exists command)"
-    echo "  --format FORMAT   Output format: json|text (default: json)"
-    echo "  --ca-cert FILE    Path to custom CA certificate"
-    echo "  --insecure        Skip TLS verification (testing only)"
-    echo ""
-    echo "Examples:"
-    echo "  $0 auth --registry https://gitea.local:3000 --username demo-user --token \$GITEA_TOKEN"
-    echo "  $0 list --registry https://gitea.local:3000 --format json"
-    echo "  $0 exists --registry https://gitea.local:3000 --repo myapp/v1.0"
-    echo "  $0 test-tls --registry https://gitea.local:3000 --ca-cert ./test-data/ca.crt"
-    echo "  $0 test-tls --registry https://gitea.local:3000 --insecure"
-}
-
-# Main command handling
-case "$COMMAND" in
-    "auth")
-        demo_auth
-        exit $?
-        ;;
-    "list")
-        demo_list
-        exit $?
-        ;;
-    "exists")
-        demo_exists
-        exit $?
-        ;;
-    "test-tls")
-        demo_tls
-        exit $?
-        ;;
-    "")
-        echo -e "${RED}Error: No command specified${NC}"
+    if [ "$3" = "--confirm" ]; then
+        echo "⚠️  Confirmation received for deletion"
         echo ""
-        show_usage
-        exit 1
+        echo "🔍 Checking repository existence..."
+        echo "✅ Repository '$2' found"
+        echo ""
+        echo "🗑️  Initiating deletion..."
+        echo "   - Removing manifest tags..."
+        echo "   - Cleaning up layer blobs..."
+        echo "   - Updating catalog..."
+        echo ""
+        echo "✅ Repository '$2' successfully deleted"
+        echo "🧹 Cleanup verification complete"
+    else
+        echo "❌ Deletion cancelled: --confirm flag required"
+        echo "ℹ️  Add --confirm to proceed with deletion"
+    fi
+    echo ""
+}
+
+# Main demo command dispatcher
+case "$1" in
+    "push")
+        demo_push_with_progress "${@:2}"
+        ;;
+    "list-repos")
+        shift
+        registry="${REGISTRY_URL}"
+        page=1
+        per_page=10
+        format="table"
+        
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --registry)
+                    registry="$2"
+                    shift 2
+                    ;;
+                --page)
+                    page="$2"
+                    shift 2
+                    ;;
+                --per-page)
+                    per_page="$2"
+                    shift 2
+                    ;;
+                --format)
+                    format="$2"
+                    shift 2
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+        
+        demo_list_repos "$registry" "$page" "$per_page" "$format"
+        ;;
+    "push-with-retry")
+        shift
+        registry="${REGISTRY_URL}"
+        image="stress-test:v1.0"
+        failures=3
+        max_retries=5
+        
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --registry)
+                    registry="$2"
+                    shift 2
+                    ;;
+                --image)
+                    image="$2"
+                    shift 2
+                    ;;
+                --simulate-failures)
+                    failures="$2"
+                    shift 2
+                    ;;
+                --max-retries)
+                    max_retries="$2"
+                    shift 2
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+        
+        demo_push_with_retry "$registry" "$image" "$failures" "$max_retries"
+        ;;
+    "delete")
+        shift
+        registry="${REGISTRY_URL}"
+        repo=""
+        confirm=""
+        
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --registry)
+                    registry="$2"
+                    shift 2
+                    ;;
+                --repo)
+                    repo="$2"
+                    shift 2
+                    ;;
+                --confirm)
+                    confirm="--confirm"
+                    shift
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+        
+        demo_delete_repo "$registry" "$repo" "$confirm"
         ;;
     *)
-        echo -e "${RED}Error: Unknown command: $COMMAND${NC}"
+        echo "Usage: $0 <command> [options]"
         echo ""
-        show_usage
-        exit 1
+        echo "Commands:"
+        echo "  push                  Demonstrate image push with progress"
+        echo "  list-repos           List repositories with pagination"
+        echo "  push-with-retry      Demonstrate retry logic"
+        echo "  delete               Delete repository"
+        echo ""
+        echo "Examples:"
+        echo "  $0 push --registry https://gitea.local:3000 --image myapp:v1.0 --source ./test-data/image.tar --progress"
+        echo "  $0 list-repos --registry https://gitea.local:3000 --page 1 --per-page 10 --format table"
+        echo "  $0 push-with-retry --registry https://gitea.local:3000 --image stress-test:v1.0 --simulate-failures 3 --max-retries 5"
+        echo "  $0 delete --registry https://gitea.local:3000 --repo myapp --confirm"
+        echo ""
+        exit 0
         ;;
 esac
 

@@ -1,0 +1,52 @@
+# Retry Configuration for Demo Testing
+# This file provides different retry policies for various scenarios
+
+retry_policies:
+  conservative:
+    max_retries: 3
+    initial_delay: "1s"
+    backoff_factor: 2.0
+    timeout: "30s"
+    
+  aggressive:
+    max_retries: 10
+    initial_delay: "500ms"
+    backoff_factor: 1.5
+    timeout: "60s"
+    
+  production:
+    max_retries: 5
+    initial_delay: "2s"
+    backoff_factor: 2.5
+    timeout: "45s"
+    
+  development:
+    max_retries: 2
+    initial_delay: "100ms"
+    backoff_factor: 1.2
+    timeout: "10s"
+
+# Error classification for retry decisions
+retryable_errors:
+  - "network timeout"
+  - "connection reset"
+  - "temporary failure"
+  - "rate limit exceeded"
+  - "server overloaded"
+
+# Non-retryable errors that should fail immediately
+permanent_errors:
+  - "authentication failed"
+  - "authorization denied"
+  - "not found"
+  - "bad request"
+  - "unsupported media type"
+
+# Demo configuration
+demo:
+  simulate_failures: true
+  failure_types:
+    - "network timeout"
+    - "connection reset"
+    - "temporary server error"
+  success_after_attempts: 4
