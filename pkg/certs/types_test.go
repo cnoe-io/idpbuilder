@@ -15,13 +15,9 @@
 package certs
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
-	"math/big"
 	"strings"
 	"testing"
 	"time"
@@ -39,51 +35,10 @@ const invalidCertPEM = `-----BEGIN CERTIFICATE-----
 InvalidCertificateData
 -----END CERTIFICATE-----`
 
-// Helper function to create a test certificate
-func createTestCertificate() *x509.Certificate {
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			CommonName: "test.example.com",
-		},
-		NotBefore:    time.Now(),
-		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  nil,
-		DNSNames:     []string{"test.example.com"},
-	}
-
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	certDER, _ := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	cert, _ := x509.ParseCertificate(certDER)
-	
-	return cert
-}
-
-// Helper function to create expired test certificate
-func createExpiredTestCertificate() *x509.Certificate {
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(2),
-		Subject: pkix.Name{
-			CommonName: "expired.example.com",
-		},
-		NotBefore:   time.Now().Add(-48 * time.Hour),
-		NotAfter:    time.Now().Add(-24 * time.Hour), // Expired yesterday
-		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:    []string{"expired.example.com"},
-	}
-
-	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	certDER, _ := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
-	cert, _ := x509.ParseCertificate(certDER)
-	
-	return cert
-}
+// NOTE: Private helper functions removed - now use exported CreateTestCertificate() and CreateExpiredTestCertificate() from test_helpers.go
 
 func TestNewCertificate(t *testing.T) {
-	x509Cert := createTestCertificate()
+	x509Cert := CreateTestCertificate(t)
 	pemData := createTestCertPEM(x509Cert)
 	
 	cert := NewCertificate(x509Cert, pemData)
@@ -99,14 +54,14 @@ func TestNewCertificate(t *testing.T) {
 
 func TestCertificateIsValid(t *testing.T) {
 	// Test valid certificate
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	if !validCert.IsValid() {
 		t.Error("Valid certificate should return true for IsValid()")
 	}
 
 	// Test expired certificate
-	expiredX509Cert := createExpiredTestCertificate()
+	expiredX509Cert := CreateExpiredTestCertificate(t)
 	expiredCert := NewCertificate(expiredX509Cert, createTestCertPEM(expiredX509Cert))
 	if expiredCert.IsValid() {
 		t.Error("Expired certificate should return false for IsValid()")
@@ -115,14 +70,14 @@ func TestCertificateIsValid(t *testing.T) {
 
 func TestCertificateIsExpired(t *testing.T) {
 	// Test valid certificate
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	if validCert.IsExpired() {
 		t.Error("Valid certificate should return false for IsExpired()")
 	}
 
 	// Test expired certificate
-	expiredX509Cert := createExpiredTestCertificate()
+	expiredX509Cert := CreateExpiredTestCertificate(t)
 	expiredCert := NewCertificate(expiredX509Cert, createTestCertPEM(expiredX509Cert))
 	if !expiredCert.IsExpired() {
 		t.Error("Expired certificate should return true for IsExpired()")
@@ -130,7 +85,7 @@ func TestCertificateIsExpired(t *testing.T) {
 }
 
 func TestCertificateWillExpireSoon(t *testing.T) {
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	
 	// Should not expire within 1 hour
@@ -145,7 +100,7 @@ func TestCertificateWillExpireSoon(t *testing.T) {
 }
 
 func TestCertificateGetCommonName(t *testing.T) {
-	x509Cert := createTestCertificate()
+	x509Cert := CreateTestCertificate(t)
 	cert := NewCertificate(x509Cert, createTestCertPEM(x509Cert))
 	
 	if cert.GetCommonName() != "test.example.com" {
@@ -154,7 +109,7 @@ func TestCertificateGetCommonName(t *testing.T) {
 }
 
 func TestCertificateGetSANs(t *testing.T) {
-	x509Cert := createTestCertificate()
+	x509Cert := CreateTestCertificate(t)
 	cert := NewCertificate(x509Cert, createTestCertPEM(x509Cert))
 	
 	sans := cert.GetSANs()
@@ -201,7 +156,7 @@ func TestCertificateBundleIsValid(t *testing.T) {
 	}
 	
 	// Bundle with valid CA cert
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	bundle.CACert = validCert
 	if !bundle.IsValid() {
@@ -209,7 +164,7 @@ func TestCertificateBundleIsValid(t *testing.T) {
 	}
 	
 	// Bundle with expired CA cert
-	expiredX509Cert := createExpiredTestCertificate()
+	expiredX509Cert := CreateExpiredTestCertificate(t)
 	expiredCert := NewCertificate(expiredX509Cert, createTestCertPEM(expiredX509Cert))
 	bundle.CACert = expiredCert
 	if bundle.IsValid() {
@@ -219,7 +174,7 @@ func TestCertificateBundleIsValid(t *testing.T) {
 
 func TestCertificateBundleUpdateValidityPeriod(t *testing.T) {
 	bundle := NewCertificateBundle()
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	
 	bundle.CACert = validCert
@@ -297,7 +252,7 @@ func TestTLSConfigAddClientCertificate(t *testing.T) {
 
 func TestTLSConfigSetRootCA(t *testing.T) {
 	config := NewTLSConfig()
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	
 	err := config.SetRootCA(validCert)
@@ -349,7 +304,7 @@ func TestBasicCertificateValidatorValidate(t *testing.T) {
 	}
 	
 	// Test valid certificate
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	err = validator.Validate(validCert)
 	if err != nil {
@@ -357,7 +312,7 @@ func TestBasicCertificateValidatorValidate(t *testing.T) {
 	}
 	
 	// Test expired certificate
-	expiredX509Cert := createExpiredTestCertificate()
+	expiredX509Cert := CreateExpiredTestCertificate(t)
 	expiredCert := NewCertificate(expiredX509Cert, createTestCertPEM(expiredX509Cert))
 	err = validator.Validate(expiredCert)
 	if err == nil {
@@ -375,7 +330,7 @@ func TestBasicCertificateValidatorValidateChain(t *testing.T) {
 	}
 	
 	// Test chain with valid certificate
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	err = validator.ValidateChain([]*Certificate{validCert})
 	if err != nil {
@@ -383,7 +338,7 @@ func TestBasicCertificateValidatorValidateChain(t *testing.T) {
 	}
 	
 	// Test chain with expired certificate
-	expiredX509Cert := createExpiredTestCertificate()
+	expiredX509Cert := CreateExpiredTestCertificate(t)
 	expiredCert := NewCertificate(expiredX509Cert, createTestCertPEM(expiredX509Cert))
 	err = validator.ValidateChain([]*Certificate{expiredCert})
 	if err == nil {
@@ -400,14 +355,14 @@ func TestBasicCertificateValidatorIsExpired(t *testing.T) {
 	}
 	
 	// Test valid certificate
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	if validator.IsExpired(validCert) {
 		t.Error("IsExpired should return false for valid certificate")
 	}
 	
 	// Test expired certificate
-	expiredX509Cert := createExpiredTestCertificate()
+	expiredX509Cert := CreateExpiredTestCertificate(t)
 	expiredCert := NewCertificate(expiredX509Cert, createTestCertPEM(expiredX509Cert))
 	if !validator.IsExpired(expiredCert) {
 		t.Error("IsExpired should return true for expired certificate")
@@ -423,7 +378,7 @@ func TestBasicCertificateValidatorWillExpireSoon(t *testing.T) {
 	}
 	
 	// Test valid certificate
-	validX509Cert := createTestCertificate()
+	validX509Cert := CreateTestCertificate(t)
 	validCert := NewCertificate(validX509Cert, createTestCertPEM(validX509Cert))
 	if validator.WillExpireSoon(validCert, time.Hour) {
 		t.Error("WillExpireSoon should return false for certificate not expiring soon")
@@ -465,7 +420,7 @@ func TestParseCertificatesFromPEM(t *testing.T) {
 	}
 	
 	// Test with multiple certificates (using same cert twice for simplicity)
-	testX509Cert := createTestCertificate()
+	testX509Cert := CreateTestCertificate(t)
 	testPEM := createTestCertPEM(testX509Cert)
 	multiCertPEM := string(testPEM) + "\n" + string(testPEM)
 	certs, err := ParseCertificatesFromPEM([]byte(multiCertPEM))
@@ -479,7 +434,7 @@ func TestParseCertificatesFromPEM(t *testing.T) {
 }
 
 func TestLoadCertificateFromReader(t *testing.T) {
-	testX509Cert := createTestCertificate()
+	testX509Cert := CreateTestCertificate(t)
 	testPEM := createTestCertPEM(testX509Cert)
 	reader := strings.NewReader(string(testPEM))
 	

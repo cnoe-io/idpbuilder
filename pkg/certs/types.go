@@ -82,6 +82,15 @@ type TLSConfig struct {
 	
 	// ClientAuth determines client certificate requirements
 	ClientAuth tls.ClientAuthType
+	
+	// Registry specifies the registry hostname
+	Registry string
+	
+	// ValidateHostname determines if hostname validation is enabled
+	ValidateHostname bool
+	
+	// Timeout specifies the connection timeout
+	Timeout time.Duration
 }
 
 // CertificateValidator defines the interface for certificate validation
@@ -134,6 +143,15 @@ func NewTLSConfig() *TLSConfig {
 		CipherSuites:     PreferredCipherSuites,
 		CurvePreferences: SecureTLSCurves,
 		ClientAuth:       tls.NoClientCert,
+	}
+}
+
+// DefaultTLSConfig creates a TLS configuration with default settings
+func DefaultTLSConfig() *TLSConfig {
+	return &TLSConfig{
+		MinVersion:       tls.VersionTLS12,
+		ValidateHostname: true,
+		Timeout:          10 * time.Second,
 	}
 }
 
