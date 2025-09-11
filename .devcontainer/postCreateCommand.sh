@@ -1,18 +1,12 @@
 #!/usr/bin/env bash
 
-# For Kubectl AMD64 / x86_64
-[ $(uname -m) = x86_64 ] && curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-# For Kubectl ARM64
-[ $(uname -m) = aarch64 ] && curl -sLO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
-chmod +x ./kubectl
-sudo mv ./kubectl /usr/local/bin/kubectl
+source .devcontainer/setup-ssh.sh
 
-# For Kind AMD64 / x86_64
-[ $(uname -m) = x86_64 ] && curl -sLo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
-# For Kind ARM64
-[ $(uname -m) = aarch64 ] && curl -sLo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-arm64
-chmod +x ./kind
-sudo mv ./kind /usr/local/bin/kind
+source .devcontainer/install-kubectl.sh 
+
+source .devcontainer/install-kind.sh 
+
+source .devcontainer/install-claude-code.sh
 
 # setup autocomplete for kubectl and alias k
 sudo apt-get update -y && sudo apt-get install bash-completion -y
