@@ -1,0 +1,73 @@
+# Registry Configuration for Demo
+# This file demonstrates registry settings for the image builder demo
+
+registry:
+  # Default registry for image pushes
+  default: "localhost:5000"
+  
+  # Registry-specific configurations
+  registries:
+    - url: "localhost:5000"
+      name: "local"
+      description: "Local development registry"
+      tls:
+        enabled: true
+        verify: true
+        ca_file: "./test-data/certs/ca.crt"
+        cert_file: "./test-data/certs/server.crt"
+        key_file: "./test-data/certs/server.key"
+      auth:
+        username: ""
+        password: ""
+    
+    - url: "gitea.cnoe.localtest.me:8443"
+      name: "gitea"
+      description: "Gitea container registry"
+      tls:
+        enabled: true
+        verify: true
+        ca_file: "./test-data/certs/gitea-ca.crt"
+      auth:
+        username: "admin"
+        password: ""
+
+# Image build settings
+build:
+  # Default storage directory
+  storage_dir: "/tmp/oci-storage"
+  
+  # Default labels to apply to all images
+  default_labels:
+    "org.opencontainers.image.vendor": "cnoe.io"
+    "demo.builder": "image-builder"
+  
+  # Exclusion patterns (like .dockerignore)
+  default_exclusions:
+    - ".git"
+    - ".gitignore"
+    - "*.tmp"
+    - "*.log"
+    - ".DS_Store"
+    - "node_modules"
+    - "__pycache__"
+
+# Feature flags
+features:
+  image_builder:
+    enabled: true
+    
+# Demo-specific settings
+demo:
+  scenarios:
+    - name: "build-image"
+      description: "Build OCI image from directory context"
+      enabled: true
+    - name: "generate-certs"
+      description: "Generate TLS certificates"
+      enabled: true
+    - name: "push-with-tls"
+      description: "Push image with TLS verification"
+      enabled: true
+    - name: "status"
+      description: "Show feature flag status"
+      enabled: true

@@ -1,0 +1,27 @@
+{
+  "application": {
+    "name": "image-builder-demo",
+    "version": "1.0.0",
+    "description": "Demo application for OCI image building"
+  },
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0"
+  },
+  "build": {
+    "timestamp": "PLACEHOLDER_BUILD_TIME",
+    "builder": "cnoe-image-builder",
+    "context": "./test-data/sample-app"
+  },
+  "features": {
+    "health_check": true,
+    "metrics": false,
+    "debug": true
+  },
+  "labels": {
+    "org.opencontainers.image.title": "Image Builder Demo App",
+    "org.opencontainers.image.description": "Sample application for demonstrating OCI image building",
+    "org.opencontainers.image.vendor": "cnoe.io",
+    "demo.purpose": "image-builder-validation"
+  }
+}

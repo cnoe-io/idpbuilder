@@ -1,0 +1,34 @@
+# Demo Configuration for Image Builder
+# This file contains environment settings and defaults for the demo
+
+# Feature Flags
+ENABLE_IMAGE_BUILDER=true
+
+# Default Paths  
+DEMO_STORAGE_DIR=/tmp/oci-storage
+DEMO_CERT_DIR=./test-data/certs
+DEMO_CONTEXT_DIR=./test-data/sample-app
+
+# Registry Settings
+DEMO_REGISTRY=localhost:5000
+DEMO_NAMESPACE=demo
+DEMO_SECRET_NAME=demo-tls
+
+# Image Settings
+DEMO_IMAGE_TAG=myapp:v1.0
+DEMO_IMAGE_LABELS="org.opencontainers.image.vendor=cnoe.io,demo.purpose=image-builder-validation"
+
+# Demo Behavior
+DEMO_DEBUG=false
+DEMO_VERBOSE=false
+
+# Integration Settings
+DEMO_READY=false
+
+# Usage:
+# Source this file before running demos:
+#   source .demo-config
+#   ./demo-features.sh <scenario>
+#
+# Or override specific settings:
+#   DEMO_REGISTRY=registry.example.com ./demo-features.sh push-with-tls
