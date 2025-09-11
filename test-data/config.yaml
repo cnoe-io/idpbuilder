@@ -1,0 +1,44 @@
+# Registry Configuration for Demo
+registry:
+  url: "https://gitea.local:3000"
+  username: "demo-user"
+  # token: set via environment variable GITEA_TOKEN
+  insecure: false
+
+# Remote Options Configuration
+remoteOptions:
+  retryCount: 3
+  retryDelay: "1s"
+  timeout: "30s"
+  insecure: false
+  proxyURL: ""
+  
+# TLS Configuration
+tls:
+  enabled: true
+  caCert: "./test-data/ca.crt"
+  insecureSkipVerify: false
+
+# Demo Settings
+demo:
+  scenarios:
+    - name: "auth"
+      description: "Test authentication flow"
+      enabled: true
+    - name: "list"
+      description: "List repositories"
+      enabled: true
+    - name: "exists"
+      description: "Check repository existence"
+      enabled: true
+    - name: "test-tls"
+      description: "Verify TLS configuration"
+      enabled: true
+
+# Test Repositories
+testRepositories:
+  - "idpbuilder/core"
+  - "idpbuilder/ui" 
+  - "myapp/v1.0"
+  - "myapp/v1.1"
+  - "gitea/gitea"
