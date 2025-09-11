@@ -39,3 +39,11 @@ Command: git merge kind-cert-extraction/idpbuilder-oci-build-push/phase1/wave1/k
 Result: Merge made by the 'ort' strategy. Added 15 files, 3323 insertions
 MERGED: idpbuilder-oci-build-push/phase1/wave1/kind-cert-extraction at 2025-09-11 13:00:45 UTC
 Status: SUCCESS
+
+## Operation 6: Merge E1.1.2 - registry-tls-trust (with fixes)
+Time: 2025-09-11 13:01:30 UTC
+Command: git merge registry-tls-trust/idpbuilder-oci-build-push/phase1/wave1/registry-tls-trust --no-edit
+Result: Conflict in work-log.md - resolved by keeping integration work-log
+CONFLICT_RESOLUTION: Kept integration work-log, discarded effort work-log (different purposes)
+MERGED: idpbuilder-oci-build-push/phase1/wave1/registry-tls-trust at 2025-09-11 13:01:30 UTC
+Status: SUCCESS (conflict resolved)
