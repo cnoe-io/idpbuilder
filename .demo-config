@@ -1,0 +1,29 @@
+# Demo Configuration for Gitea Client
+# R291 Compliance Configuration
+
+# Demo script settings
+DEMO_SCRIPT=demo-features.sh
+DEMO_TIMEOUT=60
+DEMO_LOG_LEVEL=info
+
+# Integration settings
+DEMO_READY_VAR=DEMO_READY
+DEMO_SUCCESS_EXIT_CODE=0
+
+# Feature flags for demo
+IDPBUILDER_CERT_INFRASTRUCTURE_ENABLED=true
+IDPBUILDER_KIND_CERT_EXTRACTION_ENABLED=true
+IDPBUILDER_REGISTRY_TLS_TRUST_ENABLED=true
+
+# Test data location
+TEST_DATA_DIR=test-data
+SAMPLE_CONFIG=test-data/sample-config.yaml
+EXAMPLE_CERT=test-data/example-certificate.pem
+DEMO_SCENARIO=test-data/demo-scenario.sh
+
+# Demo metadata
+DEMO_VERSION=1.0
+DEMO_CREATED=2025-09-11
+DEMO_EFFORT=gitea-client
+DEMO_PHASE=phase2
+DEMO_WAVE=wave1
