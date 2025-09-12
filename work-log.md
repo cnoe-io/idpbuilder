@@ -59,3 +59,14 @@ Conflicts:
   - Test files: Kept ours (split incorrectly tried to delete)
   - Deleted files: Rejected deletions (split should only add, not delete)
 Conflict Resolution: Split branch incorrectly tried to delete project files - kept all existing files and added new OCI files
+Build: Success
+Tests: PASS
+MERGED: E1.1.3-registry-auth-types-split-001 at 2025-09-12 04:35:00 UTC
+
+### Merge 4: registry-auth-types-split-002
+Command: git merge registry-auth-types-split-002/idpbuilder-oci-build-push/phase1/wave1/registry-auth-types-split-002 --no-ff -m "merge: integrate E1.1.3-registry-auth-types-split-002 (implementation) into Wave 1 integration"
+Result: Success - clean merge
+Time: 2025-09-12 04:36:00 UTC
+Build: Success
+Tests: PASS
+MERGED: E1.1.3-registry-auth-types-split-002 at 2025-09-12 04:36:00 UTC
