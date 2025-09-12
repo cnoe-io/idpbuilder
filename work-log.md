@@ -30,3 +30,17 @@ Result: Success - fetched from origin
 Time: 2025-09-12 04:31:05 UTC
 
 ## Integration Merges
+
+### Merge 1: kind-cert-extraction
+Command: git merge kind-cert-extraction/idpbuilder-oci-build-push/phase1/wave1/kind-cert-extraction --no-ff -m "merge: integrate E1.1.1-kind-cert-extraction (650 lines) into Wave 1 integration"
+Result: Success - clean merge
+Time: 2025-09-12 04:32:30 UTC
+Build: Success
+Tests: PASS (pkg/certs tests passing)
+MERGED: E1.1.1-kind-cert-extraction at 2025-09-12 04:32:30 UTC
+
+### Merge 2: registry-tls-trust
+Command: git merge registry-tls-trust/idpbuilder-oci-build-push/phase1/wave1/registry-tls-trust --no-ff -m "merge: integrate E1.1.2-registry-tls-trust (700 lines) into Wave 1 integration"
+Result: Conflict in work-log.md (resolved - kept integration log)
+Time: 2025-09-12 04:33:15 UTC
+Conflict Resolution: Kept integration work-log, discarded effort work-log (different purpose)
