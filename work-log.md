@@ -44,3 +44,18 @@ Command: git merge registry-tls-trust/idpbuilder-oci-build-push/phase1/wave1/reg
 Result: Conflict in work-log.md (resolved - kept integration log)
 Time: 2025-09-12 04:33:15 UTC
 Conflict Resolution: Kept integration work-log, discarded effort work-log (different purpose)
+Build: Success
+Tests: PASS
+MERGED: E1.1.2-registry-tls-trust at 2025-09-12 04:33:15 UTC
+
+### Merge 3: registry-auth-types-split-001
+Command: git merge registry-auth-types-split-001/idpbuilder-oci-build-push/phase1/wave1/registry-auth-types-split-001 --no-ff -m "merge: integrate E1.1.3-registry-auth-types-split-001 (types/constants) into Wave 1 integration"
+Result: Multiple conflicts
+Time: 2025-09-12 04:34:00 UTC
+Conflicts:
+  - work-log.md: Kept integration log
+  - .devcontainer files: Resolved
+  - go.mod/go.sum: Kept ours (split incorrectly tried to delete)
+  - Test files: Kept ours (split incorrectly tried to delete)
+  - Deleted files: Rejected deletions (split should only add, not delete)
+Conflict Resolution: Split branch incorrectly tried to delete project files - kept all existing files and added new OCI files
