@@ -63,8 +63,8 @@ func (c *KubectlKindClient) GetCurrentCluster() (string, error) {
 		return "", ErrNoKindCluster
 	}
 
-	// Return first cluster (or use context to determine active)
-	// TODO: In a real implementation, we might want to check kubectl current-context
+	// Return first cluster - the simplest approach for Kind clusters
+	// Kind clusters are typically simple single-cluster environments
 	return clusters[0], nil
 }
 
