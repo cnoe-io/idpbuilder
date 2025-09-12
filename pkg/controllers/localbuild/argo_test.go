@@ -9,6 +9,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -194,7 +195,7 @@ func TestArgoCDAppAnnotation(t *testing.T) {
 			}).Return(c.err)
 		for j := range c.annotations {
 			app := c.listApps[j]
-			u := makeUnstructured(app.Name, app.Namespace, app.GroupVersionKind(), c.annotations[j])
+			u := testutil.MakeUnstructured(app.Name, app.Namespace, app.GroupVersionKind(), c.annotations[j])
 			fClient.On("Patch", ctx, u, client.Apply, []client.PatchOption{client.FieldOwner(v1alpha1.FieldManager)}).Return(nil)
 		}
 		rec := LocalbuildReconciler{
@@ -204,13 +205,4 @@ func TestArgoCDAppAnnotation(t *testing.T) {
 		fClient.AssertExpectations(t)
 		assert.NoError(t, err)
 	}
-}
-
-func makeUnstructured(name, namespace string, gvk schema.GroupVersionKind, annotations map[string]string) *unstructured.Unstructured {
-	u := &unstructured.Unstructured{}
-	u.SetAnnotations(annotations)
-	u.SetName(name)
-	u.SetNamespace(namespace)
-	u.SetGroupVersionKind(gvk)
-	return u
 }
