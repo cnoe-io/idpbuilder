@@ -1,0 +1,31 @@
+🔍 Certificate Validators and Test Fixes Demo
+==============================================
+
+This demo showcases the certificate validators and comprehensive test fixes
+implemented in the cert-validation-split-003 effort.
+
+📁 Current directory: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase1/wave1/integration-workspace
+🏷️  Go module: github.com/cnoe-io/idpbuilder
+
+🔨 Building project...
+⚠️  Build failed or no main package found, proceeding with tests...
+
+🧪 Running chain validator tests...
+This demonstrates the ChainValidator functionality:
+
+=== RUN   TestNewChainValidator
+--- PASS: TestNewChainValidator (0.00s)
+=== RUN   TestChainValidator_ValidateChain_EmptyChain
+--- PASS: TestChainValidator_ValidateChain_EmptyChain (0.00s)
+=== RUN   TestChainValidator_ValidateChain_SingleValidCert
+--- PASS: TestChainValidator_ValidateChain_SingleValidCert (0.31s)
+=== RUN   TestChainValidator_ValidateChain_ChainTooLong
+--- PASS: TestChainValidator_ValidateChain_ChainTooLong (1.95s)
+=== RUN   TestChainValidator_ValidationModes
+=== RUN   TestChainValidator_ValidationModes/Strict_Mode
+=== RUN   TestChainValidator_ValidationModes/Lenient_Mode
+=== RUN   TestChainValidator_ValidationModes/Insecure_Mode
+--- PASS: TestChainValidator_ValidationModes (0.00s)
+    --- PASS: TestChainValidator_ValidationModes/Strict_Mode (0.00s)
+    --- PASS: TestChainValidator_ValidationModes/Lenient_Mode (0.00s)
+    --- PASS: TestChainValidator_ValidationModes/Insecure_Mode (0.00s)

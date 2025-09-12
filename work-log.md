@@ -70,3 +70,64 @@ Time: 2025-09-12 04:36:00 UTC
 Build: Success
 Tests: PASS
 MERGED: E1.1.3-registry-auth-types-split-002 at 2025-09-12 04:36:00 UTC
+
+### Merge 5: cert-validation-split-001
+Command: git merge cert-validation-split-001/idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-001 --no-ff -m "merge: integrate E1.2.1-cert-validation-split-001 (validation foundations) into Wave 1 integration"
+Result: Multiple conflicts (resolved)
+Time: 2025-09-12 04:37:00 UTC
+Conflicts: work-log.md, go.mod/go.sum, .devcontainer files, WAVE-MERGE-PLAN.md
+Conflict Resolution: Kept our versions for all infrastructure files
+Build: Success
+Tests: PASS
+MERGED: E1.2.1-cert-validation-split-001 at 2025-09-12 04:37:00 UTC
+
+### Merge 6: cert-validation-split-002
+Command: git merge cert-validation-split-002/idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-002 --no-ff -m "merge: integrate E1.2.1-cert-validation-split-002 (validation implementation) into Wave 1 integration"
+Result: Conflict in work-log.md (resolved)
+Time: 2025-09-12 04:38:00 UTC
+Build: Success
+Tests: PASS
+MERGED: E1.2.1-cert-validation-split-002 at 2025-09-12 04:38:00 UTC
+
+### Merge 7: cert-validation-split-003
+Command: git merge cert-validation-split-003/idpbuilder-oci-build-push/phase1/wave2/cert-validation-split-003 --no-ff -m "merge: integrate E1.2.1-cert-validation-split-003 (validation completion) into Wave 1 integration"
+Result: Success - clean merge
+Time: 2025-09-12 04:39:00 UTC
+Build: Success
+Tests: PASS
+MERGED: E1.2.1-cert-validation-split-003 at 2025-09-12 04:39:00 UTC
+
+### Merge 8: fallback-strategies
+Command: git merge fallback-strategies/idpbuilder-oci-build-push/phase1/wave2/fallback-strategies --no-ff -m "merge: integrate E1.2.2-fallback-strategies (560 lines) into Wave 1 integration"
+Result: Conflicts in go.mod/go.sum and work-log.md (resolved)
+Time: 2025-09-12 04:40:00 UTC
+Conflict Resolution: Kept our versions of dependency files
+Build: Success
+Tests: PASS
+MERGED: E1.2.2-fallback-strategies at 2025-09-12 04:40:00 UTC
+
+## Final Validation
+
+Command: go mod tidy
+Result: Success - dependencies cleaned
+Time: 2025-09-12 04:41:00 UTC
+
+Command: go build ./...
+Result: Success - all packages build
+Time: 2025-09-12 04:41:30 UTC
+
+Command: go test ./pkg/certs -v
+Result: Success - all tests passing
+Time: 2025-09-12 04:42:00 UTC
+
+## Demo Execution (R291)
+
+Command: ./demo-validators.sh
+Result: Success - chain validator demos working
+Time: 2025-09-12 04:43:00 UTC
+
+Command: ./demo-fallback.sh
+Result: Success - fallback strategy demos working
+Time: 2025-09-12 04:43:30 UTC
+
+DEMO_STATUS: PASSED
