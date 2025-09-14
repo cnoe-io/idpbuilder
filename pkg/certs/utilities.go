@@ -126,23 +126,6 @@ func (c *TransportConfigurer) buildTLSConfig(registry string) (*tls.Config, erro
 	}, nil
 }
 
-// TLSConfig holds TLS configuration
-type TLSConfig struct {
-	Registry           string
-	InsecureSkipVerify bool
-	MinVersion         uint16
-	ValidateHostname   bool
-	Timeout            time.Duration
-}
-
-// DefaultTLSConfig returns default TLS config
-func DefaultTLSConfig() *TLSConfig {
-	return &TLSConfig{
-		MinVersion:       tls.VersionTLS12,
-		ValidateHostname: true,
-		Timeout:          10 * time.Second,
-	}
-}
 
 // LoadConfigFromEnv loads configuration from environment
 func (c *TLSConfig) LoadConfigFromEnv() {
