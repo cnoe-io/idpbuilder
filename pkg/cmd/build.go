@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -71,22 +72,43 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	helpers.PrintColoredOutput("Platform: %s/%s\n", osName, arch)
 
 	// Call image-builder package from Phase 2 Wave 1
-	builder := build.NewBuilder()
-	builder.SetPlatform(osName, arch)
+	// Create temporary directory for image storage
+	storageDir, err := os.MkdirTemp("", "idpbuilder-storage-*")
+	if err != nil {
+		return fmt.Errorf("failed to create storage directory: %w", err)
+	}
+	defer os.RemoveAll(storageDir)
 
-	if helpers.LogLevel == "debug" {
-		builder.SetVerbose(true)
+	builder, err := build.NewBuilder(storageDir)
+	if err != nil {
+		return fmt.Errorf("failed to create builder: %w", err)
 	}
 
-	image, err := builder.BuildFromContext(absContext, buildTag)
+	// Create build options for the new API
+	buildOptions := build.BuildOptions{
+		ContextPath: absContext,
+		Tag:         buildTag,
+		Exclusions:  []string{}, // Could be extended to support .dockerignore-like functionality
+		Labels: map[string]string{
+			"idpbuilder.platform": buildPlatform,
+		},
+	}
+
+	// Add debug mode to labels if enabled
+	if helpers.LogLevel == "debug" {
+		buildOptions.Labels["idpbuilder.debug"] = "true"
+	}
+
+	// Build the image using new API
+	result, err := builder.BuildImage(context.Background(), buildOptions)
 	if err != nil {
 		return fmt.Errorf("build failed: %w", err)
 	}
 
-	// Success feedback
-	helpers.PrintColoredOutput("Successfully built image: %s\n", image.Tag())
-	if size := image.Size(); size > 0 {
-		helpers.PrintColoredOutput("Image size: %d bytes\n", size)
+	// Success feedback using result fields
+	helpers.PrintColoredOutput("Successfully built image: %s\n", buildTag)
+	if result.Size > 0 {
+		helpers.PrintColoredOutput("Image size: %d bytes\n", result.Size)
 	}
 
 	helpers.PrintColoredOutput("Build completed successfully!\n")
