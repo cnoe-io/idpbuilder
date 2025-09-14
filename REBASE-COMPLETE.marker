@@ -1,9 +1,8 @@
-Rebase Operation Complete: 2025-09-11 14:39:31 UTC
-Effort: fallback-strategies
-Branch: idpbuilder-oci-build-push/phase1/wave2/fallback-strategies
-Operation: Rebased onto phase1/wave1/integration
-Base Commit: 5435ac1 docs: complete integration documentation for Phase 1 Wave 1
-Final Commit: 29c3500 feat: implement E1.2.2 fallback strategies and insecure mode
-Implementation Size: 560 lines (fallback-strategies specific)
-Tests Status: ALL PASSING
-Status: REBASE COMPLETE - Ready for Wave 2 Integration
+Completed at: 2025-09-14 16:59:09 UTC
+Effort: image-builder
+Branch: idpbuilder-oci-build-push/phase2/wave1/image-builder
+Previous base: 4f0e259 (old phase1/integration)
+New base: 2c39501 (latest phase1/integration - Integrate Wave 2 into Phase 1)
+Commits processed: 21 of 21
+Final commit: 04f5026 chore: commit working files before rebase
+Status: REBASE COMPLETE
