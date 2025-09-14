@@ -1,0 +1,9 @@
+Completed at: 2025-09-14 18:30:38 UTC
+Effort: image-builder
+Branch: idpbuilder-oci-build-push/phase2/wave1/image-builder
+Issue: Duplicate TLSConfig declarations
+Fix Applied: Removed duplicates from pkg/certs/utilities.go
+Files Modified: pkg/certs/utilities.go
+Build Status: PASSING
+Final commit: f0b14f4 fix: remove duplicate TLSConfig struct and DefaultTLSConfig function
+Status: EMERGENCY FIX COMPLETE
