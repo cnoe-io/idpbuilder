@@ -1,20 +1,11 @@
-# E1.1.2 Duplicate Declaration Fixes Complete
-# Timestamp: 2025-09-06 20:49:46 UTC
-
-## Fixed Issues:
-1. ✅ CertValidator -> RegistryCertValidator (utilities.go line 229)
-2. ✅ isFeatureEnabled -> isRegistryFeatureEnabled (trust.go line 260)  
-3. ✅ Updated all references to use new names
-
-## Build Status:
-- ✅ pkg/certs builds successfully
-- ✅ Full project builds successfully
-- ✅ No duplicate declaration conflicts with E1.1.1
-
-## Commit:
-- Branch: phase1/wave1/effort-registry-tls-trust
-- Commit: 4f8abb7c880af5425e560c90346eafb1318c14d3
-- Pushed to remote: ✅
-
-## Integration Ready:
-The E1.1.2 effort branch can now be safely integrated without conflicts.
+Completed at: 2025-09-15 15:03:54 UTC
+Split: gitea-client-split-002
+Branch: idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-002
+Fixes applied:
+- Fixed non-constant format string in pkg/util/git_repository_test.go:102
+- Changed t.Fatalf(err.Error()) to t.Fatal(err.Error())
+- Verified registry tests pass (no Manifest issues found)  
+- Confirmed unused import issue was already resolved
+Total commits: 1 (a7b4191)
+Final commit: a7b4191 fix: resolve test compilation errors for registry and util packages
+Status: TEST COMPILATION FIXES COMPLETE
