@@ -43,7 +43,8 @@ func preClustersE(cmd *cobra.Command, args []string) error {
 }
 
 func list(cmd *cobra.Command, args []string) error {
-	clusters, err := populateClusterList()
+	ctx := cmd.Context()
+	clusters, err := populateClusterList(ctx)
 	if err != nil {
 		return err
 	} else {
@@ -55,7 +56,7 @@ func list(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func populateClusterList() ([]idpTypes.Cluster, error) {
+func populateClusterList(ctx context.Context) ([]idpTypes.Cluster, error) {
 	logger := helpers.CmdLogger
 
 	detectOpt, err := util.DetectKindNodeProvider()
@@ -110,7 +111,7 @@ func populateClusterList() ([]idpTypes.Cluster, error) {
 			logger.V(1).Info(fmt.Sprintf("Got the context for the cluster: %s.", cluster))
 
 			// Print the external port mounted on the container and available also as ingress host port
-			targetPort, err := findExternalHTTPSPort(cli, cluster)
+			targetPort, err := findExternalHTTPSPort(ctx, cli, cluster)
 			if err != nil {
 				return nil, err
 			} else {
@@ -121,7 +122,7 @@ func populateClusterList() ([]idpTypes.Cluster, error) {
 			aCluster.TlsCheck = c.InsecureSkipTLSVerify
 
 			// Print the internal port running the Kube API service
-			kubeApiPort, err := findInternalKubeApiPort(cli)
+			kubeApiPort, err := findInternalKubeApiPort(ctx, cli)
 			if err != nil {
 				return nil, err
 			} else {
@@ -130,7 +131,7 @@ func populateClusterList() ([]idpTypes.Cluster, error) {
 
 			// Let's check what the current node reports
 			var nodeList corev1.NodeList
-			err = cli.List(context.TODO(), &nodeList)
+			err = cli.List(ctx, &nodeList)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +165,7 @@ func populateClusterList() ([]idpTypes.Cluster, error) {
 				}
 
 				// Get Node Allocated resources
-				allocated, err := printAllocatedResources(context.Background(), cli, node.Name)
+				allocated, err := printAllocatedResources(ctx, cli, node.Name)
 				if err != nil {
 					return nil, err
 				}
@@ -211,13 +212,13 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 	return allocated, nil
 }
 
-func findExternalHTTPSPort(cli client.Client, clusterName string) (int32, error) {
+func findExternalHTTPSPort(ctx context.Context, cli client.Client, clusterName string) (int32, error) {
 	service := corev1.Service{}
 	namespacedName := types.NamespacedName{
 		Name:      "ingress-nginx-controller",
 		Namespace: "ingress-nginx",
 	}
-	err := cli.Get(context.TODO(), namespacedName, &service)
+	err := cli.Get(ctx, namespacedName, &service)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get the ingress service on the cluster. %w", err)
 	}
@@ -227,7 +228,7 @@ func findExternalHTTPSPort(cli client.Client, clusterName string) (int32, error)
 			Name: clusterName,
 		},
 	}
-	err = cli.Get(context.TODO(), client.ObjectKeyFromObject(&localBuild), &localBuild)
+	err = cli.Get(ctx, client.ObjectKeyFromObject(&localBuild), &localBuild)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get the localbuild on the cluster. %w", err)
 	}
@@ -243,13 +244,13 @@ func findExternalHTTPSPort(cli client.Client, clusterName string) (int32, error)
 	return targetPort.Port, nil
 }
 
-func findInternalKubeApiPort(cli client.Client) (int32, error) {
+func findInternalKubeApiPort(ctx context.Context, cli client.Client) (int32, error) {
 	service := corev1.Service{}
 	namespacedName := types.NamespacedName{
 		Name:      "kubernetes",
 		Namespace: "default",
 	}
-	err := cli.Get(context.TODO(), namespacedName, &service)
+	err := cli.Get(ctx, namespacedName, &service)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get the kubernetes default service on the cluster. %w", err)
 	}
