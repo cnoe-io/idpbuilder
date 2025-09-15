@@ -142,12 +142,12 @@ func (c *Client) getImageContentForReference(imageRef string) (io.Reader, error)
 
 // getRegistryUsername retrieves the registry username from environment or config.
 func getRegistryUsername() string {
-	// TODO: Implement proper credential retrieval
-	return "admin"
+	// TODO: E2.2.2 will implement proper credential management
+	return ""
 }
 
 // getRegistryPassword retrieves the registry password from environment or config.
 func getRegistryPassword() string {
-	// TODO: Implement proper credential retrieval
-	return "password"
+	// TODO: E2.2.2 will implement proper credential management
+	return ""
 }
