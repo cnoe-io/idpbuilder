@@ -119,7 +119,6 @@ func TestPredefinedErrors(t *testing.T) {
 		ErrCertNotYetValid,
 		ErrCertInvalidKeyUsage,
 		ErrCertSelfSigned,
-		ErrFeatureDisabled,
 	}
 
 	for i, err := range errors {

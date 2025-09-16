@@ -90,26 +90,21 @@ func NewKindCertExtractor(config ExtractorConfig) (*KindCertExtractor, error) {
 
 // ExtractGiteaCert extracts the Gitea certificate from Kind cluster
 func (e *KindCertExtractor) ExtractGiteaCert(ctx context.Context) (*x509.Certificate, error) {
-	// 1. Check feature flag
-	if !isKindFeatureEnabled("KIND_CERT_EXTRACTION_ENABLED") {
-		return nil, ErrFeatureDisabled
-	}
-
-	// 2. Get cluster information
+	// 1. Get cluster information
 	clusterName, err := e.getClusterName()
 	if err != nil {
-		return nil, NewCertError("extraction", "cluster_discovery", 
+		return nil, NewCertError("extraction", "cluster_discovery",
 			fmt.Errorf("failed to get cluster name: %w", err))
 	}
 
-	// 3. Find Gitea pod
+	// 2. Find Gitea pod
 	podName, err := e.findGiteaPod(ctx, clusterName)
 	if err != nil {
 		return nil, NewCertError("extraction", "pod_discovery",
 			fmt.Errorf("failed to find Gitea pod: %w", err))
 	}
 
-	// 4. Extract certificate data with retry
+	// 3. Extract certificate data with retry
 	var certData []byte
 	for attempt := 0; attempt < e.config.RetryAttempts; attempt++ {
 		certData, err = e.client.CopyFromPod(ctx, podName, e.config.CertPath)
@@ -125,20 +120,20 @@ func (e *KindCertExtractor) ExtractGiteaCert(ctx context.Context) (*x509.Certifi
 			fmt.Errorf("failed to copy certificate after %d attempts: %w", e.config.RetryAttempts, err))
 	}
 
-	// 5. Parse certificate
+	// 4. Parse certificate
 	cert, err := parseCertificate(certData)
 	if err != nil {
 		return nil, NewCertError("extraction", "certificate_parse",
 			fmt.Errorf("failed to parse certificate: %w", err))
 	}
 
-	// 6. Validate certificate
+	// 5. Validate certificate
 	if err := e.validator.ValidateCertificate(cert); err != nil {
 		return nil, NewCertError("extraction", "certificate_validation",
 			fmt.Errorf("certificate validation failed: %w", err))
 	}
 
-	// 7. Store locally
+	// 6. Store locally
 	if err := e.storage.Store("gitea", cert); err != nil {
 		return nil, NewCertError("extraction", "storage",
 			fmt.Errorf("failed to store certificate: %w", err))
