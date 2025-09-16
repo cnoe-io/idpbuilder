@@ -1,6 +1,21 @@
-Completed at: 2025-09-14 20:14:52 UTC
-Effort: cli-commands (Phase 2, Wave 2)
+Fix completed at: 2025-09-16 00:04:02 UTC
+Effort: cli-commands
 Branch: idpbuilder-oci-build-push/phase2/wave2/cli-commands
-Fix applied: Updated build.NewBuilder() API call for Wave 1 compatibility
-Commit: d40f88d fix(build): update NewBuilder API call for Wave 1 compatibility
-Status: FIXES COMPLETE
+Status: API VERIFICATION COMPLETE - ALL CORRECT
+
+Findings:
+- pkg/cmd/push.go uses CORRECT new API calls
+- No remnants of old problematic API found
+- All builds compile successfully
+- Ready for clean integration
+
+Verified API usage:
+✅ certs.NewTrustStore() (line 66) - CORRECT
+✅ gitea.NewClient(registryURL, certManager) (line 69) - CORRECT 2-param signature
+✅ client.Push() (line 95) - CORRECT method name
+❌ No ExtractCertificate() usage found - GOOD
+❌ No NewClientAutoDetect() usage found - GOOD  
+❌ No ValidateCredentials() usage found - GOOD
+❌ No PushImage() usage found - GOOD
+
+Build status: ✅ ALL SUCCESSFUL
