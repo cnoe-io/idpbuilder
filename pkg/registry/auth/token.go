@@ -1,3 +1,6 @@
+// Package auth provides authentication implementations for OCI registry operations.
+// It supports multiple authentication methods including basic auth, bearer tokens,
+// and anonymous access.
 package auth
 
 import (
