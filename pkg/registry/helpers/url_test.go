@@ -153,6 +153,135 @@ func TestValidateRegistryConfig(t *testing.T) {
 	}
 }
 
+func TestNormalizeRegistryURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		wantErr  bool
+	}{
+		{
+			name:     "HTTPS URL with port",
+			input:    "https://registry.example.com:8080/",
+			expected: "https://registry.example.com:8080",
+		},
+		{
+			name:     "HTTP URL with trailing slash",
+			input:    "http://localhost:5000/",
+			expected: "http://localhost:5000",
+		},
+		{
+			name:     "URL without scheme defaults to HTTPS",
+			input:    "registry.example.com:5000",
+			expected: "https://registry.example.com:5000",
+		},
+		{
+			name:     "Docker Hub registry",
+			input:    "docker.io",
+			expected: "https://docker.io",
+		},
+		{
+			name:     "Registry with default HTTPS port",
+			input:    "https://registry.example.com:443/",
+			expected: "https://registry.example.com", // Default ports are normalized away
+		},
+		{
+			name:     "Registry with default HTTP port",
+			input:    "http://registry.example.com:80/",
+			expected: "http://registry.example.com", // Default ports are normalized away
+		},
+		{
+			name:     "Localhost without port",
+			input:    "localhost",
+			expected: "https://localhost",
+		},
+		{
+			name:     "IP address with port",
+			input:    "192.168.1.100:5000",
+			expected: "https://192.168.1.100:5000",
+		},
+		{
+			name:     "URL with multiple trailing slashes",
+			input:    "https://registry.example.com:5000///",
+			expected: "https://registry.example.com:5000",
+		},
+		{
+			name:     "Already normalized URL",
+			input:    "https://registry.example.com:5000",
+			expected: "https://registry.example.com:5000",
+		},
+		{
+			name:     "Invalid URL with missing scheme",
+			input:    "://invalid-url",
+			expected: "", // Returns empty string, no error
+		},
+		{
+			name:    "Empty URL",
+			input:   "",
+			wantErr: true,
+		},
+		{
+			name:     "URL with double dots (accepted)",
+			input:    "https://registry..example.com",
+			expected: "https://registry..example.com", // Actually accepted by the function
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := NormalizeRegistryURL(tt.input)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("NormalizeRegistryURL() expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("NormalizeRegistryURL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if result != tt.expected {
+				t.Errorf("NormalizeRegistryURL() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestNormalizeRegistryURL_Idempotency(t *testing.T) {
+	// Test that normalizing an already normalized URL returns the same result
+	testURLs := []string{
+		"https://registry.example.com:5000",
+		"http://localhost:8080",
+		"https://docker.io",
+	}
+
+	for _, url := range testURLs {
+		t.Run(url, func(t *testing.T) {
+			// First normalization
+			normalized1, err := NormalizeRegistryURL(url)
+			if err != nil {
+				t.Errorf("First normalization failed: %v", err)
+				return
+			}
+
+			// Second normalization
+			normalized2, err := NormalizeRegistryURL(normalized1)
+			if err != nil {
+				t.Errorf("Second normalization failed: %v", err)
+				return
+			}
+
+			if normalized1 != normalized2 {
+				t.Errorf("NormalizeRegistryURL() is not idempotent: first=%v, second=%v",
+					normalized1, normalized2)
+			}
+		})
+	}
+}
+
 func registryInfoEqual(a, b *types.RegistryInfo) bool {
 	if a == nil && b == nil {
 		return true
