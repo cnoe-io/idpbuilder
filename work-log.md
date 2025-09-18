@@ -21,3 +21,9 @@ Status: SUCCESS
 ## Merge Operations Log## Merge 1: kind-cert-extraction (E1.1.1)
 Time: 2025-09-18 23:23:27 UTC
 Fetching branch from origin...
+Command: git merge origin/idpbuilder-oci-build-push/phase1/wave1/kind-cert-extraction --no-ff
+Result: SUCCESS - Merge completed with auto-merge on work-log.md
+Files added: 22 files changed, 3472 insertions
+
+## Merge 2: registry-types (E1.1.2A)
+Time: 2025-09-18 23:24:00 UTC
