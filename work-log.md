@@ -110,3 +110,10 @@ MERGED: E1.1.2B at $(date '+%Y-%m-%d %H:%M:%S %Z')
 
 ### Merge 4: registry-helpers (E1.1.2C)
 Time: 2025-09-18 23:26:31 UTC
+Command: git merge origin/idpbuilder-oci-build-push/phase1/wave1/registry-helpers --no-ff
+Result: SUCCESS - No conflicts
+Files added: 4 source + 4 test files, 684 source lines
+MERGED: E1.1.2C at 2025-09-18 23:26:55 UTC
+
+### Merge 5: registry-tests (E1.1.2D)
+Time: $(date '+%Y-%m-%d %H:%M:%S %Z')
