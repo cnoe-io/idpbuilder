@@ -9,10 +9,10 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
+	"github.com/cnoe-io/idpbuilder/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -40,12 +40,6 @@ type cases struct {
 	listLabelSelector []labels.Selector
 }
 
-func selector(pkgName string) labels.Selector {
-	r1, _ := labels.NewRequirement(v1alpha1.CLISecretLabelKey, selection.Equals, []string{v1alpha1.CLISecretLabelValue})
-	r2, _ := labels.NewRequirement(v1alpha1.PackageNameLabelKey, selection.Equals, []string{pkgName})
-	return labels.NewSelector().Add(*r1).Add(*r2)
-}
-
 func TestPrintPackageSecrets(t *testing.T) {
 	ctx := context.Background()
 
@@ -53,12 +47,12 @@ func TestPrintPackageSecrets(t *testing.T) {
 		{
 			err:               nil,
 			packages:          []string{"abc"},
-			listLabelSelector: []labels.Selector{selector("abc")},
+			listLabelSelector: []labels.Selector{testutil.Selector("abc")},
 		},
 		{
 			err:               nil,
 			packages:          []string{"argocd", "gitea", "abc"},
-			listLabelSelector: []labels.Selector{selector("abc")},
+			listLabelSelector: []labels.Selector{testutil.Selector("abc")},
 			getKeys: []client.ObjectKey{
 				{Name: argoCDInitialAdminSecretName, Namespace: "argocd"},
 				{Name: giteaAdminSecretName, Namespace: "gitea"},
@@ -189,12 +183,12 @@ func TestOutput(t *testing.T) {
 
 	fClient.On("Get", ctx, client.ObjectKey{Name: argoCDInitialAdminSecretName, Namespace: "argocd"}, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*v1.Secret)
-		sec := secretDataToSecret(corePkgData[argoCDInitialAdminSecretName])
+		sec := testutil.SecretDataToSecret(corePkgData[argoCDInitialAdminSecretName])
 		*arg = sec
 	}).Return(nil)
 	fClient.On("Get", ctx, client.ObjectKey{Name: giteaAdminSecretName, Namespace: "gitea"}, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*v1.Secret)
-		sec := secretDataToSecret(corePkgData[giteaAdminSecretName])
+		sec := testutil.SecretDataToSecret(corePkgData[giteaAdminSecretName])
 		*arg = sec
 	}).Return(nil)
 
@@ -202,7 +196,7 @@ func TestOutput(t *testing.T) {
 		arg := args.Get(1).(*v1.SecretList)
 		secs := make([]v1.Secret, 0, 2)
 		for k := range packageData {
-			s := secretDataToSecret(packageData[k])
+			s := testutil.SecretDataToSecret(packageData[k])
 			secs = append(secs, s)
 		}
 		arg.Items = secs
@@ -242,21 +236,4 @@ func TestOutput(t *testing.T) {
 	}
 	assert.Equal(t, 0, len(corePkgData))
 	assert.Equal(t, 0, len(packageData))
-}
-
-func secretDataToSecret(data types.Secret) v1.Secret {
-	d := make(map[string][]byte)
-	if data.IsCore {
-		d["username"] = []byte(data.Username)
-		d["password"] = []byte(data.Password)
-		d["token"] = []byte(data.Token)
-	} else {
-		for k := range data.Data {
-			d[k] = []byte(data.Data[k])
-		}
-	}
-	return v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: data.Name, Namespace: data.Namespace},
-		Data:       d,
-	}
 }

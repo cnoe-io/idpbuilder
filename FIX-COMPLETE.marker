@@ -1,0 +1,17 @@
+Completed at: 2025-09-16 18:25:26 UTC
+Fix: Bug #2 - Remove feature flags for production readiness
+Files modified: 
+  - pkg/certs/helpers.go (removed isKindFeatureEnabled function)
+  - pkg/certs/extractor.go (removed feature flag check)
+  - pkg/certs/helpers_test.go (removed feature flag tests)
+  - pkg/certs/extractor_test.go (removed feature flag test setup)
+  - pkg/certs/errors.go (removed ErrFeatureDisabled)
+  - pkg/certs/errors_test.go (removed ErrFeatureDisabled from test)
+Verification:
+  - No IDPBUILDER_* environment variables remain
+  - All tests pass (go test ./pkg/certs/...)
+  - Code formatted successfully (go fmt)
+  - Certificate extraction now always enabled
+Branch: idpbuilder-oci-build-push/phase1/wave1/kind-cert-extraction
+Commit: a5df660
+Status: FIX COMPLETE
