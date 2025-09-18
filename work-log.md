@@ -106,3 +106,7 @@ Files to be added: pkg/registry/auth/ (5 source + 5 test files, 363 source lines
 - Files created: authenticator.go (61), basic.go (53), token.go (107), middleware.go (69), manager.go (73)
 - Plus test files: authenticator_test.go, basic_test.go, token_test.go, middleware_test.go, manager_test.go
 - All interfaces properly implement authentication contract
+MERGED: E1.1.2B at $(date '+%Y-%m-%d %H:%M:%S %Z')
+
+### Merge 4: registry-helpers (E1.1.2C)
+Time: 2025-09-18 23:26:31 UTC
