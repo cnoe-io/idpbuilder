@@ -111,16 +111,32 @@ func TestSetRealm(t *testing.T) {
 	}
 }
 
+func TestGetCredentials(t *testing.T) {
+	username := "testuser"
+	token := "testtoken"
+
+	auth := NewAuthManager(username, token)
+
+	gotUsername, gotToken := auth.GetCredentials()
+
+	if gotUsername != username {
+		t.Errorf("GetCredentials() username = %s, want %s", gotUsername, username)
+	}
+	if gotToken != token {
+		t.Errorf("GetCredentials() token = %s, want %s", gotToken, token)
+	}
+}
+
 func TestHandleAuthChallenge(t *testing.T) {
 	auth := NewAuthManager("user", "token")
-	
+
 	challenge := `Bearer realm="https://registry.example.com/auth",service="registry",scope="repository:test:pull"`
-	
+
 	err := auth.HandleAuthChallenge(challenge)
 	if err != nil {
 		t.Fatalf("HandleAuthChallenge() error = %v", err)
 	}
-	
+
 	if auth.realm != "https://registry.example.com/auth" {
 		t.Errorf("Expected realm to be parsed correctly, got %s", auth.realm)
 	}
