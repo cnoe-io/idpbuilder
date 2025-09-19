@@ -1,0 +1,10 @@
+# Python dependencies for demo application
+# This file demonstrates including dependency specifications in build context
+
+# Web server (built-in, no external deps needed for demo)
+# In a real application, you might have:
+# flask>=2.0.0
+# gunicorn>=20.0.0
+# requests>=2.25.0
+
+# For this demo, we use only built-in Python modules

@@ -1,17 +1,9 @@
-Completed at: 2025-09-09 16:39:36 UTC
-Fixes applied: 11 bugs fixed
-Status: FIXES COMPLETE
-
-Bug #2 Fixes (Phase 1 API Mismatches):
-- Changed certs.NewTrustStoreManager() to certs.NewTrustStore()
-- Updated struct types to use correct Phase 1 implementations
-- Fixed fallback, trust store, and validator method calls
-- Updated constructor calls to use correct Phase 1 APIs
-
-Bug #3 Fixes (go-containerregistry API Issues):  
-- Fixed remote.WithTimeout() to use remote.WithContext() with timeout
-- Fixed remote.WithProgress() to use proper chan<- v1.Update interface
-- Fixed testImage to implement all required v1.Image methods
-- Fixed testLayer Compressed/Uncompressed methods
-
-R307 Compliance: Branch now compiles independently ✓
+Completed at: 2025-09-14 18:30:38 UTC
+Effort: image-builder
+Branch: idpbuilder-oci-build-push/phase2/wave1/image-builder
+Issue: Duplicate TLSConfig declarations
+Fix Applied: Removed duplicates from pkg/certs/utilities.go
+Files Modified: pkg/certs/utilities.go
+Build Status: PASSING
+Final commit: f0b14f4 fix: remove duplicate TLSConfig struct and DefaultTLSConfig function
+Status: EMERGENCY FIX COMPLETE

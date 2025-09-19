@@ -1,0 +1,25 @@
+# Orchestrator TODO State - MONITOR_FIXES
+# Saved: 2025-09-08 05:08:00 UTC
+
+## Completed Tasks:
+- ✅ Monitor E2.1.1 R320 fix completion status - FIXES COMPLETE
+- ✅ Monitor E2.1.2 Split 001 completion status - IMPLEMENTATION COMPLETE
+- ✅ Check for fix completion markers in effort directories - FOUND
+- ✅ Spawn Code Reviewer for E2.1.1 re-review after R320 fixes - APPROVED
+- ✅ Spawn Code Reviewer for E2.1.2 Split 001 review - NEEDS SUB-SPLIT
+
+## Current Situation:
+- E2.1.1: APPROVED (601 lines, R320 compliant, ready for integration)
+- E2.1.2 Split-001: SIZE VIOLATION (1206 lines = 629 production + 692 tests)
+  - Needs sub-split into Split-001a (production) and Split-001b (tests)
+
+## Next Actions:
+- Handle E2.1.2 Split-001 sub-split infrastructure
+- Create Split-001a for production code only
+- Create Split-001b for test code only  
+- Spawn engineers sequentially for sub-splits
+- After all splits complete, proceed with integration
+
+## Critical Note:
+E2.1.2 Split-001 exceeded size limit due to test code not being accounted for.
+Sub-split plan created by Code Reviewer.

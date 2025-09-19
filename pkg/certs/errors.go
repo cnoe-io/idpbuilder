@@ -23,6 +23,9 @@ var (
 	ErrCertNotYetValid     = errors.New("certificate is not yet valid")
 	ErrCertInvalidKeyUsage = errors.New("certificate has invalid key usage")
 	ErrCertSelfSigned      = errors.New("certificate is self-signed")
+
+	// Feature flag errors
+	ErrFeatureDisabled = errors.New("certificate extraction feature is disabled")
 )
 
 // CertError wraps certificate errors with context
