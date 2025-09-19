@@ -46,7 +46,7 @@ func (s *SystemCertStrategy) Execute(ctx context.Context, registry string) error
 	// For now, we assume the system pool contains valid certificates
 	// In a real implementation, we would extract specific certificates
 	// and add them to the trust store for this registry
-	
+
 	// This is a simplified implementation that tells the trust store
 	// to use system certificates for this registry
 	if storer, ok := s.trustStore.(interface {
@@ -131,7 +131,7 @@ func (c *CachedCertStrategy) ShouldRetry(err error) bool {
 	if os.IsTimeout(err) {
 		return true
 	}
-	
+
 	// Retry on temporary file system errors
 	if pathErr, ok := err.(*os.PathError); ok {
 		if errno, ok := pathErr.Err.(syscall.Errno); ok {
@@ -139,7 +139,7 @@ func (c *CachedCertStrategy) ShouldRetry(err error) bool {
 			return errno == syscall.EAGAIN || errno == syscall.EBUSY
 		}
 	}
-	
+
 	return false
 }
 
@@ -205,7 +205,7 @@ func validateCertificateData(data []byte) error {
 	}
 
 	dataStr := string(data)
-	
+
 	// Check for PEM format
 	if !strings.Contains(dataStr, "-----BEGIN CERTIFICATE-----") {
 		return fmt.Errorf("certificate data is not in PEM format")
@@ -225,7 +225,7 @@ func createCacheEntry(cacheDir, registry string, certData []byte) error {
 	}
 
 	cacheFile := filepath.Join(cacheDir, fmt.Sprintf("%s.pem", sanitizeFilename(registry)))
-	
+
 	if err := os.WriteFile(cacheFile, certData, 0644); err != nil {
 		return fmt.Errorf("failed to write cache file: %w", err)
 	}

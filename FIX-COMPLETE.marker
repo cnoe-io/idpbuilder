@@ -1,17 +1,6 @@
-Completed at: 2025-09-09 16:39:36 UTC
-Fixes applied: 11 bugs fixed
-Status: FIXES COMPLETE
-
-Bug #2 Fixes (Phase 1 API Mismatches):
-- Changed certs.NewTrustStoreManager() to certs.NewTrustStore()
-- Updated struct types to use correct Phase 1 implementations
-- Fixed fallback, trust store, and validator method calls
-- Updated constructor calls to use correct Phase 1 APIs
-
-Bug #3 Fixes (go-containerregistry API Issues):  
-- Fixed remote.WithTimeout() to use remote.WithContext() with timeout
-- Fixed remote.WithProgress() to use proper chan<- v1.Update interface
-- Fixed testImage to implement all required v1.Image methods
-- Fixed testLayer Compressed/Uncompressed methods
-
-R307 Compliance: Branch now compiles independently ✓
+Completed at: 2025-09-19 22:29:06 UTC
+Fix Applied: FIX-TEST-005 (R321 backport)
+File Modified: pkg/build/image_builder_test.go
+Change: Line 39 - assert.Equal -> assert.ErrorIs
+Tests: All passing (12 tests in pkg/build)
+Status: R321 BACKPORT COMPLETE

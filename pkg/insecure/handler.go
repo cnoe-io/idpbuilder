@@ -8,9 +8,9 @@ import (
 
 // InsecureHandler manages the --insecure flag behavior
 type InsecureHandler struct {
-	enabled     bool
-	registries  map[string]bool
-	warnOnce    map[string]bool
+	enabled    bool
+	registries map[string]bool
+	warnOnce   map[string]bool
 }
 
 // NewInsecureHandler creates a new insecure mode handler

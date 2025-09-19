@@ -1,10 +1,8 @@
-Rebase Operation Complete
-========================
-Date: 2025-09-14 16:28:00 UTC
-Operation: Rebase gitea-client-split-001 onto phase1/integration
-Original Base: 37b6a3e (old state)
-New Base: 718ebe0 (phase1/integration)
-Branch: idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-001
-Status: Successfully rebased and pushed to origin
-Files Preserved: All split-001 implementation files
-Conflicts Resolved: Documentation and integration files removed/updated
+Completed at: 2025-09-14 16:59:09 UTC
+Effort: image-builder
+Branch: idpbuilder-oci-build-push/phase2/wave1/image-builder
+Previous base: 4f0e259 (old phase1/integration)
+New base: 2c39501 (latest phase1/integration - Integrate Wave 2 into Phase 1)
+Commits processed: 21 of 21
+Final commit: 04f5026 chore: commit working files before rebase
+Status: REBASE COMPLETE

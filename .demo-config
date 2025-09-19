@@ -1,36 +1,34 @@
-# Demo Configuration for Gitea Client Split-002
-# This file enables demo mode and provides default settings
+# Demo Configuration for Image Builder
+# This file contains environment settings and defaults for the demo
 
-DEMO_MODE=true
-DEMO_REGISTRY_URL=https://gitea.local:3000
-DEMO_SIMULATION=true
+# Feature Flags
+ENABLE_IMAGE_BUILDER=true
 
-# Integration with Split-001
-AUTH_SPLIT_001_AVAILABLE=true
-TLS_SPLIT_001_INTEGRATION=true
+# Default Paths  
+DEMO_STORAGE_DIR=/tmp/oci-storage
+DEMO_CERT_DIR=./test-data/certs
+DEMO_CONTEXT_DIR=./test-data/sample-app
 
-# Demo performance settings
-CHUNK_SIZE=5MB
-MAX_RETRIES=5
-PROGRESS_ENABLED=true
+# Registry Settings
+DEMO_REGISTRY=localhost:5000
+DEMO_NAMESPACE=demo
+DEMO_SECRET_NAME=demo-tls
 
-# Feature flags for demo
-REGISTRY_PUSH_ENABLED=true
-REGISTRY_LIST_ENABLED=true
-REGISTRY_RETRY_ENABLED=true
-REGISTRY_DELETE_ENABLED=true
+# Image Settings
+DEMO_IMAGE_TAG=myapp:v1.0
+DEMO_IMAGE_LABELS="org.opencontainers.image.vendor=cnoe.io,demo.purpose=image-builder-validation"
 
-# Demo timing (for realistic simulation)
-UPLOAD_SIMULATION_DELAY=0.5s
-RETRY_SIMULATION_DELAY=1s
-PROGRESS_UPDATE_INTERVAL=0.2s
+# Demo Behavior
+DEMO_DEBUG=false
+DEMO_VERBOSE=false
 
-# Safety settings
-DEMO_SAFE_MODE=true
-REQUIRE_CONFIRM_DELETE=true
-DRY_RUN_MODE=false
+# Integration Settings
+DEMO_READY=false
 
-# Version information
-DEMO_VERSION=1.0.0
-SPLIT_VERSION=002
-INTEGRATION_VERSION=2.1.0
+# Usage:
+# Source this file before running demos:
+#   source .demo-config
+#   ./demo-features.sh <scenario>
+#
+# Or override specific settings:
+#   DEMO_REGISTRY=registry.example.com ./demo-features.sh push-with-tls

@@ -1,0 +1,11 @@
+# Ignore generated certificates (contain sensitive data)
+../certs/*.key
+../certs/*.pem
+
+# Ignore temporary build files
+*.tmp
+*.log
+
+# Ignore environment-specific configs
+.env
+*.env.local

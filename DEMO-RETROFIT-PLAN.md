@@ -1,168 +1,136 @@
-# Demo Retrofit Plan - Gitea Client Split-002 (Operations)
+# Demo Retrofit Plan - Image Builder
 
 ## Features Discovered
 
-Based on analysis of the implemented code in pkg/registry/:
+Based on analysis of the implemented code in pkg/build/:
 
-1. **Push Operations** (`push.go`)
-   - Multi-layer image push support
-   - Chunked upload with configurable size
-   - Progress reporting callbacks
-   - SHA256 digest verification
-   - Manifest handling
+1. **OCI Image Building** (`image_builder.go`)
+   - Create OCI images from directory contexts
+   - Build and store container images locally
+   - Feature flag support for image builder operations
 
-2. **List Operations** (`list.go`)
-   - List repositories and tags
-   - Pagination support
-   - Filtering capabilities
-   - Metadata retrieval
+2. **TLS Certificate Management** (`tls.go`)
+   - Generate self-signed certificates
+   - Create Kubernetes TLS secrets
+   - Support for ArgoCD TLS configuration
 
-3. **Retry Logic** (`retry.go`)
-   - Exponential backoff implementation
-   - Configurable retry attempts
-   - Error classification (retryable vs permanent)
-   - Request timeout handling
+3. **Build Context Management** (`context.go`)
+   - Handle build context preparation
+   - Support for various context types
 
-4. **Test Stubs** (`stubs.go`)
-   - Mock registry for testing
-   - Stubbed operations for unit tests
-   - Error simulation capabilities
-   - Response mocking
+4. **Storage Backend** (`storage.go`)
+   - Local storage for built images
+   - Image registry operations
+
+5. **Feature Flags** (`feature_flags.go`)
+   - Dynamic enable/disable of builder features
+   - Environment-based configuration
 
 ## Demo Scenarios
 
-### Scenario 1: Push Image with Progress
+### Scenario 1: Build Simple OCI Image
 **Commands:**
 ```bash
-./demo-features.sh push \
-  --registry https://gitea.local:3000 \
+./demo-features.sh build-image \
+  --context ./test-data/sample-app \
+  --tag myapp:v1.0 \
+  --storage /tmp/oci-storage
+```
+**Expected output:** 
+- Image built successfully
+- SHA256 digest displayed
+- Image stored in local storage
+
+### Scenario 2: Generate TLS Certificates
+**Commands:**
+```bash
+./demo-features.sh generate-certs \
+  --namespace demo \
+  --secret-name demo-tls \
+  --output ./test-data/certs
+```
+**Expected output:**
+- Certificate and key generated
+- Files written to test-data/certs/
+- Ready for Kubernetes secret creation
+
+### Scenario 3: Push to Registry with TLS
+**Commands:**
+```bash
+./demo-features.sh push-with-tls \
   --image myapp:v1.0 \
-  --source ./test-data/image.tar \
-  --progress
+  --registry localhost:5000 \
+  --cert-path ./test-data/certs/ca.crt
 ```
 **Expected output:**
-- Layer upload progress bars
-- Bytes transferred counter
-- Upload speed calculation
-- Final digest confirmation
+- Image pushed to registry
+- TLS verification successful
+- Push confirmation with digest
 
-### Scenario 2: List Repositories with Pagination
+### Scenario 4: Feature Flag Toggle
 **Commands:**
 ```bash
-./demo-features.sh list-repos \
-  --registry https://gitea.local:3000 \
-  --page 1 \
-  --per-page 10 \
-  --format table
-```
-**Expected output:**
-- Formatted table of repositories
-- Pagination info (page X of Y)
-- Repository metadata (size, last push)
+# Enable feature
+export IMAGE_BUILDER_ENABLED=true
+./demo-features.sh status
 
-### Scenario 3: Retry Logic Demonstration
-**Commands:**
-```bash
-# Simulate network issues
-./demo-features.sh push-with-retry \
-  --registry https://gitea.local:3000 \
-  --image stress-test:v1.0 \
-  --simulate-failures 3 \
-  --max-retries 5
+# Disable feature
+export IMAGE_BUILDER_ENABLED=false
+./demo-features.sh status
 ```
 **Expected output:**
-- Retry attempts logged
-- Backoff delays shown
-- Final success after retries
-- Total time with retries
-
-### Scenario 4: Delete Repository
-**Commands:**
-```bash
-./demo-features.sh delete \
-  --registry https://gitea.local:3000 \
-  --repo myapp \
-  --confirm
-```
-**Expected output:**
-- Confirmation prompt
-- Deletion progress
-- Success confirmation
-- Cleanup verification
+- Feature status displayed
+- Operations blocked when disabled
 
 ## Size Impact
 
-- Current implementation: ~750 lines (Split-002 complete)
-- Demo additions: ~130 lines
-  - demo-features.sh: ~90 lines
-  - DEMO.md: ~25 lines
-  - test-data setup: ~15 lines
-- Total after demo: ~880 lines (slightly over, but demo is separate)
+- Current implementation: ~1,200 lines (Phase 1 complete)
+- Demo additions: ~150 lines
+  - demo-features.sh: ~100 lines
+  - DEMO.md: ~30 lines
+  - test-data setup: ~20 lines
+- Total after demo: ~1,350 lines (well within 800 limit for any single PR)
 
 ## Integration Hooks
 
-### Split-Level Integration
-- Uses authentication from Split-001
-- Shares registry client instance
-- Common error handling patterns
-
 ### Wave-Level Demo Integration
-- Combines with image-builder for end-to-end push
-- Uses Split-001 auth for all operations
-- Integrates with TLS certificates from image-builder
+- Integrate with gitea-client demos for end-to-end registry operations
+- Share TLS certificates between efforts for consistent security demo
 
 ### Phase-Level Demo Integration
-- Complete registry operations suite
-- Foundation for Phase 3 advanced features
-- Performance benchmarking capabilities
+- Provide base image building for Phase 2 complete demo
+- Export functions for use in integration test suite
 
 ## Demo Deliverables
 
-1. **demo-features.sh** - Executable demo script with:
-   - `push`: Push image with progress tracking
-   - `list-repos`: List with pagination
-   - `push-with-retry`: Demonstrate retry logic
-   - `delete`: Remove repository
+1. **demo-features.sh** - Executable demo script with the following functions:
+   - `build-image`: Build OCI image from context
+   - `generate-certs`: Create TLS certificates
+   - `push-with-tls`: Push image with TLS verification
+   - `status`: Show feature flag status
 
-2. **DEMO.md** - Documentation including:
-   - Complete setup instructions
-   - Integration with Split-001 features
-   - Performance tuning guide
-   - Troubleshooting common issues
+2. **DEMO.md** - Documentation explaining:
+   - How to run each demo scenario
+   - Expected outputs and validation steps
+   - Integration with other Phase 2 efforts
 
-3. **test-data/** - Sample files:
-   - `image.tar`: Sample OCI image
-   - `stress-test/`: Large image for testing
-   - `config-retry.yaml`: Retry configuration
+3. **test-data/** - Sample files including:
+   - `sample-app/`: Simple app context for building
+   - `certs/`: Generated certificates (gitignored)
+   - `configs/`: Sample configuration files
 
 ## Implementation Notes
 
-This split completes the Gitea registry client with operational features:
+The demo will showcase the complete certificate extraction and trust management infrastructure that was implemented in Phase 1. Focus areas:
 
-1. **Performance**: Chunked uploads for large images
-2. **Reliability**: Retry logic for network issues
-3. **Observability**: Progress tracking and logging
-4. **Testing**: Comprehensive stubs for unit tests
-
-## Dependencies on Split-001
-
-This split requires Split-001 for:
-- Authentication manager
-- Base registry client
-- TLS configuration
-- Remote options
+1. **Security**: Demonstrate proper TLS certificate handling
+2. **Flexibility**: Show feature flag configuration
+3. **Integration**: Connect with Gitea registry operations
+4. **Error Handling**: Display graceful failure modes
 
 ## Success Metrics
 
-- All 4 demo scenarios execute successfully
-- Push operations handle large images (>100MB)
-- Retry logic recovers from transient failures
-- Progress tracking provides real-time feedback
-- Integration with Split-001 seamless
-
-## Performance Considerations
-
-- Chunk size optimization for different networks
-- Concurrent layer uploads (future enhancement)
-- Connection pooling for multiple operations
-- Memory-efficient streaming for large files
+- All 4 demo scenarios execute without errors
+- Demo can run in isolation or as part of wave integration
+- Total added code stays under 150 lines
+- Clear documentation for operators
