@@ -1,0 +1,10 @@
+Completed at: 2025-09-19 19:56:13 UTC
+Effort: image-builder-fix
+Branch: idpbuilder-oci-build-push/phase2/wave1/image-builder
+Fix Applied: FIX-003 Feature Flag Test Failure
+Fix Details: Added feature flag check to BuildImage method
+Files Modified: pkg/build/image_builder.go
+Test Results: TestBuildImageFeatureDisabled now passes
+Build Status: All tests passing
+Final commit: 445f89a fix: add feature flag check to BuildImage method
+Status: FIX-003 COMPLETE
