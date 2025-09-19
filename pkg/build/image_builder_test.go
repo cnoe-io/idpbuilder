@@ -36,7 +36,7 @@ func TestBuildImageFeatureDisabled(t *testing.T) {
 	})
 
 	assert.Error(t, err)
-	assert.Equal(t, ErrFeatureDisabled, err)
+	assert.ErrorIs(t, err, ErrFeatureDisabled)
 	assert.Nil(t, result)
 }
 
