@@ -1,0 +1,19 @@
+# Sample OCI Image TAR File
+# This is a mock TAR file for demo purposes
+# In real usage, this would be a valid OCI image archive
+
+MOCK_OCI_IMAGE=true
+VERSION=1.0
+LAYERS=3
+CONFIG_SIZE=2048
+LAYER_1_SIZE=47185920  # ~45MB base layer
+LAYER_2_SIZE=13421772  # ~12.8MB app layer
+TOTAL_SIZE=60609740    # ~60MB total
+
+# Layer contents simulation:
+# - config.json: Base image configuration
+# - base.layer: Operating system files
+# - app.layer: Application files and dependencies
+
+# This file serves as a placeholder for demo scenarios
+# Real implementation would use actual OCI image archives
