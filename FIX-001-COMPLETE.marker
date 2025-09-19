@@ -1,0 +1,12 @@
+Completed at: 2025-09-19 20:27:59 UTC
+Fix: FIX-001 Missing GetCredentials Method
+Branch: idpbuilder-oci-build-push/phase2/wave2/image-operations
+Commit: ee58444 fix: add GetCredentials() method to AuthManager
+Status: FIX-001 COMPLETE
+
+Details:
+- Added GetCredentials() method to AuthManager struct
+- Method returns username and password as required by push.go
+- Build verification: PASSED
+- Test coverage: Added TestGetCredentials() test
+- Push verification: COMPLETED

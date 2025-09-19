@@ -152,6 +152,11 @@ func (a *AuthManager) HandleAuthChallenge(challenge string) error {
 	return nil
 }
 
+// GetCredentials returns the username and password/token for authentication
+func (a *AuthManager) GetCredentials() (string, string) {
+	return a.username, a.token
+}
+
 // ValidateCredentials checks if the provided credentials are valid
 func (a *AuthManager) ValidateCredentials() error {
 	if a.username == "" {
