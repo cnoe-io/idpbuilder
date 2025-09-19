@@ -59,3 +59,14 @@ func getKlogLevel(l slog.Level) slog.Level {
 	}
 	return slog.LevelError
 }
+
+// PrintColoredOutput prints formatted output with optional color support
+func PrintColoredOutput(format string, a ...interface{}) {
+	if ColoredOutput {
+		// For colored output, we can add ANSI codes if needed
+		// For now, just use regular formatting
+		fmt.Printf(format, a...)
+	} else {
+		fmt.Printf(format, a...)
+	}
+}
