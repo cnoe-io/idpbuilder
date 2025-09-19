@@ -1,145 +1,60 @@
-# Split Plan for cli-commands Effort
+# Split Plan for E2.1.2 gitea-client
 
-## Current Situation
-**Problem**: Entire codebase (10,147 lines) copied instead of focused CLI implementation
-**Solution**: Complete reimplementation with proper scoping and splits
+## Overview
+This document outlines the split strategy for the gitea-client effort (E2.1.2), which implements a Gitea registry client for managing container images in OCI registries.
 
-## Complete Split Inventory
-**Total Expected Size**: ~1,500 lines (properly scoped CLI only)
-**Splits Required**: 3
-**Sole Planner**: Code Reviewer Agent
+## Split Requirement Reason
+- **Current Size**: 1268 lines (measured with line-counter.sh)
+- **Limit**: 800 lines per effort
+- **Required Splits**: 2
 
-## Split Boundaries (NO OVERLAPS)
+## Split Strategy
+The effort has been divided into two logical splits that maintain clean separation of concerns:
 
-| Split | Description | Size | Files | Dependencies |
-|-------|------------|------|-------|--------------|
-| 001 | Core CLI Framework | 500 | root.go, helpers | None |
-| 002 | Create/Delete Commands | 500 | create/, delete/ | Split 001 |
-| 003 | Get/Version Commands | 500 | get/, version/ | Split 001 |
+### Split 001: Core Interfaces and Authentication (635 lines)
+**Focus**: Foundation components including interfaces, authentication, and core registry implementation
+**Files**:
+- `pkg/registry/interface.go` (24 lines) - Core Registry interface
+- `pkg/registry/auth.go` (138 lines) - Authentication logic
+- `pkg/registry/gitea.go` (204 lines) - Main Gitea registry client
+- `pkg/registry/remote_options.go` (269 lines) - Remote configuration
 
-## Deduplication Matrix
+**Why this grouping**: These files form the foundation that all other operations depend on. They must be implemented first to establish the core contracts and authentication mechanisms.
 
-| Component | Split 001 | Split 002 | Split 003 |
-|-----------|-----------|-----------|-----------|
-| Root command setup | ✅ | ❌ | ❌ |
-| Command helpers | ✅ | ❌ | ❌ |
-| Create command | ❌ | ✅ | ❌ |
-| Delete command | ❌ | ✅ | ❌ |
-| Get commands | ❌ | ❌ | ✅ |
-| Version command | ❌ | ❌ | ✅ |
+### Split 002: Operations and Utilities (633 lines)
+**Focus**: Image operations (push/list) and supporting utilities
+**Files**:
+- `pkg/registry/push.go` (302 lines) - Push operations
+- `pkg/registry/list.go` (90 lines) - List operations
+- `pkg/registry/retry.go` (52 lines) - Retry logic
+- `pkg/registry/stubs.go` (189 lines) - Test stubs
 
----
+**Why this grouping**: These files implement the actual registry operations and testing utilities. They depend on the interfaces and authentication from Split 001.
 
-# SPLIT-PLAN-001.md
-## Split 001 of 3: Core CLI Framework
-**Planner**: Code Reviewer Agent
-**Parent Effort**: cli-commands
-**Branch**: phase2/wave2/cli-commands-split-001
+## Implementation Order
+1. **Split 001** must be implemented first (foundation)
+2. **Split 002** can only start after Split 001 is complete (depends on interfaces)
 
-### Boundaries
-- **Previous Split**: None (first split)
-- **This Split**: Split 001 of phase2/wave2/cli-commands
-  - Path: efforts/phase2/wave2/cli-commands/split-001/
-- **Next Split**: Split 002 of phase2/wave2/cli-commands
-  - Path: efforts/phase2/wave2/cli-commands/split-002/
+## Branch Strategy
+- Base branch: `software-factory-2.0`
+- Split 001 branch: `phase2/wave1/gitea-client-split-001`
+- Split 002 branch: `phase2/wave1/gitea-client-split-002` (branches from split-001)
 
-### Files in This Split
-- pkg/cmd/root.go (50 lines) - Root command setup
-- pkg/cmd/helpers/validation.go (100 lines) - Input validation
-- pkg/cmd/helpers/output.go (100 lines) - Output formatting
-- pkg/cmd/helpers/config.go (100 lines) - Configuration handling
-- pkg/cmd/helpers/logger.go (100 lines) - Logging setup
-- Tests: 50 lines
+## Integration Plan
+1. Complete Split 001 implementation and review
+2. Merge Split 001 to base
+3. Complete Split 002 implementation and review
+4. Merge Split 002 to base
+5. Final integration testing
 
-### Implementation Instructions
-1. Create root command with cobra
-2. Set up persistent flags (log-level, color output)
-3. Implement validation helpers
-4. Create output formatting utilities
-5. Add configuration loading
-6. Set up structured logging
+## Files Created
+- `SPLIT-INVENTORY.md` - Complete split matrix and deduplication tracking
+- `SPLIT-PLAN-001.md` - Detailed plan for Split 001
+- `SPLIT-PLAN-002.md` - Detailed plan for Split 002
 
-### Size Target: 500 lines
-
----
-
-# SPLIT-PLAN-002.md
-## Split 002 of 3: Create/Delete Commands
-**Planner**: Code Reviewer Agent
-**Parent Effort**: cli-commands
-**Branch**: phase2/wave2/cli-commands-split-002
-
-### Boundaries
-- **Previous Split**: Split 001 of phase2/wave2/cli-commands
-  - Summary: Core CLI framework, helpers, validation
-- **This Split**: Split 002 of phase2/wave2/cli-commands
-  - Path: efforts/phase2/wave2/cli-commands/split-002/
-- **Next Split**: Split 003 of phase2/wave2/cli-commands
-  - Path: efforts/phase2/wave2/cli-commands/split-003/
-
-### Files in This Split
-- pkg/cmd/create/root.go (200 lines) - Create command implementation
-- pkg/cmd/create/validate.go (50 lines) - Create validation
-- pkg/cmd/delete/root.go (150 lines) - Delete command implementation
-- pkg/cmd/delete/confirm.go (50 lines) - Deletion confirmation
-- Tests: 50 lines
-
-### Dependencies
-- Requires Split 001 (imports helpers and root setup)
-
-### Implementation Instructions
-1. Import Split 001's helpers and root command
-2. Implement create command with flags
-3. Add validation for create inputs
-4. Implement delete command with confirmation
-5. Register commands with root
-6. Add unit tests
-
-### Size Target: 500 lines
-
----
-
-# SPLIT-PLAN-003.md
-## Split 003 of 3: Get/Version Commands
-**Planner**: Code Reviewer Agent
-**Parent Effort**: cli-commands
-**Branch**: phase2/wave2/cli-commands-split-003
-
-### Boundaries
-- **Previous Split**: Split 002 of phase2/wave2/cli-commands
-  - Summary: Create and Delete commands
-- **This Split**: Split 003 of phase2/wave2/cli-commands
-  - Path: efforts/phase2/wave2/cli-commands/split-003/
-- **Next Split**: None (final split)
-
-### Files in This Split
-- pkg/cmd/get/root.go (50 lines) - Get subcommand root
-- pkg/cmd/get/clusters.go (150 lines) - Get clusters command
-- pkg/cmd/get/packages.go (100 lines) - Get packages command
-- pkg/cmd/get/secrets.go (100 lines) - Get secrets command
-- pkg/cmd/version/root.go (50 lines) - Version command
-- Tests: 50 lines
-
-### Dependencies
-- Requires Split 001 (imports helpers and root setup)
-
-### Implementation Instructions
-1. Import Split 001's helpers and root command
-2. Create get subcommand structure
-3. Implement individual get commands
-4. Add version command with build info
-5. Register all commands with root
-6. Add comprehensive tests
-
-### Size Target: 500 lines
-
----
-
-## Verification Checklist
-- [x] No file appears in multiple splits
-- [x] All CLI functionality covered
-- [x] Each split compiles independently (with dependencies)
-- [x] Dependencies properly ordered
-- [x] Each split <800 lines (target ~500)
-- [x] Clear boundaries between splits
-- [x] No duplication of code
+## Verification
+- No file appears in multiple splits ✅
+- Each split is under 700 lines ✅
+- Logical separation maintained ✅
+- Dependencies properly ordered ✅
+- Complete functionality preserved ✅

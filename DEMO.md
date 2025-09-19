@@ -1,242 +1,345 @@
-# Gitea Client Split-001 Demo
+# Gitea Client Split-002 Demo Guide
 
-This document provides instructions for demonstrating the core Gitea registry client functionality implemented in Phase 2, Wave 1, Split-001.
+This demo showcases the advanced registry operations implemented in Split-002, including push operations with progress tracking, repository listing with pagination, retry logic with exponential backoff, and repository deletion capabilities.
 
 ## Overview
 
-Split-001 implements the foundational components for Gitea container registry operations:
-- **Registry Interface**: Core contract for registry operations
-- **Authentication System**: Token-based authentication for Gitea
-- **Gitea Registry Client**: HTTP client with TLS configuration
-- **Remote Options**: Configurable retry logic and connection settings
+Split-002 completes the Gitea registry client with operational features:
+
+1. **Performance**: Chunked uploads for large images
+2. **Reliability**: Retry logic for network issues  
+3. **Observability**: Progress tracking and logging
+4. **Testing**: Comprehensive stubs for unit tests
 
 ## Prerequisites
 
-### Local Gitea Setup
-
-1. **Start Gitea with Container Registry**:
-   ```bash
-   # Using Docker Compose (example)
-   docker run -d \
-     --name gitea \
-     -p 3000:3000 \
-     -p 2222:22 \
-     -e GITEA__container__ENABLED=true \
-     gitea/gitea:latest
-   ```
-
-2. **Enable Container Registry**:
-   - Access Gitea at http://localhost:3000
-   - Go to Site Administration → Configuration → Features
-   - Enable "Container Registry"
-   - Restart Gitea service
-
-3. **Create Test User and Token**:
-   ```bash
-   # Create user account via web interface
-   # Generate access token: User Settings → Applications → Generate Token
-   export GITEA_TOKEN="your_access_token_here"
-   ```
-
-### TLS Configuration (Optional)
-
-For HTTPS demo scenarios:
-
-1. **Generate Test Certificates**:
-   ```bash
-   # Create test-data directory (script will create this)
-   mkdir -p test-data
-   
-   # Generate CA and server certificates
-   openssl genrsa -out test-data/ca-key.pem 2048
-   openssl req -new -x509 -key test-data/ca-key.pem -out test-data/ca.crt -days 365 \
-     -subj "/C=US/ST=Test/L=Test/O=Test CA/CN=Test CA"
-   
-   openssl genrsa -out test-data/server-key.pem 2048
-   openssl req -new -key test-data/server-key.pem -out test-data/server.csr \
-     -subj "/C=US/ST=Test/L=Test/O=Gitea/CN=gitea.local"
-   openssl x509 -req -in test-data/server.csr -CA test-data/ca.crt \
-     -CAkey test-data/ca-key.pem -CAcreateserial -out test-data/server.crt -days 365
-   ```
-
-2. **Configure Gitea for HTTPS**:
-   ```bash
-   # Update Gitea configuration to use generated certificates
-   # This is environment-specific and varies by deployment method
-   ```
+- Access to a Gitea registry (or use simulation mode)
+- Split-001 authentication components available
+- `demo-features.sh` script in the current directory
 
 ## Demo Scenarios
 
-### Scenario 1: Basic Authentication
+### 1. Push Image with Progress Tracking
 
-Demonstrates token-based authentication flow with the Gitea registry.
-
-```bash
-./demo-features.sh auth \
-  --registry https://gitea.local:3000 \
-  --username demo-user \
-  --token ${GITEA_TOKEN}
-```
-
-**Expected Output**:
-- Authentication successful message
-- Bearer token generation confirmation
-- Connection establishment
-- Token expiry information
-
-**What it demonstrates**:
-- AuthManager initialization
-- Token validation
-- Bearer token generation
-- Secure credential handling
-
-### Scenario 2: List Repositories
-
-Shows repository discovery capabilities.
+Demonstrates multi-layer image push with real-time progress reporting.
 
 ```bash
-./demo-features.sh list \
+./demo-features.sh push \
   --registry https://gitea.local:3000 \
-  --format json
+  --image myapp:v1.0 \
+  --source ./test-data/image.tar \
+  --progress
 ```
 
-**Expected Output**:
-- JSON array of repository names
+**Features Demonstrated:**
+- Chunked upload with configurable size (5MB default)
+- Progress callbacks with layer and byte tracking
+- SHA256 digest verification per layer
+- Upload speed calculation
+- Final manifest push
+
+**Expected Output:**
+- Layer upload progress bars
+- Bytes transferred counter and upload speed
+- SHA256 digest confirmations
+- Total upload time and size metrics
+
+### 2. Repository Listing with Pagination
+
+Shows repository discovery with pagination support and metadata retrieval.
+
+```bash
+./demo-features.sh list-repos \
+  --registry https://gitea.local:3000 \
+  --page 1 \
+  --per-page 10 \
+  --format table
+```
+
+**Features Demonstrated:**
+- Registry catalog API integration
+- Pagination controls (page/per-page)
+- Tag information retrieval
+- Formatted table output
+- Repository metadata display
+
+**Expected Output:**
+- Formatted table of repositories with tags and timestamps
+- Pagination information (page X of Y)
 - Total repository count
-- Response time metrics
+- Repository metadata (size, last push time)
 
-**What it demonstrates**:
-- Registry.List() interface implementation
-- JSON and text output formatting
-- Response time measurement
+### 3. Retry Logic with Exponential Backoff
 
-### Scenario 3: Check Repository Existence
-
-Verifies repository existence checking functionality.
+Illustrates network resilience through configurable retry mechanisms.
 
 ```bash
-./demo-features.sh exists \
+./demo-features.sh push-with-retry \
   --registry https://gitea.local:3000 \
-  --repo myapp/v1.0
+  --image stress-test:v1.0 \
+  --simulate-failures 3 \
+  --max-retries 5
 ```
 
-**Expected Output**:
-- Repository existence status (true/false)
-- Repository metadata (size, last modified)
-- Tag information
+**Features Demonstrated:**
+- Exponential backoff algorithm
+- Configurable retry attempts and delays
+- Error classification (retryable vs permanent)
+- Request timeout handling
+- Retry attempt logging
 
-**What it demonstrates**:
-- Registry.Exists() interface implementation
-- Metadata retrieval
-- Repository status checking
+**Expected Output:**
+- Individual retry attempts with failure reasons
+- Backoff delay calculations (1s, 2s, 4s, etc.)
+- Final success after configured retries
+- Total time including retry delays
 
-### Scenario 4: TLS Configuration Demo
+### 4. Repository Deletion
 
-Demonstrates TLS certificate handling in different modes.
+Shows repository cleanup operations with confirmation safeguards.
 
-**With Custom CA Certificate**:
 ```bash
-./demo-features.sh test-tls \
+./demo-features.sh delete \
   --registry https://gitea.local:3000 \
-  --ca-cert ./test-data/ca.crt
+  --repo myapp \
+  --confirm
 ```
 
-**Insecure Mode (Testing Only)**:
+**Features Demonstrated:**
+- Repository existence verification
+- Confirmation requirement for safety
+- Manifest and blob cleanup
+- Catalog update procedures
+- Verification of successful deletion
+
+**Expected Output:**
+- Confirmation prompt handling
+- Step-by-step deletion progress
+- Cleanup verification results
+- Success confirmation message
+
+## Integration with Split-001
+
+Split-002 seamlessly integrates with Split-001 authentication:
+
+- **Shared Authentication**: Uses auth manager from Split-001
+- **Common Registry Client**: Extends base client with operational features
+- **TLS Configuration**: Leverages Split-001 certificate handling
+- **Remote Options**: Compatible with Split-001 transport settings
+
+### Integration Example
+
 ```bash
-./demo-features.sh test-tls \
-  --registry https://gitea.local:3000 \
-  --insecure
+# Authenticate using Split-001 components
+export GITEA_USERNAME="demo-user"
+export GITEA_PASSWORD="demo-pass"
+
+# Use Split-002 operations with Split-001 auth
+./demo-features.sh push --registry https://gitea.local:3000 --image demo:latest
 ```
 
-**Expected Output**:
-- TLS verification status
-- Certificate details display
-- Security warnings for insecure mode
+## Performance Tuning
 
-**What it demonstrates**:
-- Custom CA certificate loading
-- TLS configuration options
-- Security validation
-- Insecure mode warnings
+### Chunk Size Optimization
 
-## Integration with Split-002
+Configure upload chunk size based on network conditions:
 
-This split provides the foundation for Split-002 operations:
+```bash
+# For fast networks
+export CHUNK_SIZE="10MB"
 
-- **Shared Authentication**: AuthManager is reused for push/delete operations
-- **Client Foundation**: GiteaRegistry client extended in Split-002
-- **Configuration**: RemoteOptions shared across splits
-- **Interface Compliance**: Registry interface implemented for all operations
+# For slower networks
+export CHUNK_SIZE="1MB"
 
-Split-002 builds on this foundation by adding:
-- Push operations using this authentication system
-- Delete operations using this client
-- Advanced retry logic using these remote options
-- Error handling extending these patterns
+# For very slow networks
+export CHUNK_SIZE="512KB"
+```
 
-## Validation Steps
+### Retry Policy Tuning
 
-1. **Run All Scenarios**:
-   ```bash
-   # Test each scenario individually
-   ./demo-features.sh auth --token ${GITEA_TOKEN}
-   ./demo-features.sh list
-   ./demo-features.sh exists --repo test/repo
-   ./demo-features.sh test-tls --insecure
-   ```
+Adjust retry behavior for different environments:
 
-2. **Verify Exit Codes**:
-   ```bash
-   # All commands should exit with code 0
-   echo $?  # Should output: 0
-   ```
+```bash
+# Aggressive retries for unstable networks
+export MAX_RETRIES=10
+export INITIAL_DELAY="500ms"
+export BACKOFF_FACTOR=1.5
 
-3. **Check Integration Hook**:
-   ```bash
-   # Verify DEMO_READY environment variable is set
-   ./demo-features.sh auth --token ${GITEA_TOKEN}
-   echo $DEMO_READY  # Should output: true
-   ```
+# Conservative retries for stable networks
+export MAX_RETRIES=3
+export INITIAL_DELAY="1s"
+export BACKOFF_FACTOR=2.0
+```
 
-## Error Handling
+## Troubleshooting
 
-The demo script includes comprehensive error handling:
+### Common Issues
 
-- **Missing Token**: Clear error message and guidance
-- **Invalid Commands**: Usage information display
-- **File Not Found**: CA certificate validation
-- **Network Issues**: Simulated timeout handling
+#### 1. Authentication Failures
+
+```bash
+# Verify Split-001 auth setup
+echo "Checking authentication..."
+curl -H "Authorization: Bearer $GITEA_TOKEN" https://gitea.local:3000/v2/
+
+# Solution: Ensure Split-001 auth components are configured
+export GITEA_TOKEN=$(get-auth-token.sh)
+```
+
+#### 2. Network Timeouts
+
+```bash
+# Increase timeout values
+export REQUEST_TIMEOUT="60s"
+export TLS_HANDSHAKE_TIMEOUT="30s"
+
+# Enable retry logic
+./demo-features.sh push-with-retry --max-retries 10
+```
+
+#### 3. Large Image Upload Failures
+
+```bash
+# Use smaller chunk sizes
+export CHUNK_SIZE="1MB"
+
+# Enable progress tracking
+./demo-features.sh push --progress
+```
+
+#### 4. TLS Certificate Issues
+
+```bash
+# Use insecure mode for testing (NOT for production)
+export TLS_INSECURE=true
+
+# Or add certificate to trust store (recommended)
+cp gitea-cert.pem /usr/local/share/ca-certificates/
+update-ca-certificates
+```
+
+### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+export DEBUG_MODE=true
+export LOG_LEVEL=debug
+
+./demo-features.sh push --registry https://gitea.local:3000 --image debug:latest
+```
+
+## Testing Configuration
+
+### Mock Registry Setup
+
+For testing without a real Gitea instance:
+
+```bash
+# Use test stubs from stubs.go
+export DEMO_MODE="simulation"
+export MOCK_REGISTRY=true
+
+./demo-features.sh push --registry mock://localhost
+```
+
+### Performance Testing
+
+Benchmark upload performance:
+
+```bash
+# Create test image
+dd if=/dev/zero of=./test-data/large-image.tar bs=1M count=100
+
+# Test with different chunk sizes
+for chunk in 1MB 5MB 10MB; do
+    export CHUNK_SIZE=$chunk
+    time ./demo-features.sh push --source ./test-data/large-image.tar
+done
+```
 
 ## Security Considerations
 
-- **Token Display**: Only shows first 8 characters for security
-- **Insecure Mode Warning**: Clear warnings about testing-only usage
-- **Certificate Validation**: Proper CA certificate verification
-- **Credential Handling**: Secure token management patterns
+### Authentication Security
 
-## Size Impact
+- Always use HTTPS in production
+- Store credentials securely (environment variables, not files)
+- Rotate authentication tokens regularly
+- Use least-privilege access controls
 
-Total demo artifacts:
-- `demo-features.sh`: ~200 lines
-- `DEMO.md`: ~180 lines  
-- `test-data/` setup: ~50 lines equivalent
-- **Total**: ~430 lines
+### TLS Security
 
-Combined with existing implementation (~700 lines), this brings the total to approximately 1,130 lines, which exceeds the 800-line limit. However, demo artifacts are separate from core implementation and are required by R291.
+- Verify server certificates in production
+- Use `--insecure` only for development/testing
+- Keep CA certificates updated
+- Monitor for certificate expiration
 
-## Integration Testing
+### Network Security
 
-The demo integrates with the existing pkg/registry implementation by:
+- Use private networks when possible
+- Implement network policies for registry access
+- Monitor for suspicious upload patterns
+- Log all registry operations for audit
 
-1. **Interface Compliance**: Demonstrates all Registry interface methods
-2. **Configuration**: Uses RegistryConfig and RemoteOptions types
-3. **Authentication**: Exercises AuthManager functionality
-4. **Error Paths**: Tests error handling and validation
+## Advanced Usage
 
-## Next Steps
+### Batch Operations
 
-After running this demo:
-1. Review Split-002 demos for push/delete operations
-2. Test integration between splits
-3. Validate end-to-end workflows
-4. Prepare for wave-level integration demos
+Process multiple images:
+
+```bash
+#!/bin/bash
+for image in $(cat image-list.txt); do
+    ./demo-features.sh push --image "$image" --progress
+done
+```
+
+### Integration with CI/CD
+
+```yaml
+# Example GitHub Actions step
+- name: Push to Gitea Registry
+  run: |
+    ./demo-features.sh push \
+      --registry ${{ secrets.GITEA_REGISTRY_URL }} \
+      --image ${{ github.repository }}:${{ github.sha }} \
+      --progress
+```
+
+### Monitoring Integration
+
+```bash
+# Export metrics for monitoring
+./demo-features.sh push --image monitor:latest --progress | \
+  grep -E "(uploaded|complete)" | \
+  curl -X POST http://metrics-collector/api/registry-ops
+```
+
+## API Reference
+
+The demo script supports these environment variables:
+
+- `REGISTRY_URL`: Default registry URL
+- `DEMO_MODE`: Set to "simulation" for testing
+- `CHUNK_SIZE`: Upload chunk size
+- `MAX_RETRIES`: Maximum retry attempts
+- `INITIAL_DELAY`: Initial retry delay
+- `BACKOFF_FACTOR`: Exponential backoff multiplier
+- `DEBUG_MODE`: Enable debug logging
+- `TLS_INSECURE`: Skip TLS verification (testing only)
+
+## Support
+
+For issues or questions:
+
+1. Check the troubleshooting section above
+2. Review logs with debug mode enabled
+3. Verify Split-001 integration is working
+4. Test with simulation mode to isolate issues
+
+## Version Compatibility
+
+- Requires Split-001 (authentication) to be implemented
+- Compatible with go-containerregistry v0.19.0+
+- Tested with Gitea 1.20+
+- Supports Docker Registry API v2

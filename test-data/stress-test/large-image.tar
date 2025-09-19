@@ -1,0 +1,24 @@
+# Large OCI Image for Stress Testing
+# This simulates a large container image for testing retry logic
+
+MOCK_LARGE_IMAGE=true
+VERSION=1.0
+SIZE=104857600  # 100MB
+LAYERS=5
+COMPLEXITY=high
+
+# Simulated layer breakdown:
+# - config.json: 4KB
+# - base-os.layer: 60MB
+# - runtime.layer: 25MB  
+# - app-deps.layer: 12MB
+# - app-code.layer: 3MB
+
+# This large file tests:
+# - Chunked upload performance
+# - Network timeout handling
+# - Retry logic under stress
+# - Progress tracking accuracy
+
+# Mock content to simulate realistic image size
+PADDING_DATA=$(printf '=%.0s' {1..1000})

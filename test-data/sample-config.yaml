@@ -1,0 +1,25 @@
+apiVersion: v1alpha1
+kind: BuildCustomization
+metadata:
+  name: sample-config
+  namespace: default
+spec:
+  protocol: https
+  host: example.com
+  port: "443"
+  usePathRouting: false
+  features:
+    giteaEnabled: true
+    certExtractionEnabled: true
+    registryTrustEnabled: true
+    securityLoggingEnabled: true
+  gitea:
+    namespace: gitea
+    adminSecret: gitea-credential
+    adminUser: giteaAdmin
+    tokenName: admin
+  certificates:
+    trustStore: ~/.idpbuilder/certs
+    extractionTimeout: 30s
+    retryAttempts: 3
+    securityLogPath: ~/.idpbuilder/security.log

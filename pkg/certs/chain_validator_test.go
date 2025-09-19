@@ -128,6 +128,7 @@ func TestChainValidator_ValidationModes(t *testing.T) {
 		{"Strict Mode", StrictMode, "Strict"},
 		{"Lenient Mode", LenientMode, "Lenient"},
 		{"Insecure Mode", InsecureMode, "Insecure"},
+		{"Unknown Mode", ValidationMode(99), "Unknown(99)"},
 	}
 	
 	for _, tt := range tests {
@@ -136,5 +137,37 @@ func TestChainValidator_ValidationModes(t *testing.T) {
 				t.Errorf("ValidationMode.String() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestChainValidator_DefaultOptions(t *testing.T) {
+	trustStore := NewMockTrustStore()
+	validator := NewChainValidator(trustStore, StrictMode)
+	
+	// Test default max chain length for different modes
+	strictValidator := NewChainValidator(trustStore, StrictMode)
+	lenientValidator := NewChainValidator(trustStore, LenientMode)
+	insecureValidator := NewChainValidator(trustStore, InsecureMode)
+	
+	if strictValidator.getMaxChainLengthForMode() != 4 {
+		t.Errorf("Expected strict mode max chain length 4, got %d", strictValidator.getMaxChainLengthForMode())
+	}
+	
+	if lenientValidator.getMaxChainLengthForMode() != 6 {
+		t.Errorf("Expected lenient mode max chain length 6, got %d", lenientValidator.getMaxChainLengthForMode())
+	}
+	
+	if insecureValidator.getMaxChainLengthForMode() != 10 {
+		t.Errorf("Expected insecure mode max chain length 10, got %d", insecureValidator.getMaxChainLengthForMode())
+	}
+	
+	// Test default options
+	options := validator.getDefaultOptions()
+	if options == nil {
+		t.Fatal("getDefaultOptions returned nil")
+	}
+	
+	if options.MaxChainLength != 4 {
+		t.Errorf("Expected default max chain length 4, got %d", options.MaxChainLength)
 	}
 }

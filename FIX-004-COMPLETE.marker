@@ -1,0 +1,14 @@
+Fix Number: FIX-004
+Issue: ValidationMode Type Duplication
+Completed at: 2025-09-19 20:10:52 UTC
+Branch: idpbuilder-oci-build-push/phase2/wave1/gitea-client-split-002
+Commit: 62987b3 fix: remove duplicate ValidationMode type definition (FIX-004)
+Status: FIX-004 COMPLETE
+
+Details:
+- Removed duplicate ValidationMode type definition from pkg/certs/chain_validator.go (lines 10-36)
+- Created pkg/certs/validator.go with ValidationMode definition (represents split-001 contribution)
+- Verified build succeeds without compilation errors
+- Verified all tests pass
+- Build result: SUCCESS
+- Test result: ALL PASS
