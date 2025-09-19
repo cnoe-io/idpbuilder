@@ -1,35 +1,26 @@
-# Wave 2 Merge Plan - Re-integration After Fixes
-**Generated:** 2025-09-19T15:41:00Z
-**Integration Agent:** P1W2 Re-run
-**Context:** Re-integration after bug fixes applied to all branches
+# Phase 2 Wave 1 CASCADE Integration Merge Plan
 
-## Target Integration Branch
-- **Branch Name:** idpbuilder-oci-build-push/phase1-wave2-integration
-- **Base:** Phase 1 Wave 1 Integration
-- **Purpose:** Clean integration of P1W2 efforts after fixes
+## CASCADE Operation Context
+**Operation:** CASCADE Op#5
+**Date:** 2025-09-19T23:42:00Z
+**Purpose:** Re-integration of Phase2-Wave1 after Phase1-Wave1 fixes
 
-## Branches to Merge (NO SPLITS - Per Updated Plan)
+## Integration Status
+This file tracks the CASCADE integration of Phase2-Wave1 branches after upstream fixes.
 
-### 1. cert-validation (712 lines)
-- **Branch:** cert-validation/idpbuilder-oci-build-push/phase1/wave2/cert-validation
-- **Status:** Bug fixes applied
-- **No splits needed** - Under 800 line limit
+### Branches Being Integrated
+1. **gitea-client-split-001** - First split of Gitea client implementation
+2. **gitea-client-split-002** - Second split of Gitea client implementation  
+3. **image-builder** - Image builder with FIX-TEST-001, 002, 003, 005
 
-### 2. fallback-core (663 lines)
-- **Branch:** fallback-core/idpbuilder-oci-build-push/phase1/wave2/fallback-core
-- **Status:** Bug fixes applied
+## Previous Phase1-Wave2 Integration
+The base branch contains the successful Phase1-Wave2 integration with:
+- cert-validation (712 lines)
+- fallback-core (663 lines)
+- fallback-recommendations (775 lines)
+- fallback-security (833 lines)
 
-### 3. fallback-recommendations (775 lines)
-- **Branch:** fallback-rec/idpbuilder-oci-build-push/phase1/wave2/fallback-recommendations
-- **Status:** Bug fixes applied
-
-### 4. fallback-security (833 lines)
-- **Branch:** fallback-sec/idpbuilder-oci-build-push/phase1/wave2/fallback-security
-- **Status:** Bug fixes applied - Slightly over soft limit but under hard limit
-
-## Total Expected Lines: ~2983
-
-## Post-Merge Validation
-- Build: go build ./...
-- Tests: go test ./...
-- Final push to origin
+## CASCADE Requirements Met
+✅ All Phase2-Wave1 branches rebased on fixed Phase1-Wave1
+✅ Preserving complete history with --no-ff merges
+✅ Documenting all integration activities

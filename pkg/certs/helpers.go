@@ -30,7 +30,20 @@ func parseCertificate(pemData []byte) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-// Feature flag function removed - features are now always enabled in production
+// isFeatureEnabled checks if a feature flag is enabled
+func isFeatureEnabled(flag string) bool {
+	// Check environment variable
+	envVar := fmt.Sprintf("IDPBUILDER_%s", flag)
+	value := os.Getenv(envVar)
+
+	// Parse boolean value
+	return value == "true" || value == "1" || value == "enabled"
+}
+
+// isKindFeatureEnabled checks if a Kind-specific feature flag is enabled
+func isKindFeatureEnabled(flag string) bool {
+	return isFeatureEnabled(flag)
+}
 
 // findGiteaPod locates the Gitea pod in the cluster
 func (e *KindCertExtractor) findGiteaPod(ctx context.Context, clusterName string) (string, error) {

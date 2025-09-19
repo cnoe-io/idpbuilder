@@ -1,0 +1,30 @@
+🔄 Fallback Strategies Demo
+===========================
+
+This demo showcases the fallback strategies and insecure mode handling features
+implemented in the fallback-strategies effort.
+
+📁 Current directory: /home/vscode/workspaces/idpbuilder-oci-build-push/efforts/phase1/wave1/integration-workspace
+🏷️  Go module: github.com/cnoe-io/idpbuilder
+
+🔨 Building project...
+⚠️  Build failed or no main package found, proceeding with tests...
+
+🧪 Running fallback manager tests...
+This demonstrates the FallbackManager functionality:
+
+=== RUN   TestNewFallbackManager
+--- PASS: TestNewFallbackManager (0.00s)
+=== RUN   TestFallbackManager_InsecureMode
+=== RUN   TestFallbackManager_InsecureMode/insecure_mode_enabled
+⚠️  INSECURE MODE: Bypassing certificate validation for test.registry
+=== RUN   TestFallbackManager_InsecureMode/insecure_mode_disabled
+--- PASS: TestFallbackManager_InsecureMode (0.00s)
+    --- PASS: TestFallbackManager_InsecureMode/insecure_mode_enabled (0.00s)
+    --- PASS: TestFallbackManager_InsecureMode/insecure_mode_disabled (0.00s)
+=== RUN   TestFallbackManager_RetryLogic
+⚠️  Strategy 'test-strategy' attempt 1 failed for test.registry: mock strategy failed
+⚠️  Strategy 'test-strategy' attempt 2 failed for test.registry: mock strategy failed
+✅ Fallback strategy 'test-strategy' succeeded for test.registry
+--- PASS: TestFallbackManager_RetryLogic (0.03s)
+=== RUN   TestFallbackManager_ContextCancellation
