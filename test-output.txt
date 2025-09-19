@@ -1,0 +1,51 @@
+# github.com/cnoe-io/idpbuilder [github.com/cnoe-io/idpbuilder.test]
+./temp_test.go:8:6: main redeclared in this block
+	./main.go:13:6: other declaration of main
+FAIL	github.com/cnoe-io/idpbuilder [build failed]
+?   	github.com/cnoe-io/idpbuilder/api/v1alpha1	[no test files]
+?   	github.com/cnoe-io/idpbuilder/globals	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/cmd	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/cmd/create	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/cmd/delete	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/cmd/version	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/controllers	[no test files]
+ok  	github.com/cnoe-io/idpbuilder/pkg/build	0.048s
+# github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild [github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild.test]
+pkg/controllers/localbuild/argo_test.go:16:2: "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured" imported and not used
+pkg/controllers/localbuild/argo_test.go:17:2: "k8s.io/apimachinery/pkg/runtime/schema" imported and not used
+FAIL	github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild [build failed]
+?   	github.com/cnoe-io/idpbuilder/pkg/logger	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/printer	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/printer/types	[no test files]
+ok  	github.com/cnoe-io/idpbuilder/pkg/certs	5.384s
+ok  	github.com/cnoe-io/idpbuilder/pkg/cmd/get	0.075s
+ok  	github.com/cnoe-io/idpbuilder/pkg/cmd/helpers	0.073s
+--- FAIL: TestReconcileCustomPkg (0.09s)
+    controller_test.go:52: 
+        	Error Trace:	/home/vscode/workspaces/this-is-not-the-target-repo-this-is-for-orchestrator-planning-only/efforts/phase1/integration-workspace/pkg/controllers/custompackage/controller_test.go:52
+        	Error:      	Received unexpected error:
+        	            	unable to start control plane itself: failed to start the controlplane. retried 5 times: fork/exec ../../../bin/k8s/1.29.1-linux-amd64/etcd: no such file or directory
+        	Test:       	TestReconcileCustomPkg
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0xa0 pc=0x1879ee7]
+
+goroutine 104 [running]:
+github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage.TestReconcileCustomPkgAppSet.func1()
+	/home/vscode/workspaces/this-is-not-the-target-repo-this-is-for-orchestrator-planning-only/efforts/phase1/integration-workspace/pkg/controllers/custompackage/controller_test.go:276 +0x27
+created by github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage.TestReconcileCustomPkgAppSet in goroutine 11
+	/home/vscode/workspaces/this-is-not-the-target-repo-this-is-for-orchestrator-planning-only/efforts/phase1/integration-workspace/pkg/controllers/custompackage/controller_test.go:275 +0x62a
+FAIL	github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage	0.360s
+ok  	github.com/cnoe-io/idpbuilder/pkg/controllers/gitrepository	0.673s
+# github.com/cnoe-io/idpbuilder/pkg/util [github.com/cnoe-io/idpbuilder/pkg/util.test]
+pkg/util/git_repository_test.go:11:2: "github.com/cnoe-io/idpbuilder/pkg/testutil" imported and not used
+?   	github.com/cnoe-io/idpbuilder/pkg/resources/localbuild	[no test files]
+?   	github.com/cnoe-io/idpbuilder/pkg/testutil	[no test files]
+FAIL	github.com/cnoe-io/idpbuilder/pkg/util [build failed]
+?   	github.com/cnoe-io/idpbuilder/pkg/util/files	[no test files]
+ok  	github.com/cnoe-io/idpbuilder/pkg/k8s	1.723s
+ok  	github.com/cnoe-io/idpbuilder/pkg/kind	0.874s
+ok  	github.com/cnoe-io/idpbuilder/pkg/registry/auth	0.022s
+ok  	github.com/cnoe-io/idpbuilder/pkg/registry/helpers	0.120s
+ok  	github.com/cnoe-io/idpbuilder/pkg/registry/types	0.008s
+ok  	github.com/cnoe-io/idpbuilder/pkg/util/fs	0.005s
+FAIL
