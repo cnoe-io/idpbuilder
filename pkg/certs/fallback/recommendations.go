@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 )
 
 // RecommendationEngine generates actionable recommendations for certificate failures
