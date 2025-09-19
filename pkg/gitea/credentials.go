@@ -140,3 +140,49 @@ func (c *CLICredentialProvider) IsAvailable() bool {
 func (c *CLICredentialProvider) Priority() int {
 	return 1 // Highest priority
 }
+
+// ConfigFileCredentialProvider reads from configuration files
+type ConfigFileCredentialProvider struct{}
+
+func NewConfigFileProvider() *ConfigFileCredentialProvider {
+	return &ConfigFileCredentialProvider{}
+}
+
+func (cf *ConfigFileCredentialProvider) GetUsername() (string, error) {
+	return "", fmt.Errorf("config file credential provider not available")
+}
+
+func (cf *ConfigFileCredentialProvider) GetPassword() (string, error) {
+	return "", fmt.Errorf("config file credential provider not available")
+}
+
+func (cf *ConfigFileCredentialProvider) IsAvailable() bool {
+	return false
+}
+
+func (cf *ConfigFileCredentialProvider) Priority() int {
+	return 3 // Third priority after CLI and ENV
+}
+
+// KeyringCredentialProvider reads from system keyring/credential store
+type KeyringCredentialProvider struct{}
+
+func NewKeyringProvider() *KeyringCredentialProvider {
+	return &KeyringCredentialProvider{}
+}
+
+func (kr *KeyringCredentialProvider) GetUsername() (string, error) {
+	return "", fmt.Errorf("keyring credential provider not available")
+}
+
+func (kr *KeyringCredentialProvider) GetPassword() (string, error) {
+	return "", fmt.Errorf("keyring credential provider not available")
+}
+
+func (kr *KeyringCredentialProvider) IsAvailable() bool {
+	return false
+}
+
+func (kr *KeyringCredentialProvider) Priority() int {
+	return 4 // Lowest priority
+}
