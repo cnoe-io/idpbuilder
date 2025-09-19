@@ -1,0 +1,4 @@
+Split 002 of 2
+Based on: phase1/wave1/registry-auth-types--split-001
+Working Directory: /home/vscode/workspaces/idpbuilder-oci-mgmt/efforts/phase1/wave1/registry-auth-types--split-002
+Branch: phase1/wave1/registry-auth-types--split-002
