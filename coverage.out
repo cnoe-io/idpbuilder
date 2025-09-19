@@ -1,0 +1,7 @@
+mode: set
+github.com/cnoe-io/idpbuilder/pkg/registry/types/errors.go:12.40,13.21 1 1
+github.com/cnoe-io/idpbuilder/pkg/registry/types/errors.go:13.21,15.3 1 1
+github.com/cnoe-io/idpbuilder/pkg/registry/types/errors.go:16.2,16.49 1 1
+github.com/cnoe-io/idpbuilder/pkg/registry/types/errors.go:31.45,33.2 1 1
+github.com/cnoe-io/idpbuilder/pkg/registry/types/errors.go:35.41,37.2 1 1
+github.com/cnoe-io/idpbuilder/pkg/registry/types/errors.go:39.63,41.2 1 1

@@ -8,6 +8,7 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -235,7 +236,7 @@ type DockerClientMock struct {
 	mock.Mock
 }
 
-func (m *DockerClientMock) ContainerList(ctx context.Context, listOptions types.ContainerListOptions) ([]types.Container, error) {
+func (m *DockerClientMock) ContainerList(ctx context.Context, listOptions container.ListOptions) ([]types.Container, error) {
 	mockArgs := m.Called(ctx, listOptions)
 	return mockArgs.Get(0).([]types.Container), mockArgs.Error(1)
 }
