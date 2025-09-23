@@ -1,0 +1,10 @@
+# Orchestrator TODOs - State: SPAWN_ARCHITECT_MASTER_PLANNING
+## Completed:
+- ✅ Create target-repo-config.yaml with IDPBuilder repository details
+- ✅ Read INIT state-specific rules from agent-states directory  
+- ✅ Read and analyze the master implementation plan
+- ✅ Create ARCHITECT-PROMPT-IDPBUILDER-OCI.md for master plan
+- ✅ Update orchestrator state to SPAWN_ARCHITECT_MASTER_PLANNING
+
+## Pending:
+- ⏳ Spawn architect to create implementation plan
