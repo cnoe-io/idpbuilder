@@ -1,0 +1,22 @@
+# Target Repository Configuration for Software Factory
+# This file specifies the ACTUAL project repository to work on
+
+target_repository:
+  url: "https://github.com/cnoe-io/idpbuilder.git"
+  base_branch: "main"
+
+branch_naming:
+  project_prefix: "idpbuilder"
+  pattern: "phase{phase}/wave{wave}/{effort_name}"
+
+integration:
+  create_integration_branches: true
+  integration_pattern: "phase{phase}-wave{wave}-integration"
+
+workspace:
+  effort_directory_pattern: "efforts/phase{phase}/wave{wave}/{effort_name}"
+
+# Software Factory Settings
+software_factory:
+  repo_path: "/home/vscode/idpbuilder"
+  state_file: "orchestrator-state.json"
