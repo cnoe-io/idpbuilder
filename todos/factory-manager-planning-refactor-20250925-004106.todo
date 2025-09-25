@@ -1,0 +1,32 @@
+# Software Factory Manager - Planning Refactor Task
+Date: 2025-09-25
+Agent: software-factory-manager
+State: COMPLETE
+
+## Completed Tasks:
+1. ✅ Created planning directory structure for idpbuilder
+   - planning/project/ for project-level plans
+   - planning/phase1-4/ for phase plans
+   - planning/phaseX/waveY/ for wave plans
+
+2. ✅ Moved IMPLEMENTATION-PLAN.md to planning/project/PROJECT-IMPLEMENTATION-PLAN.md
+   - Renamed to follow PROJECT- naming convention
+   - Properly separated from implementation efforts
+
+3. ✅ Updated orchestrator-state.json with planning locations
+   - Added metadata_locations section
+   - Added planning_files section
+   - Updated notes to reflect reorganization
+
+4. ✅ Created efforts directory structure
+   - efforts/ for implementation code
+   - efforts/.software-factory/ for effort metadata
+   - Added README.md explaining the separation
+
+5. ✅ Committed and pushed all changes
+   - Commit: 1b12ee55
+   - Clean commit with descriptive message
+   - Successfully pushed to origin/main
+
+## Result:
+Successfully applied new planning file location rules to the idpbuilder project. The project now has proper separation between planning documents (in planning/) and implementation code (in efforts/). The orchestrator-state.json has been updated with all necessary references to prevent agents from looking in wrong locations.
