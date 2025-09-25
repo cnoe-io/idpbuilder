@@ -7,5 +7,15 @@
   "efforts_in_progress": [],
   "efforts_completed": [],
   "split_tracking": {},
-  "notes": "Master implementation plan created by architect. Ready to begin Phase 1 Wave 1 planning."
+  "metadata_locations": {
+    "project_plan": "/home/vscode/idpbuilder/planning/project/PROJECT-IMPLEMENTATION-PLAN.md",
+    "phase1_plans": "/home/vscode/idpbuilder/planning/phase1/",
+    "phase2_plans": "/home/vscode/idpbuilder/planning/phase2/",
+    "phase3_plans": "/home/vscode/idpbuilder/planning/phase3/",
+    "phase4_plans": "/home/vscode/idpbuilder/planning/phase4/"
+  },
+  "planning_files": {
+    "master_plan": "/home/vscode/idpbuilder/planning/project/PROJECT-IMPLEMENTATION-PLAN.md"
+  },
+  "notes": "Master implementation plan created by architect. Planning structure reorganized per new separation rules."
 }
