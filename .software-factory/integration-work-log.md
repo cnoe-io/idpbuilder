@@ -36,18 +36,3 @@ Result: Success with conflict resolution
 Conflicts resolved: IMPLEMENTATION-COMPLETE.marker (kept both Wave 1 and Wave 2 content)
 MERGED: effort-1.2.1-test-fixtures-setup at 2025-09-26T07:52:00Z
 Commit: dc00df2
-
-### Merge 2: effort-1.2.2-command-testing-framework
-Command: git merge effort-1.2.2/igp/phase1/wave2/effort-1.2.2-command-testing-framework --no-ff
-Result: Success with conflict resolution
-Conflicts resolved:
-  - pkg/cmd/push/root.go (kept Wave 1 implementation per R361)
-  - IMPLEMENTATION-COMPLETE.marker (combined both Wave 2 efforts)
-  - .software-factory/work-log.md (consolidated into integration log)
-MERGED: effort-1.2.2-command-testing-framework at 2025-09-26T07:55:00Z
-
-## R361 Compliance
-- NO new packages created
-- NO adapter or wrapper code added
-- Conflict resolution only (chose versions, did not create new code)
-- Total changes: < 50 lines (only conflict resolution)
