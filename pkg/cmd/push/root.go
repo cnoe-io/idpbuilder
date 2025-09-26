@@ -48,6 +48,11 @@ func init() {
 
 // pushImage performs the actual image push operation
 func pushImage(imageURL string) error {
+	// Validate image URL format
+	if !strings.Contains(imageURL, "/") {
+		return fmt.Errorf("invalid image URL format: %s", imageURL)
+	}
+
 	// This would contain the actual push implementation
 	// For now, return a placeholder implementation
 	fmt.Printf("Pushing image to: %s\n", imageURL)

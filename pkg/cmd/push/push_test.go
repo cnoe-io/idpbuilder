@@ -21,7 +21,15 @@ func Test_PushCommand_Basic(t *testing.T) {
 	})
 
 	t.Run("requires exactly one argument", func(t *testing.T) {
-		assert.Equal(t, cobra.ExactArgs(1), PushCmd.Args)
+		// Test that the command validates exactly one argument
+		err := PushCmd.Args(PushCmd, []string{})
+		assert.Error(t, err)
+
+		err = PushCmd.Args(PushCmd, []string{"image1", "image2"})
+		assert.Error(t, err)
+
+		err = PushCmd.Args(PushCmd, []string{"image1"})
+		assert.NoError(t, err)
 	})
 
 	t.Run("has required flags", func(t *testing.T) {
@@ -303,7 +311,6 @@ func Test_PushCommand_Auth(t *testing.T) {
 			username = tt.username
 			password = tt.password
 
-			var output bytes.Buffer
 			err := pushImage("registry.example.com/test:latest")
 			require.NoError(t, err)
 
