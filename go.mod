@@ -2,6 +2,8 @@ module github.com/cnoe-io/idpbuilder
 
 go 1.22.0
 
+toolchain go1.24.7
+
 require (
 	code.gitea.io/sdk/gitea v0.16.0
 	github.com/cnoe-io/argocd-api v0.0.0-20241031202925-3091d64cb3c4
