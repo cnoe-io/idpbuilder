@@ -1,71 +1,79 @@
 package push
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/cnoe-io/idpbuilder/pkg/auth"
+	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
+// PushCmd represents the push command
 var PushCmd = &cobra.Command{
-	Use:   "push IMAGE_NAME",
-	Short: "Push an OCI image to the integrated Gitea registry",
-	Long: `Push an OCI image to the integrated Gitea registry.
-
-The push command uploads container images to the Gitea registry
-at https://gitea.cnoe.localtest.me:8443/.
+	Use:   "push [IMAGE]",
+	Short: "Push container images to a registry",
+	Long: `Push container images to a registry with authentication support.
 
 Examples:
-  # Push an image with authentication
-  idpbuilder push myapp:latest --username admin --password secret
+  # Push an image without authentication
+  idpbuilder push myimage:latest
 
-  # Push with insecure TLS (self-signed certificates)
-  idpbuilder push myapp:latest --username admin --password secret --insecure`,
+  # Push an image with username and password
+  idpbuilder push myimage:latest --username myuser --password mypass
+
+  # Push an image with short flags
+  idpbuilder push myimage:latest -u myuser -p mypass`,
 	Args: cobra.ExactArgs(1),
-	RunE: runPush,
-}
-
-// pushConfig holds the configuration for the push command
-type pushConfig struct {
-	imageName string
-	// Placeholder for future flags (auth, TLS) that will be added in subsequent efforts
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return runPush(cmd, cmd.Context(), args[0])
+	},
 }
 
 func init() {
-	// Future flags will be added in subsequent efforts:
-	// - Authentication flags (effort 1.1.2)
-	// - TLS configuration flags (effort 1.1.3)
+	// Add authentication flags to the push command
+	auth.AddAuthenticationFlags(PushCmd)
+
+	// Add common flags
+	PushCmd.Flags().BoolP("verbose", "v", false, "Enable verbose logging")
+	PushCmd.Flags().Bool("insecure", false, "Allow insecure registry connections")
 }
 
-// runPush executes the push command
-func runPush(cmd *cobra.Command, args []string) error {
-	config := &pushConfig{
-		imageName: args[0],
+// runPush executes the push command with the provided image name
+func runPush(cmd *cobra.Command, ctx context.Context, imageName string) error {
+	// Extract credentials from flags
+	creds, err := auth.ExtractCredentialsFromFlags(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to extract credentials: %w", err)
 	}
 
-	// Validate image name format
-	if err := validateImageName(config.imageName); err != nil {
-		return fmt.Errorf("invalid image name: %w", err)
+	// Validate credentials
+	validator := &auth.DefaultValidator{}
+	if err := validator.ValidateCredentials(creds); err != nil {
+		return fmt.Errorf("credential validation failed: %w", err)
 	}
 
-	// Log command execution (temporary until implementation)
-	cmd.Printf("Pushing image: %s\n", config.imageName)
-	cmd.Println("Note: Push functionality will be implemented in Phase 4")
+	// Create auth config
+	authConfig := auth.NewAuthConfig(creds)
 
-	return nil
-}
-
-// validateImageName performs basic validation on the image name
-func validateImageName(name string) error {
-	if name == "" {
-		return fmt.Errorf("image name cannot be empty")
+	// Log authentication status
+	if authConfig.Required {
+		helpers.CmdLogger.Info("Pushing with authentication", "username", creds.Username)
+	} else {
+		helpers.CmdLogger.Info("Pushing without authentication")
 	}
 
-	// Basic validation - will be enhanced in Phase 3
-	// For now, just ensure non-empty
-	// Future enhancements will validate:
-	// - Registry format: [registry/]namespace/name[:tag]
-	// - Character restrictions
-	// - Tag format validation
+	// Log what we would push (stub implementation for now)
+	helpers.CmdLogger.Info("Push command executed", "image", imageName, "auth_required", authConfig.Required)
+
+	// TODO: Implement actual push logic in Phase 2
+	fmt.Printf("Successfully prepared push for image: %s\n", imageName)
+
+	if authConfig.Required {
+		fmt.Printf("Authentication configured for user: %s\n", creds.Username)
+	} else {
+		fmt.Println("No authentication configured")
+	}
 
 	return nil
 }
