@@ -1,0 +1,36 @@
+{
+  "architecture": "amd64",
+  "os": "linux",
+  "config": {
+    "Env": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "TEST_ENV=test_value"
+    ],
+    "Cmd": ["/bin/sh", "-c", "echo 'test image'"],
+    "WorkingDir": "/app",
+    "ExposedPorts": {
+      "8080/tcp": {}
+    },
+    "Labels": {
+      "test.label": "test-value",
+      "version": "1.0.0"
+    }
+  },
+  "rootfs": {
+    "type": "layers",
+    "diff_ids": [
+      "sha256:d1d1d1c507a7944ba68b99a1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6",
+      "sha256:d2d2d2c507a7944ba68b99a1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6"
+    ]
+  },
+  "history": [
+    {
+      "created": "2025-01-01T00:00:00Z",
+      "created_by": "test fixture generator"
+    },
+    {
+      "created": "2025-01-01T00:00:01Z",
+      "created_by": "test layer addition"
+    }
+  ]
+}
