@@ -1,0 +1,6 @@
+[
+  {"content": "Review of effort-1.1.2 found issues", "status": "completed"},
+  {"content": "Update state to SPAWN_ENGINEERS_FOR_FIXES", "status": "completed"},
+  {"content": "Spawn SW Engineer to fix circular dependency", "status": "pending"},
+  {"content": "Spawn SW Engineer to fix logger issues", "status": "pending"}
+]
