@@ -2,7 +2,7 @@
 # This file specifies the ACTUAL project repository to work on
 
 target_repository:
-  url: "https://github.com/cnoe-io/idpbuilder.git"
+  url: "https://github.com/jessesanford/idpbuilder.git"
   base_branch: "main"
 
 branch_naming:

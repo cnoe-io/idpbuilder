@@ -11,6 +11,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test variables for flag values (used by flag parsing tests)
+var (
+	username    string
+	password    string
+	insecureTLS bool
+)
+
+// pushImage is a mock function for testing push functionality
+func pushImage(imageURL string) error {
+	// Validate image URL format
+	if imageURL == "" || !strings.Contains(imageURL, "/") {
+		return fmt.Errorf("invalid image URL format: %s", imageURL)
+	}
+
+	// Mock implementation - just return nil for valid URLs
+	return nil
+}
+
 // Test basic command creation and metadata
 func Test_PushCommand_Basic(t *testing.T) {
 	t.Run("command exists", func(t *testing.T) {

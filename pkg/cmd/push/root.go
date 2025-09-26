@@ -3,6 +3,7 @@ package push
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cnoe-io/idpbuilder/pkg/auth"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
@@ -41,6 +42,11 @@ func init() {
 
 // runPush executes the push command with the provided image name
 func runPush(cmd *cobra.Command, ctx context.Context, imageName string) error {
+	// Validate image name first
+	if err := validateImageName(imageName); err != nil {
+		return err
+	}
+
 	// Extract credentials from flags
 	creds, err := auth.ExtractCredentialsFromFlags(cmd)
 	if err != nil {
@@ -73,6 +79,26 @@ func runPush(cmd *cobra.Command, ctx context.Context, imageName string) error {
 		fmt.Printf("Authentication configured for user: %s\n", creds.Username)
 	} else {
 		fmt.Println("No authentication configured")
+	}
+
+	return nil
+}
+
+// pushConfig holds configuration for push operations
+type pushConfig struct {
+	imageName string
+}
+
+// validateImageName validates the provided image name
+func validateImageName(imageName string) error {
+	if imageName == "" {
+		return fmt.Errorf("image name cannot be empty")
+	}
+
+	// Basic validation - could be enhanced in future phases
+	trimmed := strings.TrimSpace(imageName)
+	if trimmed == "" {
+		return fmt.Errorf("image name cannot be empty")
 	}
 
 	return nil

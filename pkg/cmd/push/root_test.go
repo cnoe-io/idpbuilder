@@ -2,6 +2,7 @@ package push
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -185,7 +186,7 @@ func TestRunPushFunction(t *testing.T) {
 			cmd.SetOut(buf)
 			cmd.SetErr(buf)
 
-			err := runPush(cmd, tt.args)
+			err := runPush(cmd, context.Background(), tt.args[0])
 
 			if tt.wantErr {
 				require.Error(t, err)
