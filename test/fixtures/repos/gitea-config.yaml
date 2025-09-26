@@ -1,0 +1,35 @@
+# Test Gitea registry configuration - DO NOT USE IN PRODUCTION
+# This is a test fixture only
+
+registry:
+  url: "localhost:3000"
+  namespace: "test-org"
+  repository: "test-app"
+  protocol: "http"  # Use http for local testing
+
+auth:
+  username: "${GITEA_USERNAME}"
+  password: "${GITEA_PASSWORD}"
+  # Alternative token-based auth
+  token: "${GITEA_TOKEN}"
+
+tls:
+  insecure: true  # For local testing only
+  ca_cert: "/path/to/test/fixtures/certs/ca.crt"
+  client_cert: "/path/to/test/fixtures/certs/client.crt"
+  client_key: "/path/to/test/fixtures/certs/client.key"
+
+# Test endpoints
+endpoints:
+  api: "http://localhost:3000/api/v1"
+  packages: "http://localhost:3000/api/packages"
+  container_registry: "http://localhost:3000/v2"
+
+# Test organizations and repositories
+test_repos:
+  - namespace: "test-org"
+    repository: "test-app"
+    tags: ["latest", "v1.0.0", "dev"]
+  - namespace: "admin"
+    repository: "admin-tools"
+    tags: ["latest"]

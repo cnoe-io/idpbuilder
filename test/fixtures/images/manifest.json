@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.image.config.v1+json",
+    "digest": "sha256:b5b2b2c507a7944ba68b99a1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6",
+    "size": 1234
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:l1l1l1c507a7944ba68b99a1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6",
+      "size": 5678
+    },
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+      "digest": "sha256:l2l2l2c507a7944ba68b99a1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6b1b2b6",
+      "size": 9012
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.created": "2025-01-01T00:00:00Z",
+    "org.opencontainers.image.authors": "Test Suite",
+    "org.opencontainers.image.title": "Test Image",
+    "org.opencontainers.image.description": "Test OCI image for fixtures"
+  }
+}

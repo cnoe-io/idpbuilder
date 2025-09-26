@@ -1,0 +1,20 @@
+# Test registry URLs - DO NOT USE IN PRODUCTION
+# These are test URLs for fixture testing only
+
+# Local Gitea instances
+localhost:3000/test-org/test-app:latest
+localhost:3000/test-org/test-app:v1.0.0
+localhost:3000/admin/admin-tools:latest
+
+# Example external registries (for URL parsing tests)
+gitea.example.com/org/repo:main
+gitea.example.com/org/repo:v2.1.0
+registry.example.com:5000/namespace/image:tag
+
+# Different protocols
+http://localhost:3000/test/http-test:latest
+https://secure.example.com/test/https-test:latest
+
+# Edge cases for testing
+localhost/no-port/image:latest
+example.com:8080/custom-port/image:v1.0
