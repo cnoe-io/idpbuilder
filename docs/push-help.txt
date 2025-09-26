@@ -1,0 +1,39 @@
+IDPBuilder Push Command
+
+Usage:
+  idpbuilder push IMAGE_NAME [flags]
+
+Description:
+  Push an OCI image to the integrated Gitea registry at
+  https://gitea.cnoe.localtest.me:8443/
+
+Arguments:
+  IMAGE_NAME    The name of the image to push
+                Format: [namespace/]name[:tag]
+                Examples: myapp:latest, team/myapp:v1.0
+
+Flags:
+  -h, --help    help for push
+
+Global Flags:
+  [inherited from root command]
+
+Examples:
+  # Basic push (will add auth flags in effort 1.1.2)
+  idpbuilder push myapp:latest
+
+  # Push with specific tag
+  idpbuilder push myapp:v1.0.0
+
+  # Push with namespace
+  idpbuilder push myteam/myapp:latest
+
+Exit Codes:
+  0    Success
+  1    General error
+  2    Invalid arguments
+
+Notes:
+  - Authentication flags will be added in effort 1.1.2
+  - TLS configuration will be added in effort 1.1.3
+  - Full push functionality will be implemented in Phase 4
