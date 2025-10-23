@@ -248,21 +248,26 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 		}
 	}
 
-	for i, s := range resource.Spec.PackageConfigs.CustomPackageDirs {
+	// Process packages in REVERSE order (highest priority first) to avoid creating
+	// lower priority packages first then having to delete them
+	for i := len(resource.Spec.PackageConfigs.CustomPackageDirs) - 1; i >= 0; i-- {
+		s := resource.Spec.PackageConfigs.CustomPackageDirs[i]
 		result, err := r.reconcileCustomPkgDir(ctx, resource, s, i)
 		if err != nil {
 			return result, err
 		}
 	}
 
-	for i, s := range resource.Spec.PackageConfigs.CustomPackageFiles {
+	for i := len(resource.Spec.PackageConfigs.CustomPackageFiles) - 1; i >= 0; i-- {
+		s := resource.Spec.PackageConfigs.CustomPackageFiles[i]
 		result, err := r.reconcileCustomPkgFile(ctx, resource, s, i)
 		if err != nil {
 			return result, err
 		}
 	}
 
-	for i, s := range resource.Spec.PackageConfigs.CustomPackageUrls {
+	for i := len(resource.Spec.PackageConfigs.CustomPackageUrls) - 1; i >= 0; i-- {
+		s := resource.Spec.PackageConfigs.CustomPackageUrls[i]
 		result, err := r.reconcileCustomPkgUrl(ctx, resource, s, i)
 		if err != nil {
 			return result, err
@@ -468,20 +473,23 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 					if _, err := fmt.Sscanf(existingPriorityStr, "%d", &existingPriority); err == nil {
 						if existingPriority > priority {
 							// A higher priority package already exists, skip this one
+							existingSourcePath := existingPkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
 							log.FromContext(ctx).Info("Skipping CustomPackage creation - higher priority package already exists",
 								"appName", appName,
-								"ourPriority", priority,
-								"existingPriority", existingPriority,
-								"existingPackage", existingPkg.Name,
-								"sourcePath", sourcePath)
+								"skippingPackage", sourcePath,
+								"skippingPriority", priority,
+								"keepingPackage", existingSourcePath,
+								"keepingPriority", existingPriority)
 							return nil
 						} else if existingPriority < priority {
 							// We have higher priority, delete the existing lower-priority package
+							existingSourcePath := existingPkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
 							log.FromContext(ctx).Info("Deleting lower priority CustomPackage",
 								"appName", appName,
-								"ourPriority", priority,
-								"existingPriority", existingPriority,
-								"existingPackage", existingPkg.Name)
+								"deletingPackage", existingSourcePath,
+								"deletingPriority", existingPriority,
+								"usingPackage", sourcePath,
+								"usingPriority", priority)
 							if err := r.Client.Delete(ctx, existingPkg); err != nil && !k8serrors.IsNotFound(err) {
 								return fmt.Errorf("deleting lower priority package: %w", err)
 							}

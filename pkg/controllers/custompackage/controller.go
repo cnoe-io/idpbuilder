@@ -179,12 +179,14 @@ func (r *Reconciler) shouldReconcile(ctx context.Context, resource *v1alpha1.Cus
 
 		// If another package has higher priority, this one should not reconcile
 		if otherPriority > thisPriority {
-			logger.Info("yielding to higher priority package",
-				"thisPackage", resource.Name,
-				"thisPriority", thisPriority,
-				"otherPackage", pkg.Name,
-				"otherPriority", otherPriority,
-				"appName", resource.Spec.ArgoCD.Name)
+			thisSource := resource.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
+			otherSource := pkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
+			logger.Info("Yielding to higher priority package - skipping all reconciliation",
+				"appName", resource.Spec.ArgoCD.Name,
+				"yieldingPackage", thisSource,
+				"yieldingPriority", thisPriority,
+				"activePackage", otherSource,
+				"activePriority", otherPriority)
 			return false, nil
 		}
 	}
