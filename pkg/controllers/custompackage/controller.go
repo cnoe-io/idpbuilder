@@ -495,7 +495,8 @@ func (r *Reconciler) reconcileArgoCDSourceFromRemote(ctx context.Context, resour
 
 	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+	var err error
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
 		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
 			return err
 		}
@@ -572,7 +573,7 @@ func (r *Reconciler) reconcileArgoCDSourceFromLocal(ctx context.Context, resourc
 
 	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
 		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
 			return err
 		}
