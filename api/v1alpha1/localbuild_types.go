@@ -12,7 +12,11 @@ const (
 	LastObservedCLIStartTimeAnnotation = "cnoe.io/last-observed-cli-start-time"
 	// CliStartTimeAnnotation indicates when the CLI was invoked.
 	CliStartTimeAnnotation = "cnoe.io/cli-start-time"
-	FieldManager           = "idpbuilder"
+	// PackagePriorityAnnotation indicates the priority of a package (higher = wins conflicts).
+	PackagePriorityAnnotation = "cnoe.io/package-priority"
+	// PackageSourcePathAnnotation indicates the source path of a package.
+	PackageSourcePathAnnotation = "cnoe.io/package-source-path"
+	FieldManager                = "idpbuilder"
 	// If GetSecretLabelKey is set to GetSecretLabelValue on a kubernetes secret, secret key and values can be used by the get command.
 	CLISecretLabelKey      = "cnoe.io/cli-secret"
 	CLISecretLabelValue    = "true"

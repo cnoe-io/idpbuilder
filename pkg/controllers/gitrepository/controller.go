@@ -176,6 +176,9 @@ func (r *RepositoryReconciler) reconcileGitRepo(ctx context.Context, repo *v1alp
 	repo.Status.ExternalGitRepositoryUrl = providerRepo.cloneUrl
 	repo.Status.InternalGitRepositoryUrl = providerRepo.internalGitRepositoryUrl
 	repo.Status.Synced = true
+
+	// Keep requeueing to detect source file changes, but addAllAndCommit
+	// already checks if there are changes before pushing
 	return ctrl.Result{Requeue: true, RequeueAfter: requeueTime}, nil
 }
 
