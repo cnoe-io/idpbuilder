@@ -72,50 +72,67 @@ func (r *Reconciler) postProcessReconcile(ctx context.Context, req ctrl.Request,
 	}
 }
 
-// shouldManageGitRepository checks if this CustomPackage should create/update GitRepository resources.
-// Only the highest priority CustomPackage for a given app should manage GitRepositories.
-func (r *Reconciler) shouldManageGitRepository(ctx context.Context, resource *v1alpha1.CustomPackage, appName string) (bool, error) {
+// shouldTakeOverGitRepository checks if this CustomPackage should take over an existing GitRepository.
+// Returns true if this package has higher priority than the current owner.
+func (r *Reconciler) shouldTakeOverGitRepository(ctx context.Context, resource *v1alpha1.CustomPackage, existingRepo *v1alpha1.GitRepository) (bool, error) {
+	logger := log.FromContext(ctx)
+
 	// Get this package's priority
 	thisPriority, err := getPackagePriority(resource)
 	if err != nil {
-		// If no priority annotation, assume it's a legacy package and allow it
+		// If no priority annotation, assume it's a legacy package - allow takeover for backward compat
+		logger.V(1).Info("no priority on this package, allowing takeover", "package", resource.Name)
 		return true, nil
 	}
 
-	// List all CustomPackages in the same namespace
-	pkgList := &v1alpha1.CustomPackageList{}
-	err = r.Client.List(ctx, pkgList, client.InNamespace(resource.Namespace))
-	if err != nil {
-		return false, fmt.Errorf("listing custom packages: %w", err)
+	// Check the existing repo's owner references
+	for _, ownerRef := range existingRepo.GetOwnerReferences() {
+		if ownerRef.Kind == "CustomPackage" {
+			// Fetch the owner CustomPackage to get its priority
+			ownerPkg := &v1alpha1.CustomPackage{}
+			err := r.Client.Get(ctx, client.ObjectKey{
+				Name:      ownerRef.Name,
+				Namespace: existingRepo.Namespace,
+			}, ownerPkg)
+
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// Owner doesn't exist anymore, we can take over
+					logger.Info("GitRepository owner not found, taking over", "repo", existingRepo.Name)
+					return true, nil
+				}
+				return false, fmt.Errorf("getting owner package: %w", err)
+			}
+
+			// Get owner's priority
+			ownerPriority, err := getPackagePriority(ownerPkg)
+			if err != nil {
+				// Owner has no priority, we can take over
+				logger.V(1).Info("GitRepository owner has no priority, taking over", "repo", existingRepo.Name)
+				return true, nil
+			}
+
+			// Only take over if we have HIGHER priority (higher number wins)
+			if thisPriority > ownerPriority {
+				logger.Info("Taking over GitRepository from lower priority owner",
+					"repo", existingRepo.Name,
+					"ourPriority", thisPriority,
+					"ownerPriority", ownerPriority,
+					"owner", ownerPkg.Name)
+				return true, nil
+			} else {
+				logger.Info("Not taking over GitRepository owned by higher/equal priority package",
+					"repo", existingRepo.Name,
+					"ourPriority", thisPriority,
+					"ownerPriority", ownerPriority,
+					"owner", ownerPkg.Name)
+				return false, nil
+			}
+		}
 	}
 
-	// Check if any other CustomPackage has the same app name with higher priority
-	for i := range pkgList.Items {
-		pkg := &pkgList.Items[i]
-
-		// Skip self
-		if pkg.Name == resource.Name {
-			continue
-		}
-
-		// Skip if different app name
-		if pkg.Spec.ArgoCD.Name != appName {
-			continue
-		}
-
-		// Get the other package's priority
-		otherPriority, err := getPackagePriority(pkg)
-		if err != nil {
-			// If the other package has no priority, this one wins
-			continue
-		}
-
-		// If another package has higher priority, this one should not manage GitRepository
-		if otherPriority > thisPriority {
-			return false, nil
-		}
-	}
-
+	// No CustomPackage owner found, we can take over
+	logger.V(1).Info("GitRepository has no CustomPackage owner, taking over", "repo", existingRepo.Name)
 	return true, nil
 }
 
@@ -452,31 +469,33 @@ func (r *Reconciler) reconcileArgoCDSourceFromRemote(ctx context.Context, resour
 		},
 	}
 
-	// Check if we should even touch this GitRepository
-	shouldManage, err := r.shouldManageGitRepository(ctx, resource, appName)
-	if err != nil {
-		return ctrl.Result{}, nil, fmt.Errorf("checking if should manage git repository: %w", err)
-	}
+	// Check if GitRepository already exists
+	existingRepo := &v1alpha1.GitRepository{}
+	getErr := r.Client.Get(ctx, client.ObjectKeyFromObject(repo), existingRepo)
 
-	if !shouldManage {
-		// A higher priority package owns this GitRepository
-		// Just fetch and return it without updating
-		err := r.Client.Get(ctx, client.ObjectKeyFromObject(repo), repo)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// GitRepository doesn't exist yet, return nil so we wait
-				logger.V(1).Info("GitRepository not yet created by higher priority package", "repo", repo.Name)
-				return ctrl.Result{}, nil, nil
-			}
-			return ctrl.Result{}, nil, err
+	if getErr == nil {
+		// GitRepository exists - check if we should take it over
+		shouldTakeOver, checkErr := r.shouldTakeOverGitRepository(ctx, resource, existingRepo)
+		if checkErr != nil {
+			return ctrl.Result{}, nil, fmt.Errorf("checking if should take over git repository: %w", checkErr)
 		}
-		logger.V(1).Info("Using GitRepository managed by higher priority package", "repo", repo.Name)
-		return ctrl.Result{}, repo, nil
+
+		if !shouldTakeOver {
+			// A higher/equal priority package owns this, just return it without updating
+			logger.V(1).Info("Using existing GitRepository owned by higher priority package",
+				"repo", repo.Name,
+				"ourPriority", resource.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation])
+			return ctrl.Result{}, existingRepo, nil
+		}
+		// We should take it over - proceed with CreateOrUpdate below
+	} else if !errors.IsNotFound(getErr) {
+		return ctrl.Result{}, nil, getErr
 	}
+	// GitRepository doesn't exist or we should take it over
 
 	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
 
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
 		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
 			return err
 		}
@@ -527,31 +546,33 @@ func (r *Reconciler) reconcileArgoCDSourceFromLocal(ctx context.Context, resourc
 		},
 	}
 
-	// Check if we should even touch this GitRepository
-	shouldManage, err := r.shouldManageGitRepository(ctx, resource, appName)
-	if err != nil {
-		return ctrl.Result{}, nil, fmt.Errorf("checking if should manage git repository: %w", err)
-	}
+	// Check if GitRepository already exists
+	existingRepo := &v1alpha1.GitRepository{}
+	getErr := r.Client.Get(ctx, client.ObjectKeyFromObject(repo), existingRepo)
 
-	if !shouldManage {
-		// A higher priority package owns this GitRepository
-		// Just fetch and return it without updating
-		err := r.Client.Get(ctx, client.ObjectKeyFromObject(repo), repo)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				// GitRepository doesn't exist yet, return nil so we wait
-				logger.V(1).Info("GitRepository not yet created by higher priority package", "repo", repo.Name)
-				return ctrl.Result{}, nil, nil
-			}
-			return ctrl.Result{}, nil, err
+	if getErr == nil {
+		// GitRepository exists - check if we should take it over
+		shouldTakeOver, checkErr := r.shouldTakeOverGitRepository(ctx, resource, existingRepo)
+		if checkErr != nil {
+			return ctrl.Result{}, nil, fmt.Errorf("checking if should take over git repository: %w", checkErr)
 		}
-		logger.V(1).Info("Using GitRepository managed by higher priority package", "repo", repo.Name)
-		return ctrl.Result{}, repo, nil
+
+		if !shouldTakeOver {
+			// A higher/equal priority package owns this, just return it without updating
+			logger.V(1).Info("Using existing GitRepository owned by higher priority package",
+				"repo", repo.Name,
+				"ourPriority", resource.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation])
+			return ctrl.Result{}, existingRepo, nil
+		}
+		// We should take it over - proceed with CreateOrUpdate below
+	} else if !errors.IsNotFound(getErr) {
+		return ctrl.Result{}, nil, getErr
 	}
+	// GitRepository doesn't exist or we should take it over
 
 	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
 
-	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
 		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
 			return err
 		}

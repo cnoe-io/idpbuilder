@@ -449,10 +449,52 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 		kind := o.GetKind()
 		appName := o.GetName()
 		appNS := o.GetNamespace()
+
+		// Check if a higher-priority CustomPackage already exists for this app
+		projectNS := globals.GetProjectNamespace(resource.Name)
+		existingPkgs := &v1alpha1.CustomPackageList{}
+		if err := r.Client.List(ctx, existingPkgs, client.InNamespace(projectNS)); err != nil {
+			return fmt.Errorf("listing existing custom packages: %w", err)
+		}
+
+		for i := range existingPkgs.Items {
+			existingPkg := &existingPkgs.Items[i]
+			// Check if this package is for the same ArgoCD app
+			if existingPkg.Spec.ArgoCD.Name == appName {
+				// Get existing package's priority
+				existingPriorityStr, exists := existingPkg.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation]
+				if exists {
+					var existingPriority int
+					if _, err := fmt.Sscanf(existingPriorityStr, "%d", &existingPriority); err == nil {
+						if existingPriority > priority {
+							// A higher priority package already exists, skip this one
+							log.FromContext(ctx).Info("Skipping CustomPackage creation - higher priority package already exists",
+								"appName", appName,
+								"ourPriority", priority,
+								"existingPriority", existingPriority,
+								"existingPackage", existingPkg.Name,
+								"sourcePath", sourcePath)
+							return nil
+						} else if existingPriority < priority {
+							// We have higher priority, delete the existing lower-priority package
+							log.FromContext(ctx).Info("Deleting lower priority CustomPackage",
+								"appName", appName,
+								"ourPriority", priority,
+								"existingPriority", existingPriority,
+								"existingPackage", existingPkg.Name)
+							if err := r.Client.Delete(ctx, existingPkg); err != nil && !k8serrors.IsNotFound(err) {
+								return fmt.Errorf("deleting lower priority package: %w", err)
+							}
+						}
+					}
+				}
+			}
+		}
+
 		customPkg := &v1alpha1.CustomPackage{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      getCustomPackageName(filepath.Base(filePath), appName),
-				Namespace: globals.GetProjectNamespace(resource.Name),
+				Namespace: projectNS,
 			},
 		}
 
