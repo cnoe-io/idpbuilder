@@ -18,6 +18,7 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/printer/types"
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// Type aliases for convenience
+type CustomPackageList = v1alpha1.CustomPackageList
+type ListOptions = client.ListOptions
 
 const (
 	IdpbuilderBinaryLocation = "../../../idpbuilder"
