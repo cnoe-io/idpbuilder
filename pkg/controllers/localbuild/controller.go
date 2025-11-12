@@ -248,22 +248,27 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 		}
 	}
 
-	for _, s := range resource.Spec.PackageConfigs.CustomPackageDirs {
-		result, err := r.reconcileCustomPkgDir(ctx, resource, s)
+	// Process packages in REVERSE order (highest priority first) to avoid creating
+	// lower priority packages first then having to delete them
+	for i := len(resource.Spec.PackageConfigs.CustomPackageDirs) - 1; i >= 0; i-- {
+		s := resource.Spec.PackageConfigs.CustomPackageDirs[i]
+		result, err := r.reconcileCustomPkgDir(ctx, resource, s, i)
 		if err != nil {
 			return result, err
 		}
 	}
 
-	for _, s := range resource.Spec.PackageConfigs.CustomPackageFiles {
-		result, err := r.reconcileCustomPkgFile(ctx, resource, s)
+	for i := len(resource.Spec.PackageConfigs.CustomPackageFiles) - 1; i >= 0; i-- {
+		s := resource.Spec.PackageConfigs.CustomPackageFiles[i]
+		result, err := r.reconcileCustomPkgFile(ctx, resource, s, i)
 		if err != nil {
 			return result, err
 		}
 	}
 
-	for _, s := range resource.Spec.PackageConfigs.CustomPackageUrls {
-		result, err := r.reconcileCustomPkgUrl(ctx, resource, s)
+	for i := len(resource.Spec.PackageConfigs.CustomPackageUrls) - 1; i >= 0; i-- {
+		s := resource.Spec.PackageConfigs.CustomPackageUrls[i]
+		result, err := r.reconcileCustomPkgUrl(ctx, resource, s, i)
 		if err != nil {
 			return result, err
 		}
@@ -436,6 +441,8 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 	b []byte,
 	filePath string,
 	remote *util.KustomizeRemote,
+	priority int,
+	sourcePath string,
 ) error {
 	o := &unstructured.Unstructured{}
 	_, gvk, fErr := scheme.Codecs.UniversalDeserializer().Decode(b, nil, o)
@@ -447,10 +454,55 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 		kind := o.GetKind()
 		appName := o.GetName()
 		appNS := o.GetNamespace()
+
+		// Check if a higher-priority CustomPackage already exists for this app
+		projectNS := globals.GetProjectNamespace(resource.Name)
+		existingPkgs := &v1alpha1.CustomPackageList{}
+		if err := r.Client.List(ctx, existingPkgs, client.InNamespace(projectNS)); err != nil {
+			return fmt.Errorf("listing existing custom packages: %w", err)
+		}
+
+		for i := range existingPkgs.Items {
+			existingPkg := &existingPkgs.Items[i]
+			// Check if this package is for the same ArgoCD app
+			if existingPkg.Spec.ArgoCD.Name == appName {
+				// Get existing package's priority
+				existingPriorityStr, exists := existingPkg.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation]
+				if exists {
+					var existingPriority int
+					if _, err := fmt.Sscanf(existingPriorityStr, "%d", &existingPriority); err == nil {
+						if existingPriority > priority {
+							// A higher priority package already exists, skip this one
+							existingSourcePath := existingPkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
+							log.FromContext(ctx).Info("Skipping CustomPackage creation - higher priority package already exists",
+								"appName", appName,
+								"skippingPackage", sourcePath,
+								"skippingPriority", priority,
+								"keepingPackage", existingSourcePath,
+								"keepingPriority", existingPriority)
+							return nil
+						} else if existingPriority < priority {
+							// We have higher priority, delete the existing lower-priority package
+							existingSourcePath := existingPkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
+							log.FromContext(ctx).Info("Deleting lower priority CustomPackage",
+								"appName", appName,
+								"deletingPackage", existingSourcePath,
+								"deletingPriority", existingPriority,
+								"usingPackage", sourcePath,
+								"usingPriority", priority)
+							if err := r.Client.Delete(ctx, existingPkg); err != nil && !k8serrors.IsNotFound(err) {
+								return fmt.Errorf("deleting lower priority package: %w", err)
+							}
+						}
+					}
+				}
+			}
+		}
+
 		customPkg := &v1alpha1.CustomPackage{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      getCustomPackageName(filepath.Base(filePath), appName),
-				Namespace: globals.GetProjectNamespace(resource.Name),
+				Namespace: projectNS,
 			},
 		}
 
@@ -465,6 +517,8 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 			}
 
 			util.SetCLIStartTimeAnnotationValue(customPkg.ObjectMeta.Annotations, cliStartTime)
+			customPkg.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation] = fmt.Sprintf("%d", priority)
+			customPkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation] = sourcePath
 
 			customPkg.Spec = v1alpha1.CustomPackageSpec{
 				Replicate:           true,
@@ -498,7 +552,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkg(
 	return nil
 }
 
-func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resource *v1alpha1.Localbuild, pkgUrl string) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resource *v1alpha1.Localbuild, pkgUrl string, priority int) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	remote, err := util.NewKustomizeRemote(pkgUrl)
@@ -533,7 +587,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resour
 			continue
 		}
 
-		rErr := r.reconcileCustomPkg(ctx, resource, b, yamlFile, remote)
+		rErr := r.reconcileCustomPkg(ctx, resource, b, yamlFile, remote, priority, pkgUrl)
 		if rErr != nil {
 			logger.Error(rErr, "reconciling custom pkg", "file", yamlFile, "pkgUrl", pkgUrl)
 		}
@@ -541,7 +595,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgUrl(ctx context.Context, resour
 	return ctrl.Result{}, nil
 }
 
-func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resource *v1alpha1.Localbuild, pkgDir string) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resource *v1alpha1.Localbuild, pkgDir string, priority int) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	files, err := os.ReadDir(pkgDir)
@@ -562,7 +616,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 			continue
 		}
 
-		rErr := r.reconcileCustomPkg(ctx, resource, b, filePath, nil)
+		rErr := r.reconcileCustomPkg(ctx, resource, b, filePath, nil, priority, pkgDir)
 		if rErr != nil {
 			logger.Error(rErr, "reconciling custom pkg", "file", filePath, "pkgDir", pkgDir)
 		}
@@ -571,7 +625,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgDir(ctx context.Context, resour
 	return ctrl.Result{}, nil
 }
 
-func (r *LocalbuildReconciler) reconcileCustomPkgFile(ctx context.Context, resource *v1alpha1.Localbuild, pkgFile string) (ctrl.Result, error) {
+func (r *LocalbuildReconciler) reconcileCustomPkgFile(ctx context.Context, resource *v1alpha1.Localbuild, pkgFile string, priority int) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
 	file, err := os.Open(pkgFile)
@@ -598,7 +652,7 @@ func (r *LocalbuildReconciler) reconcileCustomPkgFile(ctx context.Context, resou
 		return ctrl.Result{}, fmt.Errorf("reading file, %s: %w", pkgFile, err)
 	}
 
-	rErr := r.reconcileCustomPkg(ctx, resource, b, pkgFile, nil)
+	rErr := r.reconcileCustomPkg(ctx, resource, b, pkgFile, nil, priority, pkgFile)
 	if rErr != nil {
 		logger.Error(rErr, "reconciling custom pkg", "file", pkgFile)
 	}

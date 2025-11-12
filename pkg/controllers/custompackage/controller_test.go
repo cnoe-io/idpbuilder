@@ -709,3 +709,220 @@ func TestReconcileHelmValueObject(t *testing.T) {
 	expectJson := `{"arrayMap":[{"nested":{"test":""},"test":""}],"arrayString":["abc",""],"bool":false,"int":456,"nested":{"bool":true,"int":123,"repoURLGit":""},"repoURLGit":""}`
 	assert.JSONEq(t, expectJson, string(source.Helm.ValuesObject.Raw))
 }
+
+func TestPackagePriority(t *testing.T) {
+	s := k8sruntime.NewScheme()
+	sb := k8sruntime.NewSchemeBuilder(
+		v1.AddToScheme,
+		argov1alpha1.AddToScheme,
+		v1alpha1.AddToScheme,
+	)
+	sb.AddToScheme(s)
+	testEnv := &envtest.Environment{
+		CRDDirectoryPaths: []string{
+			filepath.Join("..", "resources"),
+			"../localbuild/resources/argo/install.yaml",
+		},
+		ErrorIfCRDPathMissing: true,
+		Scheme:                s,
+		BinaryAssetsDirectory: filepath.Join("..", "..", "..", "bin", "k8s",
+			fmt.Sprintf("1.29.1-%s-%s", runtime.GOOS, runtime.GOARCH)),
+	}
+
+	cfg, err := testEnv.Start()
+	require.NoError(t, err)
+	defer testEnv.Stop()
+
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: s,
+	})
+	require.NoError(t, err)
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	stoppedCh := make(chan error)
+	go func() {
+		err := mgr.Start(ctx)
+		stoppedCh <- err
+	}()
+
+	defer func() {
+		ctxCancel()
+		err := <-stoppedCh
+		if err != nil {
+			t.Errorf("Starting controller manager: %v", err)
+			t.FailNow()
+		}
+	}()
+
+	r := &Reconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("test-custompkg-controller"),
+	}
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	// Create namespaces
+	for _, n := range []string{"argocd", "test"} {
+		ns := v1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: n,
+			},
+		}
+		err = mgr.GetClient().Create(context.Background(), &ns)
+		if err != nil {
+			t.Fatalf("creating test ns: %v", err)
+		}
+	}
+
+	// Create two CustomPackages with the same app name but different priorities
+	// Package 1 has priority 0 (from first --package argument)
+	pkg1 := v1alpha1.CustomPackage{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pkg1-my-app",
+			Namespace: "test",
+			UID:       "pkg1",
+			Annotations: map[string]string{
+				v1alpha1.PackagePriorityAnnotation:   "0",
+				v1alpha1.PackageSourcePathAnnotation: "/path/to/package1",
+			},
+		},
+		Spec: v1alpha1.CustomPackageSpec{
+			Replicate:           true,
+			GitServerURL:        "https://cnoe.io",
+			InternalGitServeURL: "http://internal.cnoe.io",
+			ArgoCD: v1alpha1.ArgoCDPackageSpec{
+				ApplicationFile: filepath.Join(cwd, "test/resources/customPackages/testDir/app.yaml"),
+				Name:            "my-app",
+				Namespace:       "argocd",
+				Type:            "Application",
+			},
+		},
+	}
+
+	// Package 2 has priority 1 (from second --package argument, should win)
+	pkg2 := v1alpha1.CustomPackage{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pkg2-my-app",
+			Namespace: "test",
+			UID:       "pkg2",
+			Annotations: map[string]string{
+				v1alpha1.PackagePriorityAnnotation:   "1",
+				v1alpha1.PackageSourcePathAnnotation: "/path/to/package2",
+			},
+		},
+		Spec: v1alpha1.CustomPackageSpec{
+			Replicate:           true,
+			GitServerURL:        "https://cnoe.io",
+			InternalGitServeURL: "http://internal.cnoe.io",
+			ArgoCD: v1alpha1.ArgoCDPackageSpec{
+				ApplicationFile: filepath.Join(cwd, "test/resources/customPackages/testDir/app.yaml"),
+				Name:            "my-app",
+				Namespace:       "argocd",
+				Type:            "Application",
+			},
+		},
+	}
+
+	// Create the CustomPackages in the cluster
+	err = mgr.GetClient().Create(context.Background(), &pkg1)
+	require.NoError(t, err)
+	err = mgr.GetClient().Create(context.Background(), &pkg2)
+	require.NoError(t, err)
+
+	// Test priority resolution
+	t.Run("lower priority package should not reconcile", func(t *testing.T) {
+		shouldReconcile, err := r.shouldReconcile(context.Background(), &pkg1)
+		assert.NoError(t, err)
+		assert.False(t, shouldReconcile, "pkg1 (priority 0) should not reconcile when pkg2 (priority 1) exists")
+	})
+
+	t.Run("higher priority package should reconcile", func(t *testing.T) {
+		shouldReconcile, err := r.shouldReconcile(context.Background(), &pkg2)
+		assert.NoError(t, err)
+		assert.True(t, shouldReconcile, "pkg2 (priority 1) should reconcile as it has highest priority")
+	})
+
+	t.Run("getPackagePriority should extract priority correctly", func(t *testing.T) {
+		priority1, err := getPackagePriority(&pkg1)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, priority1)
+
+		priority2, err := getPackagePriority(&pkg2)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, priority2)
+	})
+}
+
+func TestGetPackagePriority(t *testing.T) {
+	t.Run("valid priority annotation", func(t *testing.T) {
+		pkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					v1alpha1.PackagePriorityAnnotation: "5",
+				},
+			},
+		}
+		priority, err := getPackagePriority(pkg)
+		assert.NoError(t, err)
+		assert.Equal(t, 5, priority)
+	})
+
+	t.Run("missing annotations", func(t *testing.T) {
+		pkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{},
+		}
+		_, err := getPackagePriority(pkg)
+		assert.Error(t, err)
+	})
+
+	t.Run("missing priority annotation", func(t *testing.T) {
+		pkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					"other": "value",
+				},
+			},
+		}
+		_, err := getPackagePriority(pkg)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid priority format", func(t *testing.T) {
+		pkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					v1alpha1.PackagePriorityAnnotation: "invalid",
+				},
+			},
+		}
+		_, err := getPackagePriority(pkg)
+		assert.Error(t, err)
+	})
+
+	t.Run("zero priority", func(t *testing.T) {
+		pkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					v1alpha1.PackagePriorityAnnotation: "0",
+				},
+			},
+		}
+		priority, err := getPackagePriority(pkg)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, priority)
+	})
+
+	t.Run("large priority value", func(t *testing.T) {
+		pkg := &v1alpha1.CustomPackage{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					v1alpha1.PackagePriorityAnnotation: "1000",
+				},
+			},
+		}
+		priority, err := getPackagePriority(pkg)
+		assert.NoError(t, err)
+		assert.Equal(t, 1000, priority)
+	})
+}

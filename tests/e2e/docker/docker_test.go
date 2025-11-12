@@ -48,6 +48,7 @@ func Test_CreateDocker(t *testing.T) {
 	testCreatePath(t)
 	testCreatePort(t)
 	testCustomPkg(t)
+	testPackagePriority(t)
 }
 
 // test idpbuilder create
@@ -161,4 +162,66 @@ func testCustomPkg(t *testing.T) {
 		}
 	}
 	assert.Empty(t, expectedRepoNames)
+}
+
+// testPackagePriority tests the priority-based package reconciliation feature
+// where multiple packages for the same app can be specified, and only the highest priority wins
+func testPackagePriority(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	defer CleanUpDocker(t)
+
+	// Create with multiple package directories
+	// The packages will be assigned priorities based on their order (0, 1, 2, ...)
+	cmdString := "create --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir --package ../../../pkg/controllers/custompackage/test/resources/customPackages/testDir2"
+
+	t.Log(fmt.Sprintf("running %s to test package priority", cmdString))
+	cmd := exec.CommandContext(ctx, e2e.IdpbuilderBinaryLocation, strings.Split(cmdString, " ")...)
+	b, err := cmd.CombinedOutput()
+	assert.NoError(t, err, fmt.Sprintf("error while running create: %s, %s", err, b))
+
+	kubeClient, err := e2e.GetKubeClient()
+	assert.NoError(t, err, fmt.Sprintf("error while getting client: %s", err))
+	if err != nil {
+		assert.FailNow(t, "failed creating cluster")
+	}
+
+	// Wait for core packages to be ready
+	e2e.TestArgoCDApps(ctx, t, kubeClient, e2e.CorePackages)
+
+	// Verify CustomPackages have priority annotations
+	t.Log("Verifying CustomPackages have correct priority annotations")
+
+	customPkgList := &e2e.CustomPackageList{}
+	err = kubeClient.List(ctx, customPkgList, &e2e.ListOptions{Namespace: "idpbuilder-localdev"})
+	assert.NoError(t, err, "failed to list custom packages")
+
+	// Verify that packages have priority annotations
+	foundPriorities := make(map[string]string)
+	for _, pkg := range customPkgList.Items {
+		if pkg.ObjectMeta.Annotations != nil {
+			if priority, exists := pkg.ObjectMeta.Annotations["cnoe.io/package-priority"]; exists {
+				t.Logf("Package %s has priority: %s", pkg.Name, priority)
+				foundPriorities[pkg.Name] = priority
+			}
+			if sourcePath, exists := pkg.ObjectMeta.Annotations["cnoe.io/package-source-path"]; exists {
+				t.Logf("Package %s has source path: %s", pkg.Name, sourcePath)
+			}
+		}
+	}
+
+	// At least some packages should have priority annotations
+	assert.NotEmpty(t, foundPriorities, "expected custom packages to have priority annotations")
+
+	// Wait for custom packages to reconcile
+	time.Sleep(10 * time.Second)
+
+	// Verify apps are deployed
+	expectedApps := map[string]string{
+		"my-app":    "argocd",
+		"guestbook": "argocd",
+	}
+	e2e.TestArgoCDApps(ctx, t, kubeClient, expectedApps)
+
+	t.Log("Package priority test completed successfully")
 }

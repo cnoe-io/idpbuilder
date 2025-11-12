@@ -72,8 +72,173 @@ func (r *Reconciler) postProcessReconcile(ctx context.Context, req ctrl.Request,
 	}
 }
 
+// shouldTakeOverGitRepository checks if this CustomPackage should take over an existing GitRepository.
+// Returns true if this package has higher priority than the current owner.
+func (r *Reconciler) shouldTakeOverGitRepository(ctx context.Context, resource *v1alpha1.CustomPackage, existingRepo *v1alpha1.GitRepository) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	// Get this package's priority
+	thisPriority, err := getPackagePriority(resource)
+	if err != nil {
+		// If no priority annotation, assume it's a legacy package - allow takeover for backward compat
+		logger.V(1).Info("no priority on this package, allowing takeover", "package", resource.Name)
+		return true, nil
+	}
+
+	// Check the existing repo's owner references
+	for _, ownerRef := range existingRepo.GetOwnerReferences() {
+		if ownerRef.Kind == "CustomPackage" {
+			// Fetch the owner CustomPackage to get its priority
+			ownerPkg := &v1alpha1.CustomPackage{}
+			err := r.Client.Get(ctx, client.ObjectKey{
+				Name:      ownerRef.Name,
+				Namespace: existingRepo.Namespace,
+			}, ownerPkg)
+
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// Owner doesn't exist anymore, we can take over
+					logger.Info("GitRepository owner not found, taking over", "repo", existingRepo.Name)
+					return true, nil
+				}
+				return false, fmt.Errorf("getting owner package: %w", err)
+			}
+
+			// Get owner's priority
+			ownerPriority, err := getPackagePriority(ownerPkg)
+			if err != nil {
+				// Owner has no priority, we can take over
+				logger.V(1).Info("GitRepository owner has no priority, taking over", "repo", existingRepo.Name)
+				return true, nil
+			}
+
+			// Only take over if we have HIGHER priority (higher number wins)
+			if thisPriority > ownerPriority {
+				logger.Info("Taking over GitRepository from lower priority owner",
+					"repo", existingRepo.Name,
+					"ourPriority", thisPriority,
+					"ownerPriority", ownerPriority,
+					"owner", ownerPkg.Name)
+				return true, nil
+			} else {
+				logger.Info("Not taking over GitRepository owned by higher/equal priority package",
+					"repo", existingRepo.Name,
+					"ourPriority", thisPriority,
+					"ownerPriority", ownerPriority,
+					"owner", ownerPkg.Name)
+				return false, nil
+			}
+		}
+	}
+
+	// No CustomPackage owner found, we can take over
+	logger.V(1).Info("GitRepository has no CustomPackage owner, taking over", "repo", existingRepo.Name)
+	return true, nil
+}
+
+// shouldReconcile checks if this CustomPackage should proceed with reconciliation.
+// It returns true only if this is the highest priority CustomPackage for the same app.
+func (r *Reconciler) shouldReconcile(ctx context.Context, resource *v1alpha1.CustomPackage) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	// Get this package's priority
+	thisPriority, err := getPackagePriority(resource)
+	if err != nil {
+		// If no priority annotation, assume it's a legacy package and allow it
+		logger.V(1).Info("no priority annotation found, assuming legacy package", "name", resource.Name)
+		return true, nil
+	}
+
+	// List all CustomPackages in the same namespace
+	pkgList := &v1alpha1.CustomPackageList{}
+	err = r.Client.List(ctx, pkgList, client.InNamespace(resource.Namespace))
+	if err != nil {
+		return false, fmt.Errorf("listing custom packages: %w", err)
+	}
+
+	// Check if any other CustomPackage has the same app name with higher priority
+	for i := range pkgList.Items {
+		pkg := &pkgList.Items[i]
+
+		// Skip self
+		if pkg.Name == resource.Name {
+			continue
+		}
+
+		// Skip if different app name
+		if pkg.Spec.ArgoCD.Name != resource.Spec.ArgoCD.Name {
+			continue
+		}
+
+		// Get the other package's priority
+		otherPriority, err := getPackagePriority(pkg)
+		if err != nil {
+			// If the other package has no priority, this one wins
+			continue
+		}
+
+		// If another package has higher priority, this one should not reconcile
+		if otherPriority > thisPriority {
+			thisSource := resource.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
+			otherSource := pkg.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation]
+			logger.Info("Yielding to higher priority package - skipping all reconciliation",
+				"appName", resource.Spec.ArgoCD.Name,
+				"yieldingPackage", thisSource,
+				"yieldingPriority", thisPriority,
+				"activePackage", otherSource,
+				"activePriority", otherPriority)
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+// getPackagePriority extracts the priority from a CustomPackage's annotations
+func getPackagePriority(pkg *v1alpha1.CustomPackage) (int, error) {
+	if pkg.ObjectMeta.Annotations == nil {
+		return 0, fmt.Errorf("no annotations")
+	}
+
+	priorityStr, ok := pkg.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation]
+	if !ok {
+		return 0, fmt.Errorf("no priority annotation")
+	}
+
+	var priority int
+	_, err := fmt.Sscanf(priorityStr, "%d", &priority)
+	if err != nil {
+		return 0, fmt.Errorf("invalid priority format: %w", err)
+	}
+
+	return priority, nil
+}
+
 // create an in-cluster repository CR, update the application spec, then apply
 func (r *Reconciler) reconcileCustomPackage(ctx context.Context, resource *v1alpha1.CustomPackage) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+
+	// Check if this package should reconcile
+	shouldReconcile, err := r.shouldReconcile(ctx, resource)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("checking if should reconcile: %w", err)
+	}
+
+	if !shouldReconcile {
+		// This package has been superseded by a higher priority package
+		// Mark as not synced and don't update resources, and don't requeue
+		logger.Info("package superseded by higher priority, skipping reconciliation",
+			"name", resource.Name,
+			"appName", resource.Spec.ArgoCD.Name,
+			"sourcePath", resource.ObjectMeta.Annotations[v1alpha1.PackageSourcePathAnnotation])
+		resource.Status.Synced = false
+		return ctrl.Result{}, nil
+	}
+
+	logger.V(1).Info("proceeding with reconciliation as highest priority package",
+		"name", resource.Name,
+		"appName", resource.Spec.ArgoCD.Name)
+
 	b, err := r.getArgoCDAppFile(ctx, resource)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("reading file %s: %w", resource.Spec.ArgoCD.ApplicationFile, err)
@@ -219,7 +384,12 @@ func (r *Reconciler) reconcileArgoCDApp(ctx context.Context, resource *v1alpha1.
 	}
 	resource.Status.GitRepositoryRefs = repoRefs
 	resource.Status.Synced = appSourcesSynced
-	return ctrl.Result{RequeueAfter: requeueTime}, nil
+
+	// Only requeue if not synced yet to avoid continuous reconciliation
+	if !appSourcesSynced {
+		return ctrl.Result{RequeueAfter: requeueTime}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *Reconciler) reconcileArgoCDAppSet(ctx context.Context, resource *v1alpha1.CustomPackage, appSet *argov1alpha1.ApplicationSet) (ctrl.Result, error) {
@@ -270,7 +440,11 @@ func (r *Reconciler) reconcileArgoCDAppSet(ctx context.Context, resource *v1alph
 
 	resource.Status.Synced = resource.Status.Synced && gitGeneratorsSynced
 
-	return ctrl.Result{RequeueAfter: requeueTime}, nil
+	// Only requeue if not synced yet to avoid continuous reconciliation
+	if !resource.Status.Synced {
+		return ctrl.Result{RequeueAfter: requeueTime}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 // create a gitrepository custom resource, then let the git repository controller take care of the rest
@@ -285,6 +459,7 @@ func (r *Reconciler) reconcileArgoCDSource(ctx context.Context, resource *v1alph
 }
 
 func (r *Reconciler) reconcileArgoCDSourceFromRemote(ctx context.Context, resource *v1alpha1.CustomPackage, appName, repoURL string) (ctrl.Result, *v1alpha1.GitRepository, error) {
+	logger := log.FromContext(ctx)
 	relativePath := strings.TrimPrefix(repoURL, v1alpha1.CNOEURIScheme)
 	// no guarantee that this path exists
 	dirPath := filepath.Join(resource.Spec.RemoteRepository.Path, relativePath)
@@ -296,9 +471,34 @@ func (r *Reconciler) reconcileArgoCDSourceFromRemote(ctx context.Context, resour
 		},
 	}
 
+	// Check if GitRepository already exists
+	existingRepo := &v1alpha1.GitRepository{}
+	getErr := r.Client.Get(ctx, client.ObjectKeyFromObject(repo), existingRepo)
+
+	if getErr == nil {
+		// GitRepository exists - check if we should take it over
+		shouldTakeOver, checkErr := r.shouldTakeOverGitRepository(ctx, resource, existingRepo)
+		if checkErr != nil {
+			return ctrl.Result{}, nil, fmt.Errorf("checking if should take over git repository: %w", checkErr)
+		}
+
+		if !shouldTakeOver {
+			// A higher/equal priority package owns this, just return it without updating
+			logger.V(1).Info("Using existing GitRepository owned by higher priority package",
+				"repo", repo.Name,
+				"ourPriority", resource.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation])
+			return ctrl.Result{}, existingRepo, nil
+		}
+		// We should take it over - proceed with CreateOrUpdate below
+	} else if !errors.IsNotFound(getErr) {
+		return ctrl.Result{}, nil, getErr
+	}
+	// GitRepository doesn't exist or we should take it over
+
 	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
 
-	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
+	var err error
+	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, repo, func() error {
 		if err := controllerutil.SetControllerReference(resource, repo, r.Scheme); err != nil {
 			return err
 		}
@@ -348,6 +548,30 @@ func (r *Reconciler) reconcileArgoCDSourceFromLocal(ctx context.Context, resourc
 			Namespace: resource.Namespace,
 		},
 	}
+
+	// Check if GitRepository already exists
+	existingRepo := &v1alpha1.GitRepository{}
+	getErr := r.Client.Get(ctx, client.ObjectKeyFromObject(repo), existingRepo)
+
+	if getErr == nil {
+		// GitRepository exists - check if we should take it over
+		shouldTakeOver, checkErr := r.shouldTakeOverGitRepository(ctx, resource, existingRepo)
+		if checkErr != nil {
+			return ctrl.Result{}, nil, fmt.Errorf("checking if should take over git repository: %w", checkErr)
+		}
+
+		if !shouldTakeOver {
+			// A higher/equal priority package owns this, just return it without updating
+			logger.V(1).Info("Using existing GitRepository owned by higher priority package",
+				"repo", repo.Name,
+				"ourPriority", resource.ObjectMeta.Annotations[v1alpha1.PackagePriorityAnnotation])
+			return ctrl.Result{}, existingRepo, nil
+		}
+		// We should take it over - proceed with CreateOrUpdate below
+	} else if !errors.IsNotFound(getErr) {
+		return ctrl.Result{}, nil, getErr
+	}
+	// GitRepository doesn't exist or we should take it over
 
 	cliStartTime, _ := util.GetCLIStartTimeAnnotationValue(resource.ObjectMeta.Annotations)
 
@@ -469,7 +693,8 @@ func (r *Reconciler) reconcileHelmValueObjectSource(ctx context.Context,
 			val[k] = v
 		}
 	}
-	return ctrl.Result{RequeueAfter: requeueTime}, nil
+	// No need to requeue for helm value processing
+	return ctrl.Result{}, nil
 }
 
 func localRepoName(appName, dir string) string {
