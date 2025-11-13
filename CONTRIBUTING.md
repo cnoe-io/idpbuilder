@@ -123,11 +123,47 @@ This script runs helm template to generate most files. See the values file for m
 ingress-nginx manifests are generated using a bash script available [here](./hack/ingress-nginx/generate-manifests.sh).
 This script runs kustomize to modify the basic installation manifests provided by ingress-nginx.
 
+## Installation Flow
+This diagram highlights the installation flow of idpbuilder and the various core packages. 
+
+```mermaid
+flowchart TD
+    subgraph MainCluster
+        direction TB
+        subgraph ArgoCD[ArgoCD Apps]
+            ArgoCD_App[ArgoCD]
+            Ingress[Ingress-nginx]
+            Gitea_App[Gitea]
+        end
+
+        subgraph Gitea[Git Repositories]
+            Gitea_ArgoCD[ArgoCD]
+            Gitea_Ingress[Ingress-nginx]
+            Gitea_Gitea[Gitea]
+        end
+
+        ArgoCD -->|GitOps| Gitea
+    end
+
+    CorePackages[Core Packages: \nArgoCD, \nGitea, \nIngress-nginx]
+    LocalDir[Local Directory: \n- argocd-app.yaml \n- manifest files]
+
+    subgraph Process
+        CLI[IDPBUILDER CLI]
+        CLI -->|1. Create \nKind Cluster| CorePackages
+        CorePackages -->|2. Install| MainCluster
+        CorePackages -->|3. Create \nRepositories and hand over \ncontrol to ArgoCD| Gitea
+        Gitea -->|4. Read| CLI
+        Gitea -->|5. Sync Custom Packages| LocalDir
+    end
+
+```
 ## Architecture
 
 idpbuilder is made of two phases: CLI and Kubernetes controllers.
 
 ![idpbuilder.png](docs/images/idpbuilder.png)
+
 
 ### CLI
 
