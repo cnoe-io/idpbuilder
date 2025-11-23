@@ -1,0 +1,51 @@
+name: Zig Tests
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+    paths:
+      - '**.zig'
+      - 'build.zig'
+      - '.github/workflows/zig-test.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.zig'
+      - 'build.zig'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-zig
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    container:
+      image: ghcr.io/${{ github.repository }}-zig:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Verify zig installation
+        run: zig version
+
+      - name: Build zig project
+        run: |
+          if [ -f "build.zig" ]; then
+            zig build
+          else
+            echo "No build.zig found, skipping build"
+          fi
+
+      - name: Run zig tests
+        run: |
+          if [ -f "build.zig" ]; then
+            zig build test
+          else
+            echo "No build.zig found, skipping tests"
+          fi
