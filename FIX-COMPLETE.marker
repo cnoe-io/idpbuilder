@@ -1,0 +1,8 @@
+Completed at: 2025-12-02T08:07:02Z
+Effort: E1.2.1-push-command-skeleton
+Branch: idpbuilder-oci-push/phase-1-wave-2-effort-E1.2.1-push-command-skeleton
+Fixes applied: 3 (BUG-001, BUG-002, BUG-003)
+Tests passing: Yes (18/18 push package tests pass)
+Build status: Success
+Final commit: 368fec7 - fix(push): resolve mock injection and parseImageRef bugs
+Status: FIXES COMPLETE
