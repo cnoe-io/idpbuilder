@@ -1,8 +1,0 @@
-{
-  "created_at": "2025-12-01T10:06:20Z",
-  "created_timestamp": 1764583580,
-  "branch": "idpbuilder-oci-push/phase-1-wave-1-effort-E1.1.1-credential-resolution",
-  "upstream": "origin/idpbuilder-oci-push/phase-1-wave-1-effort-E1.1.1-credential-resolution",
-  "commit": "0eba39b302b7197fc876de34d5ebe4142bab5e5f",
-  "created_by_state": "CREATE_NEXT_INFRASTRUCTURE"
-}
