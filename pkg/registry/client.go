@@ -5,7 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
+	"sync"
+	"time"
 )
 
 // PushResult contains information about a successful push operation.
@@ -117,67 +118,157 @@ type ProgressReporter interface {
 // Used when progress reporting is disabled or for testing.
 type NoOpProgressReporter struct{}
 
-func (n *NoOpProgressReporter) Start(imageRef string, totalLayers int)              {}
+func (n *NoOpProgressReporter) Start(imageRef string, totalLayers int)                 {}
 func (n *NoOpProgressReporter) LayerProgress(layerDigest string, current, total int64) {}
-func (n *NoOpProgressReporter) LayerComplete(layerDigest string)                     {}
-func (n *NoOpProgressReporter) Complete(result *PushResult)                          {}
-func (n *NoOpProgressReporter) Error(err error)                                      {}
+func (n *NoOpProgressReporter) LayerComplete(layerDigest string)                       {}
+func (n *NoOpProgressReporter) Complete(result *PushResult)                            {}
+func (n *NoOpProgressReporter) Error(err error)                                        {}
 
 // StderrProgressReporter writes progress to stderr.
 // This is the default progress reporter for user-facing operations.
 type StderrProgressReporter struct {
 	Out io.Writer
+
+	// Internal fields for tracking progress
+	mu          sync.Mutex
+	imageRef    string
+	totalLayers int
+	layerStatus map[string]*layerProgress
+	startTime   time.Time
 }
 
+// layerProgress tracks the upload progress for a single layer
+type layerProgress struct {
+	current int64
+	total   int64
+	done    bool
+}
+
+// Start is called when push begins
 func (s *StderrProgressReporter) Start(imageRef string, totalLayers int) {
-	if s.Out != nil {
-		fmt.Fprintf(s.Out, "Pushing %s (%d layers)...\n", imageRef, totalLayers)
+	if s.Out == nil {
+		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.imageRef = imageRef
+	s.totalLayers = totalLayers
+	s.layerStatus = make(map[string]*layerProgress)
+	s.startTime = time.Now()
+
+	fmt.Fprintf(s.Out, "Pushing %s (%d layers)...\n", imageRef, totalLayers)
 }
 
+// LayerProgress reports layer upload progress at milestones (25%, 50%, 75%)
 func (s *StderrProgressReporter) LayerProgress(layerDigest string, current, total int64) {
-	if s.Out != nil && total > 0 {
-		percent := (current * 100) / total
+	if s.Out == nil || total <= 0 {
+		return
+	}
 
-		// Report at 25% milestones
-		if percent%25 == 0 && percent > 0 {
-			shortDigest := shortenDigest(layerDigest, 12)
-			fmt.Fprintf(s.Out, "  %s: %d%%\n", shortDigest, percent)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Initialize layer status if not exists
+	if s.layerStatus[layerDigest] == nil {
+		s.layerStatus[layerDigest] = &layerProgress{}
+	}
+
+	lp := s.layerStatus[layerDigest]
+	oldPercent := int((lp.current * 100) / total)
+	newPercent := int((current * 100) / total)
+	lp.current = current
+	lp.total = total
+
+	// Only output at milestone percentages to reduce noise
+	milestones := []int{25, 50, 75}
+	for _, milestone := range milestones {
+		if oldPercent < milestone && newPercent >= milestone {
+			shortDigest := s.shortenDigest(layerDigest)
+			fmt.Fprintf(s.Out, "  %s: %d%% (%s / %s)\n",
+				shortDigest, newPercent,
+				s.formatBytes(current), s.formatBytes(total))
+			break
 		}
 	}
 }
 
+// LayerComplete marks a layer as done
 func (s *StderrProgressReporter) LayerComplete(layerDigest string) {
-	if s.Out != nil {
-		shortDigest := shortenDigest(layerDigest, 12)
-		fmt.Fprintf(s.Out, "  %s: done\n", shortDigest)
+	if s.Out == nil {
+		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.layerStatus[layerDigest] != nil {
+		s.layerStatus[layerDigest].done = true
+	}
+
+	shortDigest := s.shortenDigest(layerDigest)
+	fmt.Fprintf(s.Out, "  %s: done\n", shortDigest)
 }
 
+// Complete reports successful completion
 func (s *StderrProgressReporter) Complete(result *PushResult) {
-	if s.Out != nil {
-		fmt.Fprintf(s.Out, "Push complete: %s\n", result.Digest)
+	if s.Out == nil {
+		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	elapsed := time.Since(s.startTime).Round(time.Millisecond)
+	fmt.Fprintf(s.Out, "Push complete: %s (%s in %v)\n",
+		result.Digest, s.formatBytes(result.Size), elapsed)
 }
 
+// Error reports push failure
 func (s *StderrProgressReporter) Error(err error) {
-	if s.Out != nil {
-		fmt.Fprintf(s.Out, "Push failed: %v\n", err)
+	if s.Out == nil {
+		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	fmt.Fprintf(s.Out, "Push failed: %v\n", err)
 }
 
-// shortenDigest truncates a digest to a maximum length
-// removing the algorithm prefix if present (e.g., "sha256:" prefix)
-func shortenDigest(digest string, maxLen int) string {
-	// Remove algorithm prefix if present
-	if idx := strings.Index(digest, ":"); idx != -1 && idx < 10 {
-		digest = digest[idx+1:]
+// shortenDigest returns a readable shortened digest
+// sha256:abc123def456... -> sha256:abc123d
+func (s *StderrProgressReporter) shortenDigest(digest string) string {
+	if len(digest) <= 15 {
+		return digest
 	}
-
-	// Truncate to maxLen
-	if len(digest) > maxLen {
-		return digest[:maxLen]
+	// sha256:... format -> sha256:abc123d (keep sha256: prefix + 8 chars)
+	if len(digest) > 7 && digest[6] == ':' {
+		if len(digest) > 15 {
+			return digest[:15]
+		}
 	}
+	return digest[:15]
+}
 
-	return digest
+// formatBytes formats bytes as human-readable size
+// Examples: "512 B", "1.00 KB", "50.00 MB", "1.50 GB"
+func (s *StderrProgressReporter) formatBytes(bytes int64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.2f GB", float64(bytes)/float64(GB))
+	case bytes >= MB:
+		return fmt.Sprintf("%.2f MB", float64(bytes)/float64(MB))
+	case bytes >= KB:
+		return fmt.Sprintf("%.2f KB", float64(bytes)/float64(KB))
+	default:
+		return fmt.Sprintf("%d B", bytes)
+	}
 }
