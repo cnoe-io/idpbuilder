@@ -63,8 +63,11 @@ func init() {
 	PushCmd.Flags().BoolVar(&flagInsecure, "insecure", false, "Skip TLS verification")
 }
 
-// runPush is the main command execution function
-func runPush(cmd *cobra.Command, args []string) error {
+// runPushWithClients is the internal implementation with injectable dependencies
+// This allows tests to provide mock clients
+func runPushWithClients(cmd *cobra.Command, args []string,
+	daemonClient daemon.DaemonClient,
+	registryClient registry.RegistryClient) error {
 	imageRef := args[0]
 
 	// Setup context with signal handling for Ctrl+C (REQ-013)
@@ -78,17 +81,6 @@ func runPush(cmd *cobra.Command, args []string) error {
 		<-sigChan
 		cancel()
 	}()
-
-	// Create clients for dependency injection
-	// Note: These will be properly initialized in E1.2.2 and E1.2.3
-	var daemonClient daemon.DaemonClient
-	var registryClient registry.RegistryClient
-
-	// For now, these interfaces will be injected during testing
-	// In production, they will be created by their respective effort implementations
-	if daemonClient == nil || registryClient == nil {
-		return fmt.Errorf("daemon or registry client not initialized")
-	}
 
 	// Resolve credentials
 	env := &DefaultEnvironment{}
@@ -137,8 +129,24 @@ func runPush(cmd *cobra.Command, args []string) error {
 	}
 
 	// Output the pushed reference to stdout (REQ-001)
-	fmt.Println(result.Reference)
+	fmt.Fprintln(cmd.OutOrStdout(), result.Reference)
 	return nil
+}
+
+// runPush is the production entry point
+func runPush(cmd *cobra.Command, args []string) error {
+	// Create clients for dependency injection
+	// Note: These will be properly initialized in E1.2.2 and E1.2.3
+	var daemonClient daemon.DaemonClient
+	var registryClient registry.RegistryClient
+
+	// NOTE: This check ensures production code has properly initialized clients.
+	// During testing, use runPushWithClients which receives mock clients directly.
+	if daemonClient == nil || registryClient == nil {
+		return fmt.Errorf("daemon or registry client not initialized")
+	}
+
+	return runPushWithClients(cmd, args, daemonClient, registryClient)
 }
 
 // buildDestinationRef constructs the full registry reference
@@ -179,12 +187,36 @@ func parseImageRef(ref string) (repo, tag string) {
 	if lastColon > 0 {
 		// Check if the part after colon looks like a tag or port number
 		potentialTag := ref[lastColon+1:]
-		if strings.ContainsAny(potentialTag, "./:") {
-			// Looks like a port number or part of domain, not a tag
+
+		// Port numbers are purely numeric
+		// Tags can contain alphanumeric, dots, dashes, underscores
+		// Key insight: registry:port/image pattern has "/" after the port
+
+		// If there's a "/" after the colon, it's definitely a port (registry:port/image)
+		if strings.Contains(potentialTag, "/") {
 			return ref, ""
 		}
 
-		// It's a tag
+		// If it's purely numeric, likely a port number at start of ref
+		// But we need to check if there's a "/" before the colon
+		beforeColon := ref[:lastColon]
+		if !strings.Contains(beforeColon, "/") {
+			// No "/" before colon: could be "localhost:5000" (port) or "image:tag"
+			// Check if numeric - if so, likely a port
+			isAllDigits := true
+			for _, c := range potentialTag {
+				if c < '0' || c > '9' {
+					isAllDigits = false
+					break
+				}
+			}
+			if isAllDigits && len(potentialTag) <= 5 {
+				// Looks like a port number (1-65535 range, max 5 digits)
+				return ref, ""
+			}
+		}
+
+		// It's a tag (including semver like v1.0, alpine3.18)
 		return ref[:lastColon], potentialTag
 	}
 

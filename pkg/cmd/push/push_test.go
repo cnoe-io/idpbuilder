@@ -273,6 +273,30 @@ func TestParseImageRef(t *testing.T) {
 			expectRepo: "localhost:5000/myimage",
 			expectTag: "",
 		},
+		{
+			name:       "Semver tag v1.0",
+			ref:        "myimage:v1.0",
+			expectRepo: "myimage",
+			expectTag: "v1.0",
+		},
+		{
+			name:       "Semver tag v1.2.3",
+			ref:        "myimage:v1.2.3",
+			expectRepo: "myimage",
+			expectTag: "v1.2.3",
+		},
+		{
+			name:       "Alpine style tag",
+			ref:        "alpine:3.18",
+			expectRepo: "alpine",
+			expectTag: "3.18",
+		},
+		{
+			name:       "Registry with port and semver tag",
+			ref:        "localhost:5000/myimage:v1.0",
+			expectRepo: "localhost:5000/myimage",
+			expectTag: "v1.0",
+		},
 	}
 
 	for _, tt := range tests {
@@ -389,8 +413,27 @@ func createPushCmdWithDependencies(
 	daemonClient daemon.DaemonClient,
 	registryClient registry.RegistryClient,
 ) *PushCommandWrapper {
+	// Create a NEW command with the injected dependencies
+	testCmd := &cobra.Command{
+		Use:   "push IMAGE",
+		Short: "Push a local Docker image to an OCI registry",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPushWithClients(cmd, args, daemonClient, registryClient)
+		},
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+
+	// Copy flag definitions
+	testCmd.Flags().StringVarP(&flagRegistry, "registry", "r", DefaultRegistry, "Registry URL")
+	testCmd.Flags().StringVarP(&flagUsername, "username", "u", "", "Registry username")
+	testCmd.Flags().StringVarP(&flagPassword, "password", "p", "", "Registry password")
+	testCmd.Flags().StringVarP(&flagToken, "token", "t", "", "Registry token")
+	testCmd.Flags().BoolVar(&flagInsecure, "insecure", false, "Skip TLS verification")
+
 	return &PushCommandWrapper{
-		baseCmd: PushCmd,
+		baseCmd: testCmd,
 	}
 }
 
