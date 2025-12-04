@@ -1,8 +1,0 @@
-Completed at: 2025-12-01 15:40:25 UTC
-Effort: E1.1.1-credential-resolution
-Branch: idpbuilder-oci-push/phase-1-wave-1-effort-E1.1.1-credential-resolution
-Total lines: 302 lines (111 production + 191 tests)
-Files created: pkg/cmd/push/credentials.go, pkg/cmd/push/credentials_test.go
-Tests: All 9 tests passing (7 table-driven + 2 additional)
-Race detector: No races detected
-Status: IMPLEMENTATION COMPLETE
