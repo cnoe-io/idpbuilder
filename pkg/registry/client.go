@@ -3,7 +3,9 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strings"
 )
 
 // PushResult contains information about a successful push operation.
@@ -128,21 +130,54 @@ type StderrProgressReporter struct {
 }
 
 func (s *StderrProgressReporter) Start(imageRef string, totalLayers int) {
-	// Implementation in Wave 3 (E1.3.2)
+	if s.Out != nil {
+		fmt.Fprintf(s.Out, "Pushing %s (%d layers)...\n", imageRef, totalLayers)
+	}
 }
 
 func (s *StderrProgressReporter) LayerProgress(layerDigest string, current, total int64) {
-	// Implementation in Wave 3 (E1.3.2)
+	if s.Out != nil && total > 0 {
+		percent := (current * 100) / total
+
+		// Report at 25% milestones
+		if percent%25 == 0 && percent > 0 {
+			shortDigest := shortenDigest(layerDigest, 12)
+			fmt.Fprintf(s.Out, "  %s: %d%%\n", shortDigest, percent)
+		}
+	}
 }
 
 func (s *StderrProgressReporter) LayerComplete(layerDigest string) {
-	// Implementation in Wave 3 (E1.3.2)
+	if s.Out != nil {
+		shortDigest := shortenDigest(layerDigest, 12)
+		fmt.Fprintf(s.Out, "  %s: done\n", shortDigest)
+	}
 }
 
 func (s *StderrProgressReporter) Complete(result *PushResult) {
-	// Implementation in Wave 3 (E1.3.2)
+	if s.Out != nil {
+		fmt.Fprintf(s.Out, "Push complete: %s\n", result.Digest)
+	}
 }
 
 func (s *StderrProgressReporter) Error(err error) {
-	// Implementation in Wave 3 (E1.3.2)
+	if s.Out != nil {
+		fmt.Fprintf(s.Out, "Push failed: %v\n", err)
+	}
+}
+
+// shortenDigest truncates a digest to a maximum length
+// removing the algorithm prefix if present (e.g., "sha256:" prefix)
+func shortenDigest(digest string, maxLen int) string {
+	// Remove algorithm prefix if present
+	if idx := strings.Index(digest, ":"); idx != -1 && idx < 10 {
+		digest = digest[idx+1:]
+	}
+
+	// Truncate to maxLen
+	if len(digest) > maxLen {
+		return digest[:maxLen]
+	}
+
+	return digest
 }
