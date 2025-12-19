@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IDP Builder V2 Controller-Based Architecture">
+    <title>V2 Controller Architecture | IDP Builder</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        .docs-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .docs-sidebar {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+        .docs-sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .docs-sidebar li {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar a {
+            text-decoration: none;
+            color: var(--text-color);
+            padding: 0.5rem;
+            display: block;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .docs-sidebar a:hover,
+        .docs-sidebar a.active {
+            background-color: var(--bg-alt);
+            color: var(--primary-color);
+        }
+        .docs-content {
+            max-width: 900px;
+        }
+        .docs-content h1 {
+            margin-bottom: 1rem;
+        }
+        .docs-content h2 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .docs-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .docs-content p {
+            margin-bottom: 1rem;
+        }
+        .docs-content ul, .docs-content ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .docs-content li {
+            margin-bottom: 0.5rem;
+        }
+        .info-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+        .info-box p {
+            margin: 0;
+        }
+        .mermaid {
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+        /* Prism code block styling */
+        pre[class*="language-"] {
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+        code[class*="language-"] {
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+            .docs-sidebar {
+                position: relative;
+                top: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <h1>IDP Builder</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/docs">Docs</a></li>
+                <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="/docs">Overview</a></li>
+                    <li><a href="/docs#installation">Installation</a></li>
+                    <li><a href="/docs#getting-started">Getting Started</a></li>
+                    <li><a href="/docs#requirements">Requirements</a></li>
+                    <li><a href="/docs#configuration">Configuration</a></li>
+                    <li><a href="/docs/v2-architecture.html" class="active">V2 Architecture</a></li>
+                    <li><a href="/docs#contributing">Contributing</a></li>
+                    <li><a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">Full Docs ↗</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <h1>V2 Controller-Based Architecture</h1>
+                
+                <div class="info-box">
+                    <p><strong>Status:</strong> Proposal - This document describes the proposed V2 architecture for idpbuilder, transitioning from a CLI-driven installation model to a controller-based architecture.</p>
+                </div>
+
+                <h2 id="executive-summary">Executive Summary</h2>
+                <p>The V2 architecture represents a significant evolution of idpbuilder, transitioning from a CLI-driven installation model to a controller-based architecture. This change enables idpbuilder to function as a true Kubernetes-native platform, where infrastructure components and application workloads are managed declaratively through Kubernetes Custom Resources (CRs) and reconciliation loops.</p>
+
+                <h2 id="goals">Goals</h2>
+                <ul>
+                    <li><strong>Kubernetes-Native Management:</strong> Enable all functionality to be managed through kubectl and GitOps tools like ArgoCD</li>
+                    <li><strong>Separation of Concerns:</strong> Clearly delineate infrastructure provisioning from application/service management</li>
+                    <li><strong>Production Readiness:</strong> Support production workloads and virtualized control planes (e.g., vCluster, Cluster API)</li>
+                    <li><strong>Extensibility:</strong> Allow easier integration of additional services and customization by end users</li>
+                    <li><strong>Operational Excellence:</strong> Improve observability, debugging, and lifecycle management through standard Kubernetes patterns</li>
+                </ul>
+
+                <h2 id="benefits">Key Benefits</h2>
+                <ul>
+                    <li><strong>Kubernetes-Native:</strong> Everything manageable via kubectl, full GitOps compatibility, standard Kubernetes patterns</li>
+                    <li><strong>Operational Excellence:</strong> Better observability through conditions, events, and metrics; easier debugging with kubectl describe and logs</li>
+                    <li><strong>Flexibility:</strong> Easy component customization, support for alternative components, plugin architecture</li>
+                    <li><strong>Production-Ready:</strong> HA configurations supported, proper separation of concerns, infrastructure-agnostic</li>
+                    <li><strong>Extensibility:</strong> Third-party controllers can integrate, package ecosystem enablement, easier community contributions</li>
+                </ul>
+
+                <h2 id="high-level-design">High-Level Design</h2>
+                <p>The new architecture introduces a composable, provider-based system where platform components are defined as separate Custom Resources with duck-typed interfaces. This enables:</p>
+                <ul>
+                    <li>Multiple provider implementations running simultaneously</li>
+                    <li>Pluggable Git providers (Gitea, GitHub, GitLab)</li>
+                    <li>Pluggable Gateway providers (Nginx Ingress, Envoy Gateway, Istio Gateway)</li>
+                    <li>GitOps management (ArgoCD, Flux)</li>
+                </ul>
+
+                <div class="mermaid">
+graph TB
+    subgraph Infrastructure["Infrastructure Layer"]
+        CLI["CLI/Operator<br/>- Provisions Kubernetes cluster<br/>- Installs idpbuilder-controllers<br/>- Creates initial Platform CR"]
+    end
+    
+    subgraph Platform["Platform Controllers (On-Cluster)"]
+        PR["PlatformReconciler<br/>- Orchestrates platform bootstrap<br/>- References provider CRs<br/>- Aggregates component status"]
+        
+        subgraph GitProviders["Git Provider Controllers"]
+            GP1["GiteaProviderReconciler"]
+            GP2["GitHubProviderReconciler"]
+            GP3["GitLabProviderReconciler"]
+        end
+        
+        subgraph GatewayProviders["Gateway Provider Controllers"]
+            GW1["NginxGatewayReconciler"]
+            GW2["EnvoyGatewayReconciler"]
+            GW3["IstioGatewayReconciler"]
+        end
+        
+        subgraph GitOpsProviders["GitOps Provider Controllers"]
+            GO1["ArgoCDProviderReconciler"]
+            GO2["FluxProviderReconciler"]
+        end
+    end
+    
+    CLI --> PR
+    PR -.-> GitProviders
+    PR -.-> GatewayProviders
+    PR -.-> GitOpsProviders
+    
+    style Infrastructure fill:#e3f2fd
+    style Platform fill:#f5f5f5
+    style GitProviders fill:#fff9c4
+    style GatewayProviders fill:#e1f5fe
+    style GitOpsProviders fill:#f3e5f5
+</div>
+
+                <h3>Key Architecture Principles</h3>
+                <ol>
+                    <li><strong>Duck Typing:</strong> Providers expose common status fields without requiring a shared interface type</li>
+                    <li><strong>Composition:</strong> Platform references multiple provider CRs by name and kind</li>
+                    <li><strong>Extensibility:</strong> New provider types can be added without modifying Platform CR</li>
+                    <li><strong>Independence:</strong> Each provider CR can exist and be managed independently</li>
+                    <li><strong>Flexibility:</strong> Components choose providers dynamically at runtime</li>
+                </ol>
+
+                <h2 id="custom-resources">Custom Resource Definitions</h2>
+                
+                <h3>Platform CR</h3>
+                <p>The Platform CR represents the entire IDP platform instance:</p>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: localdev
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  
+  components:
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+    
+    gateways:
+      - name: nginx-gateway
+        kind: NginxGateway
+        namespace: idpbuilder-system
+    
+    gitOpsProviders:
+      - name: argocd
+        kind: ArgoCDProvider
+        namespace: idpbuilder-system
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  providers:
+    gitProviders:
+      - name: gitea-local
+        ready: true
+    gateways:
+      - name: nginx-gateway
+        ready: true
+    gitOpsProviders:
+      - name: argocd
+        ready: true</code></pre>
+
+                <h3>Git Provider CRs</h3>
+                <p>Git providers expose common status fields via duck-typing:</p>
+                
+                <h4>GiteaProvider Example</h4>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GiteaProvider
+metadata:
+  name: gitea-local
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  version: 1.24.3
+  
+  adminUser:
+    username: giteaAdmin
+    email: admin@cnoe.localtest.me
+    autoGenerate: true
+  
+  organizations:
+    - name: idpbuilder
+      description: IDP Builder Bootstrap Organization
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  endpoint: https://gitea.cnoe.localtest.me
+  internalEndpoint: http://gitea-http.gitea.svc.cluster.local:3000
+  credentialsSecretRef:
+    name: gitea-admin-secret
+    namespace: gitea
+    key: token</code></pre>
+
+                <h4>GitHubProvider Example</h4>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitHubProvider
+metadata:
+  name: github-external
+  namespace: idpbuilder-system
+spec:
+  organization: my-organization
+  endpoint: https://api.github.com
+  
+  credentialsSecretRef:
+    name: github-credentials
+    namespace: idpbuilder-system
+    key: token
+  
+  repositoryDefaults:
+    visibility: private
+    defaultBranch: main
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  endpoint: https://github.com/my-organization
+  internalEndpoint: https://api.github.com
+  credentialsSecretRef:
+    name: github-credentials
+    namespace: idpbuilder-system
+    key: token</code></pre>
+
+                <h3>Gateway Provider CRs</h3>
+                <p>Gateway providers manage ingress and routing:</p>
+                
+                <h4>NginxGateway Example</h4>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: NginxGateway
+metadata:
+  name: nginx-gateway
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx
+  version: 1.13.0
+  
+  config:
+    controller:
+      service:
+        type: NodePort
+        nodePorts:
+          http: 30080
+          https: 30443
+  
+  ingressClass:
+    name: nginx
+    isDefault: true
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  ingressClassName: nginx
+  loadBalancerEndpoint: http://172.18.0.2
+  internalEndpoint: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local</code></pre>
+
+                <h3>GitOps Provider CRs</h3>
+                <p>GitOps providers manage continuous deployment:</p>
+                
+                <h4>ArgoCDProvider Example</h4>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: ArgoCDProvider
+metadata:
+  name: argocd
+  namespace: idpbuilder-system
+spec:
+  namespace: argocd
+  version: v2.12.0
+  
+  adminCredentials:
+    autoGenerate: true
+  
+  projects:
+    - name: default
+      description: Default project
+    - name: platform
+      description: Platform components
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  endpoint: https://argocd.cnoe.localtest.me
+  internalEndpoint: http://argocd-server.argocd.svc.cluster.local
+  credentialsSecretRef:
+    name: argocd-admin-secret
+    namespace: argocd
+    key: password</code></pre>
+
+                <h2 id="multi-provider">Multi-Provider Support</h2>
+                <p>The V2 architecture allows multiple providers of the same type to coexist, enabling flexible configurations:</p>
+                
+                <h3>Multiple Git Providers Example</h3>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: hybrid
+spec:
+  domain: cnoe.localtest.me
+  components:
+    gitProviders:
+      # Local development repositories
+      - name: gitea-dev
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+      # Production repositories in GitHub
+      - name: github-prod
+        kind: GitHubProvider
+        namespace: idpbuilder-system</code></pre>
+
+                <h3>Multiple Gateway Providers Example</h3>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: multi-gateway
+spec:
+  domain: cnoe.localtest.me
+  components:
+    gateways:
+      # Public-facing services
+      - name: nginx-public
+        kind: NginxGateway
+        namespace: idpbuilder-system
+      # Internal service mesh
+      - name: envoy-internal
+        kind: EnvoyGateway
+        namespace: idpbuilder-system</code></pre>
+
+                <h2 id="use-cases">Use Cases</h2>
+                
+                <h3>Local Development</h3>
+                <p>Developers can spin up a complete IDP environment locally with Gitea for Git repositories, Nginx for ingress, and ArgoCD for GitOps.</p>
+
+                <h3>Hybrid Cloud</h3>
+                <p>Organizations can use Gitea for development environments while leveraging GitHub or GitLab for production repositories, all managed through a single Platform CR.</p>
+
+                <h3>Service Mesh Integration</h3>
+                <p>Teams can deploy Istio Gateway for service mesh capabilities alongside traditional Nginx ingress for different application requirements.</p>
+
+                <h3>Multi-Team GitOps</h3>
+                <p>Different teams can use different GitOps tools - ArgoCD for application deployments and Flux for infrastructure management - within the same platform.</p>
+
+                <h2 id="migration">Migration Path</h2>
+                <p>The V2 architecture maintains backward compatibility with the existing CLI experience:</p>
+                <ul>
+                    <li>The CLI automatically generates provider CRs from command-line flags</li>
+                    <li>Controllers are installed transparently during cluster creation</li>
+                    <li>Users can continue using <code>idpbuilder create</code> without changes</li>
+                    <li>Advanced users can directly create and manage CRs for fine-grained control</li>
+                </ul>
+
+                <h2 id="next-steps">Next Steps</h2>
+                <p>The V2 architecture is currently in the proposal phase. To learn more or provide feedback:</p>
+                <ul>
+                    <li>Review the <a href="https://github.com/cnoe-io/idpbuilder/blob/main/docs/controller-architecture-spec.md" target="_blank" rel="noopener">full technical specification</a></li>
+                    <li>Join discussions on the <a href="https://cloud-native.slack.com/archives/C05TN9WFN5S" target="_blank" rel="noopener">CNCF Slack channel</a></li>
+                    <li>Contribute to the <a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub repository</a></li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
+        </div>
+    </footer>
+    
+    <!-- Prism.js scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    
+    <!-- Initialize Mermaid -->
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

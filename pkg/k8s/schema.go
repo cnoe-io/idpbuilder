@@ -3,6 +3,7 @@ package k8s
 import (
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha2"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -25,6 +26,7 @@ func GetScheme() *runtime.Scheme {
 		rbacv1.AddToScheme,
 		argov1alpha1.AddToScheme,
 		v1alpha1.AddToScheme,
+		v1alpha2.AddToScheme,
 	)
 	schemeBuilder.AddToScheme(scheme)
 	return scheme
