@@ -1291,149 +1291,755 @@ This implementation plan follows an **iterative, end-to-end approach**. Instead 
 
 ### Phase 1: Core End-to-End Implementation (Existing Providers)
 
-**Objective**: Implement a working end-to-end platform controller architecture using the existing providers (Gitea, Nginx, ArgoCD) that replicates current idpbuilder functionality.
+**Objective**: Implement a working end-to-end platform controller architecture using the existing providers (Gitea, Nginx, ArgoCD) that replicates current idpbuilder functionality. This phase is broken into iterative sub-phases where each sub-phase delivers end-to-end functionality that can be implemented, validated, and merged independently.
 
 #### Scope:
 - Implement **only** the providers that exist today: Gitea, Nginx, ArgoCD
-- Migrate existing LocalbuildReconciler logic to new controller architecture
+- Migrate existing LocalbuildReconciler logic to new controller architecture incrementally
 - Validate the duck-typing pattern works with real implementations
 - Achieve feature parity with current CLI-driven installation
+- Each sub-phase builds on the previous one and can be merged independently
+
+#### Implementation Approach
+
+Instead of implementing all APIs and controllers simultaneously, we implement vertical slices that deliver end-to-end functionality incrementally. Each sub-phase implements:
+1. The necessary CRD definitions for that provider
+2. The provider controller implementation
+3. The Platform CR changes to support that provider
+4. Duck-typing infrastructure for that provider type
+5. Tests and validation for that specific provider
+6. Documentation updates
+
+This allows each sub-phase to be:
+- **Implemented** independently by a developer
+- **Validated** with end-to-end tests
+- **Merged** into main without breaking existing functionality
+- **Used** immediately by early adopters
+
+---
+
+### Sub-Phase 1.1: Platform CR + GiteaProvider (Git Provider Foundation)
+
+**Objective**: Establish the foundation with Platform CR and the first provider (GiteaProvider), proving the duck-typing pattern and basic orchestration.
 
 #### Tasks:
 
-1. **Core CRD Definitions**
-   - Define `Platform` CR (v1alpha2)
-   - Define `GiteaProvider` CR
-   - Define `NginxGateway` CR
-   - Define `ArgoCDProvider` CR
-   - Define duck-typed common status fields
-   - Generate CRD manifests using controller-gen
-   - **Skip**: GitHub, GitLab, Envoy, Istio, Flux CRDs (added later)
+1. **Core Infrastructure Setup**
+   - Create `api/v1alpha2/` directory structure for new API version
+   - Set up code generation tools (controller-gen, deepcopy-gen)
+   - Create base types and interfaces for duck-typing
+   - Add necessary dependencies (controller-runtime, kubebuilder markers)
 
-2. **Duck-Typing Infrastructure**
-   - Create `pkg/util/provider/` package for duck-typed access
-   - Implement `GetGitProviderStatus()` function using unstructured access
-   - Implement `GetGatewayProviderStatus()` function
-   - Implement `GetGitOpsProviderStatus()` function
-   - Create shared condition helpers and status utilities
+2. **Platform CR Definition (Initial)**
+   ```yaml
+   apiVersion: idpbuilder.cnoe.io/v1alpha2
+   kind: Platform
+   metadata:
+     name: localdev
+     namespace: idpbuilder-system
+   spec:
+     domain: cnoe.localtest.me
+     components:
+       gitProviders:
+         - name: gitea-local
+           kind: GiteaProvider
+           namespace: idpbuilder-system
+   status:
+     conditions:
+       - type: Ready
+         status: "True"
+     providers:
+       gitProviders:
+         - name: gitea-local
+           kind: GiteaProvider
+           ready: true
+   ```
+   - Define minimal Platform CR with only gitProviders support
+   - Implement status aggregation for git providers
+   - Add conditions and phase tracking
+   - Generate CRD manifests
 
-3. **Provider Controllers - Core Three**
-   
-   **GiteaProviderReconciler**:
+3. **GiteaProvider CR Definition**
+   ```yaml
+   apiVersion: idpbuilder.cnoe.io/v1alpha2
+   kind: GiteaProvider
+   metadata:
+     name: gitea-local
+     namespace: idpbuilder-system
+   spec:
+     namespace: gitea
+     version: 1.24.3
+     adminUser:
+       username: giteaAdmin
+       email: admin@cnoe.localtest.me
+       autoGenerate: true
+     organizations:
+       - name: idpbuilder
+         description: IDP Builder Bootstrap Organization
+   status:
+     conditions:
+       - type: Ready
+         status: "True"
+     # Duck-typed fields
+     endpoint: https://gitea.cnoe.localtest.me
+     internalEndpoint: http://gitea-http.gitea.svc.cluster.local:3000
+     credentialsSecretRef:
+       name: gitea-admin-secret
+       namespace: gitea
+       key: token
+   ```
+   - Define GiteaProvider CR with spec and status
+   - Implement duck-typed status fields (endpoint, internalEndpoint, credentialsSecretRef)
+   - Add Gitea-specific configuration
+   - Generate CRD manifests
+
+4. **Duck-Typing Infrastructure for Git Providers**
+   ```go
+   // pkg/util/provider/git.go
+   package provider
+
+   import (
+       "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+   )
+
+   // GitProviderStatus represents the duck-typed interface for Git providers
+   type GitProviderStatus struct {
+       Endpoint             string
+       InternalEndpoint     string
+       CredentialsSecretRef SecretReference
+       Ready                bool
+   }
+
+   type SecretReference struct {
+       Name      string
+       Namespace string
+       Key       string
+   }
+
+   // GetGitProviderStatus extracts duck-typed status from any Git provider CR
+   func GetGitProviderStatus(obj *unstructured.Unstructured) (*GitProviderStatus, error) {
+       // Extract status fields using unstructured access
+       // Return GitProviderStatus or error if required fields missing
+   }
+   ```
+   - Create provider utility package
+   - Implement GitProviderStatus struct
+   - Implement GetGitProviderStatus() using unstructured access
+   - Add validation and error handling
+   - Create unit tests for duck-typing
+
+5. **GiteaProviderReconciler Implementation**
    ```go
    // pkg/controllers/gitprovider/gitea_controller.go
+   package gitprovider
+
+   import (
+       "context"
+       ctrl "sigs.k8s.io/controller-runtime"
+       "sigs.k8s.io/controller-runtime/pkg/client"
+       
+       idpbuilderv1alpha2 "github.com/cnoe-io/idpbuilder/api/v1alpha2"
+   )
+
    type GiteaProviderReconciler struct {
        client.Client
        Scheme *runtime.Scheme
-       HelmClient *helm.Client
-       GiteaClientFactory func(baseURL, token string) (*gitea.Client, error)
    }
 
    func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // Migrate logic from current LocalbuildReconciler.reconcileGitea()
        // 1. Fetch GiteaProvider CR
-       // 2. Install Gitea via Helm (reuse existing embedded manifests)
-       // 3. Create admin user and organization
-       // 4. Update status with duck-typed fields
+       // 2. Install Gitea using existing embedded manifests (reuse from LocalbuildReconciler)
+       // 3. Wait for Gitea to be ready
+       // 4. Create admin user and organization using Gitea API
+       // 5. Generate and store credentials in secret
+       // 6. Update status with duck-typed fields (endpoint, internalEndpoint, credentialsSecretRef)
+       // 7. Set Ready condition
+   }
+
+   func (r *GiteaProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
+       return ctrl.NewControllerManagedBy(mgr).
+           For(&idpbuilderv1alpha2.GiteaProvider{}).
+           Complete(r)
    }
    ```
+   - Migrate Gitea installation logic from LocalbuildReconciler
+   - Reuse existing embedded manifests without changes
+   - Implement Gitea client integration
+   - Create admin user and organization
+   - Update duck-typed status fields
+   - Add proper error handling and conditions
 
-   **NginxGatewayReconciler**:
-   ```go
-   // pkg/controllers/gatewayprovider/nginx_controller.go
-   type NginxGatewayReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-       HelmClient *helm.Client
-   }
-
-   func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // Migrate logic from current LocalbuildReconciler.reconcileNginx()
-       // 1. Fetch NginxGateway CR
-       // 2. Install Nginx Ingress via Helm (reuse existing manifests)
-       // 3. Configure IngressClass
-       // 4. Update status with duck-typed fields
-   }
-   ```
-
-   **ArgoCDProviderReconciler**:
-   ```go
-   // pkg/controllers/gitopsprovider/argocd_controller.go
-   type ArgoCDProviderReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-       HelmClient *helm.Client
-   }
-
-   func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // Migrate logic from current LocalbuildReconciler.reconcileArgoCD()
-       // 1. Fetch ArgoCDProvider CR
-       // 2. Install ArgoCD via Helm (reuse existing manifests)
-       // 3. Create admin credentials and projects
-       // 4. Update status with duck-typed fields
-   }
-   ```
-
-4. **Enhanced GitRepositoryReconciler**
-   ```go
-   // pkg/controllers/gitrepository/controller.go
-   func (r *GitRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // Update to use duck-typed Git provider access
-       // 1. Fetch GitRepository CR
-       // 2. Get Git provider using GetGitProviderStatus()
-       // 3. Create repository using provider credentials
-       // 4. Sync content from sources
-   }
-   ```
-   - Update to work with any Git provider via duck-typing
-   - Migrate existing Gitea client code
-   - Reuse existing content sync logic
-   - **Skip**: Complex multi-source merging (added later)
-
-5. **PlatformReconciler Implementation**
+6. **PlatformReconciler Implementation (Minimal)**
    ```go
    // pkg/controllers/platform/controller.go
+   package platform
+
    type PlatformReconciler struct {
        client.Client
        Scheme *runtime.Scheme
    }
 
    func (r *PlatformReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // Orchestrate provider lifecycle
        // 1. Fetch Platform CR
-       // 2. Ensure provider CRs exist (create if missing)
-       // 3. Wait for providers to be Ready
-       // 4. Create GitRepository CRs for bootstrap
-       // 5. Aggregate status from providers
-       // 6. Update Platform status
+       // 2. For each gitProvider reference:
+       //    a. Fetch provider CR (unstructured)
+       //    b. Extract status using GetGitProviderStatus()
+       //    c. Aggregate ready status
+       // 3. Update Platform status with aggregated provider status
+       // 4. Set Platform Ready condition based on all providers
    }
    ```
+   - Implement basic Platform reconciliation
+   - Support only gitProviders initially
+   - Use duck-typing to access provider status
+   - Aggregate provider status into Platform status
+   - Update conditions
 
-6. **Helm Integration**
-   - Add Helm SDK dependencies (helm.sh/helm/v3)
-   - Create Helm client wrapper in `pkg/util/helm/`
-   - Implement chart installation/upgrade/deletion
-   - Support embedded charts and remote repositories
-
-7. **Testing Framework**
-   - Set up envtest for controller unit tests
-   - Create test fixtures for core providers
-   - Add integration tests using real Helm charts
-   - Establish CI test harness
+7. **Testing**
+   - Unit tests for GiteaProviderReconciler
+   - Unit tests for PlatformReconciler
+   - Unit tests for duck-typing utilities
+   - Integration test: Create Platform CR → GiteaProvider created → Gitea installed → Status updated
+   - Validation: `kubectl get platform,giteaprovider -n idpbuilder-system`
 
 **Deliverables**:
-- ✅ Working Platform + 3 provider CRDs
-- ✅ Functional reconcilers for Gitea, Nginx, ArgoCD
-- ✅ Duck-typing infrastructure validated
-- ✅ Enhanced GitRepository controller
-- ✅ Test coverage >60%
-- ✅ Feature parity with existing LocalbuildReconciler
+- ✅ Platform CR (v1alpha2) with gitProviders support only
+- ✅ GiteaProvider CRD and controller
+- ✅ Duck-typing infrastructure for Git providers
+- ✅ PlatformReconciler supporting git providers
+- ✅ Unit and integration tests
+- ✅ CRD manifests generated
+- ✅ Documentation for GiteaProvider
 
 **Success Criteria**:
-- Can create a Platform CR and have all three components install successfully
-- GitRepository CRs work with GiteaProvider via duck-typing
-- Status aggregation shows platform health
-- Existing embedded manifests reused without changes
+- Can create a Platform CR that references a GiteaProvider
+- GiteaProvider installs Gitea successfully
+- Platform status correctly aggregates GiteaProvider status
+- Duck-typing access to GiteaProvider status works
+- All tests pass
+- Can be merged and deployed independently
+
+**Validation Steps**:
+```bash
+# 1. Apply CRDs
+kubectl apply -f config/crd/
+
+# 2. Create GiteaProvider
+kubectl apply -f examples/giteaprovider.yaml
+
+# 3. Create Platform referencing GiteaProvider
+kubectl apply -f examples/platform-gitea-only.yaml
+
+# 4. Verify Gitea installation
+kubectl get pods -n gitea
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o yaml
+
+# 5. Verify Platform status
+kubectl get platform localdev -n idpbuilder-system -o yaml
+
+# 6. Access Gitea
+curl https://gitea.cnoe.localtest.me
+```
+
+---
+
+### Sub-Phase 1.2: Add NginxGateway Provider (Gateway Support)
+
+**Objective**: Add gateway provider support to Platform CR and implement NginxGateway, enabling ingress functionality.
+
+#### Tasks:
+
+1. **Platform CR Update - Add Gateway Support**
+   ```yaml
+   apiVersion: idpbuilder.cnoe.io/v1alpha2
+   kind: Platform
+   metadata:
+     name: localdev
+     namespace: idpbuilder-system
+   spec:
+     domain: cnoe.localtest.me
+     components:
+       gitProviders:
+         - name: gitea-local
+           kind: GiteaProvider
+           namespace: idpbuilder-system
+       gateways:  # NEW
+         - name: nginx-gateway
+           kind: NginxGateway
+           namespace: idpbuilder-system
+   status:
+     providers:
+       gitProviders:
+         - name: gitea-local
+           kind: GiteaProvider
+           ready: true
+       gateways:  # NEW
+         - name: nginx-gateway
+           kind: NginxGateway
+           ready: true
+   ```
+   - Update Platform CR spec to include gateways field
+   - Update Platform CR status to aggregate gateway status
+   - Update PlatformReconciler to handle gateways
+   - Regenerate CRD manifests
+
+2. **NginxGateway CR Definition**
+   ```yaml
+   apiVersion: idpbuilder.cnoe.io/v1alpha2
+   kind: NginxGateway
+   metadata:
+     name: nginx-gateway
+     namespace: idpbuilder-system
+   spec:
+     namespace: ingress-nginx
+     version: 1.13.0
+     ingressClass:
+       name: nginx
+       isDefault: true
+   status:
+     conditions:
+       - type: Ready
+         status: "True"
+     # Duck-typed fields
+     ingressClassName: nginx
+     loadBalancerEndpoint: http://172.18.0.2
+     internalEndpoint: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local
+   ```
+   - Define NginxGateway CR with spec and status
+   - Implement duck-typed status fields for gateways
+   - Generate CRD manifests
+
+3. **Duck-Typing Infrastructure for Gateway Providers**
+   ```go
+   // pkg/util/provider/gateway.go
+   package provider
+
+   type GatewayProviderStatus struct {
+       IngressClassName      string
+       LoadBalancerEndpoint  string
+       InternalEndpoint      string
+       Ready                 bool
+   }
+
+   func GetGatewayProviderStatus(obj *unstructured.Unstructured) (*GatewayProviderStatus, error) {
+       // Extract gateway status fields using unstructured access
+   }
+   ```
+   - Create GatewayProviderStatus struct
+   - Implement GetGatewayProviderStatus() function
+   - Add unit tests for gateway duck-typing
+
+4. **NginxGatewayReconciler Implementation**
+   ```go
+   // pkg/controllers/gatewayprovider/nginx_controller.go
+   type NginxGatewayReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+   }
+
+   func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch NginxGateway CR
+       // 2. Install Nginx Ingress using existing embedded manifests
+       // 3. Wait for Nginx to be ready
+       // 4. Get LoadBalancer endpoint
+       // 5. Update status with duck-typed fields
+       // 6. Set Ready condition
+   }
+   ```
+   - Migrate Nginx installation logic from LocalbuildReconciler
+   - Reuse existing embedded manifests
+   - Get LoadBalancer/NodePort endpoint
+   - Update duck-typed status fields
+   - Create IngressClass resource
+
+5. **PlatformReconciler Update**
+   - Update to handle gateways field in Platform spec
+   - Aggregate gateway provider status
+   - Update Platform status with gateway information
+   - Ensure both git providers and gateways are tracked
+
+6. **GiteaProvider Integration with Gateway**
+   - Update GiteaProvider to create Ingress resource
+   - Use gateway's ingressClassName from Platform
+   - Set up Gitea ingress using the gateway
+   - Test Gitea accessibility through Nginx
+
+7. **Testing**
+   - Unit tests for NginxGatewayReconciler
+   - Unit tests for gateway duck-typing
+   - Integration test: Platform with Gitea + Nginx
+   - Validate Gitea accessible through Nginx ingress
+   - Test Platform status aggregation with multiple provider types
+
+**Deliverables**:
+- ✅ NginxGateway CRD and controller
+- ✅ Updated Platform CR with gateway support
+- ✅ Duck-typing infrastructure for gateways
+- ✅ Updated PlatformReconciler
+- ✅ Gitea accessible via Nginx ingress
+- ✅ Tests for gateway functionality
+- ✅ Documentation for NginxGateway
+
+**Success Criteria**:
+- Platform CR can reference both git and gateway providers
+- NginxGateway installs Nginx Ingress successfully
+- Gitea is accessible through Nginx ingress
+- Platform status aggregates both provider types
+- Duck-typing works for gateways
+- All tests pass
+- Can be merged independently
+
+**Validation Steps**:
+```bash
+# 1. Apply updated CRDs
+kubectl apply -f config/crd/
+
+# 2. Create NginxGateway
+kubectl apply -f examples/nginxgateway.yaml
+
+# 3. Update Platform to include gateway
+kubectl apply -f examples/platform-gitea-nginx.yaml
+
+# 4. Verify Nginx installation
+kubectl get pods -n ingress-nginx
+kubectl get nginxgateway nginx-gateway -n idpbuilder-system -o yaml
+
+# 5. Verify Platform status includes both providers
+kubectl get platform localdev -n idpbuilder-system -o yaml
+
+# 6. Test Gitea access through ingress
+curl -k https://gitea.cnoe.localtest.me
+```
+
+---
+
+### Sub-Phase 1.3: Add ArgoCDProvider (GitOps Support)
+
+**Objective**: Add GitOps provider support to Platform CR and implement ArgoCDProvider, enabling GitOps-based deployments.
+
+#### Tasks:
+
+1. **Platform CR Update - Add GitOps Provider Support**
+   ```yaml
+   apiVersion: idpbuilder.cnoe.io/v1alpha2
+   kind: Platform
+   metadata:
+     name: localdev
+     namespace: idpbuilder-system
+   spec:
+     domain: cnoe.localtest.me
+     components:
+       gitProviders:
+         - name: gitea-local
+           kind: GiteaProvider
+           namespace: idpbuilder-system
+       gateways:
+         - name: nginx-gateway
+           kind: NginxGateway
+           namespace: idpbuilder-system
+       gitOpsProviders:  # NEW
+         - name: argocd
+           kind: ArgoCDProvider
+           namespace: idpbuilder-system
+   status:
+     providers:
+       gitProviders:
+         - name: gitea-local
+           kind: GiteaProvider
+           ready: true
+       gateways:
+         - name: nginx-gateway
+           kind: NginxGateway
+           ready: true
+       gitOpsProviders:  # NEW
+         - name: argocd
+           kind: ArgoCDProvider
+           ready: true
+   ```
+   - Update Platform CR spec to include gitOpsProviders field
+   - Update Platform CR status to aggregate GitOps provider status
+   - Update PlatformReconciler to handle GitOps providers
+   - Regenerate CRD manifests
+
+2. **ArgoCDProvider CR Definition**
+   ```yaml
+   apiVersion: idpbuilder.cnoe.io/v1alpha2
+   kind: ArgoCDProvider
+   metadata:
+     name: argocd
+     namespace: idpbuilder-system
+   spec:
+     namespace: argocd
+     version: v2.12.0
+     adminCredentials:
+       autoGenerate: true
+     projects:
+       - name: default
+       - name: platform
+   status:
+     conditions:
+       - type: Ready
+         status: "True"
+     # Duck-typed fields
+     endpoint: https://argocd.cnoe.localtest.me
+     internalEndpoint: http://argocd-server.argocd.svc.cluster.local
+     credentialsSecretRef:
+       name: argocd-admin-secret
+       namespace: argocd
+       key: password
+   ```
+   - Define ArgoCDProvider CR with spec and status
+   - Implement duck-typed status fields for GitOps providers
+   - Generate CRD manifests
+
+3. **Duck-Typing Infrastructure for GitOps Providers**
+   ```go
+   // pkg/util/provider/gitops.go
+   package provider
+
+   type GitOpsProviderStatus struct {
+       Endpoint             string
+       InternalEndpoint     string
+       CredentialsSecretRef SecretReference
+       Ready                bool
+   }
+
+   func GetGitOpsProviderStatus(obj *unstructured.Unstructured) (*GitOpsProviderStatus, error) {
+       // Extract GitOps provider status fields using unstructured access
+   }
+   ```
+   - Create GitOpsProviderStatus struct
+   - Implement GetGitOpsProviderStatus() function
+   - Add unit tests for GitOps duck-typing
+
+4. **ArgoCDProviderReconciler Implementation**
+   ```go
+   // pkg/controllers/gitopsprovider/argocd_controller.go
+   type ArgoCDProviderReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+   }
+
+   func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch ArgoCDProvider CR
+       // 2. Install ArgoCD using existing embedded manifests
+       // 3. Wait for ArgoCD to be ready
+       // 4. Create admin credentials and projects
+       // 5. Update status with duck-typed fields
+       // 6. Set Ready condition
+   }
+   ```
+   - Migrate ArgoCD installation logic from LocalbuildReconciler
+   - Reuse existing embedded manifests
+   - Create admin credentials
+   - Create ArgoCD projects
+   - Update duck-typed status fields
+   - Set up ArgoCD ingress using gateway
+
+5. **Enhanced GitRepositoryReconciler**
+   ```go
+   // pkg/controllers/gitrepository/controller.go
+   func (r *GitRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch GitRepository CR
+       // 2. Get Git provider reference from GitRepository
+       // 3. Fetch provider CR using unstructured client
+       // 4. Extract provider status using GetGitProviderStatus()
+       // 5. Create repository using provider credentials
+       // 6. Sync content from embedded sources
+       // 7. Update GitRepository status
+   }
+   ```
+   - Update existing GitRepositoryReconciler to use duck-typing
+   - Support gitServerRef that can point to any Git provider kind
+   - Use GetGitProviderStatus() to get credentials
+   - Migrate existing Gitea repository creation logic
+   - Reuse existing content sync logic
+
+6. **PlatformReconciler Update - Bootstrap Integration**
+   - Update to handle gitOpsProviders field
+   - Create GitRepository CRs for bootstrap content
+   - Create ArgoCD Applications using providers
+   - Aggregate GitOps provider status
+   - Coordinate between git, gateway, and GitOps providers
+
+7. **Bootstrap GitRepository CRs**
+   - Create GitRepository CR for ArgoCD bootstrap
+   - Create GitRepository CR for Gitea bootstrap
+   - Create GitRepository CR for Nginx bootstrap
+   - PlatformReconciler creates these automatically
+   - Use embedded content from current implementation
+
+8. **Testing**
+   - Unit tests for ArgoCDProviderReconciler
+   - Unit tests for GitOps duck-typing
+   - Unit tests for enhanced GitRepositoryReconciler
+   - Integration test: Full Platform with all three providers
+   - Validate ArgoCD Applications created and synced
+   - Test GitRepository creation in Gitea via duck-typing
+
+**Deliverables**:
+- ✅ ArgoCDProvider CRD and controller
+- ✅ Updated Platform CR with GitOps provider support
+- ✅ Duck-typing infrastructure for GitOps providers
+- ✅ Enhanced GitRepositoryReconciler with duck-typing
+- ✅ Updated PlatformReconciler with bootstrap logic
+- ✅ Tests for full stack
+- ✅ Documentation for ArgoCDProvider and GitRepository
+
+**Success Criteria**:
+- Platform CR can reference git, gateway, and GitOps providers
+- ArgoCDProvider installs ArgoCD successfully
+- GitRepository controller works with GiteaProvider via duck-typing
+- Bootstrap repositories created in Gitea
+- ArgoCD Applications created and synced
+- Platform status aggregates all three provider types
+- All tests pass
+- Full feature parity with existing LocalbuildReconciler
+- Can be merged independently
+
+**Validation Steps**:
+```bash
+# 1. Apply updated CRDs
+kubectl apply -f config/crd/
+
+# 2. Create ArgoCDProvider
+kubectl apply -f examples/argocdprovider.yaml
+
+# 3. Update Platform to include all providers
+kubectl apply -f examples/platform-full.yaml
+
+# 4. Verify ArgoCD installation
+kubectl get pods -n argocd
+kubectl get argocdprovider argocd -n idpbuilder-system -o yaml
+
+# 5. Verify GitRepository creation
+kubectl get gitrepositories -n idpbuilder-system
+
+# 6. Check Gitea for created repositories
+curl -k https://gitea.cnoe.localtest.me/idpbuilder/
+
+# 7. Verify ArgoCD Applications
+kubectl get applications -n argocd
+
+# 8. Verify Platform status includes all providers
+kubectl get platform localdev -n idpbuilder-system -o yaml
+
+# 9. Access ArgoCD UI
+curl -k https://argocd.cnoe.localtest.me
+```
+
+---
+
+### Sub-Phase 1.4: Integration, Testing, and Documentation
+
+**Objective**: Ensure all components work together seamlessly, achieve comprehensive test coverage, and provide complete documentation.
+
+#### Tasks:
+
+1. **End-to-End Integration Testing**
+   - Create comprehensive E2E test suite
+   - Test Platform CR creation from scratch
+   - Test provider lifecycle (create, update, delete)
+   - Test provider failure and recovery scenarios
+   - Test Platform status aggregation accuracy
+   - Test concurrent reconciliation
+   - Validate existing embedded manifests still work
+
+2. **CLI Integration Preparation**
+   - Design CLI flag mapping to new CRs
+   - Plan controller deployment strategy
+   - Design migration from Localbuild to Platform
+   - Create example YAML files for users
+   - Document CLI changes needed
+
+3. **Performance and Resource Testing**
+   - Measure controller resource usage
+   - Compare with existing LocalbuildReconciler performance
+   - Optimize reconciliation loops
+   - Add resource limits to controller deployment
+   - Test on different cluster sizes
+
+4. **Error Handling and Observability**
+   - Ensure all error paths have clear messages
+   - Add proper logging throughout controllers
+   - Implement event emission for key actions
+   - Add status conditions for all failure modes
+   - Create troubleshooting guide
+
+5. **Documentation**
+   - API reference for Platform, GiteaProvider, NginxGateway, ArgoCDProvider
+   - Controller architecture deep-dive
+   - Duck-typing pattern explanation
+   - Migration guide from v1alpha1 to v1alpha2
+   - Examples for common use cases
+   - Developer guide for extending providers
+   - Update main README with new architecture
+
+6. **Code Quality**
+   - Ensure test coverage >70%
+   - Run linters and fix all issues
+   - Code review checklist
+   - Security review of credentials handling
+   - Dependency audit
+
+7. **Backward Compatibility Validation**
+   - Ensure existing Localbuild CR still works (if kept)
+   - Validate existing embedded manifests compatibility
+   - Test with existing package definitions
+   - Document any breaking changes
+
+**Deliverables**:
+- ✅ Comprehensive E2E test suite
+- ✅ Test coverage >70%
+- ✅ Complete API documentation
+- ✅ Architecture documentation
+- ✅ Migration guide
+- ✅ Example YAML files
+- ✅ Troubleshooting guide
+- ✅ Performance benchmarks
+- ✅ Security review completed
+
+**Success Criteria**:
+- All E2E tests pass consistently
+- Test coverage exceeds 70%
+- Documentation is complete and accurate
+- Performance is equal or better than existing implementation
+- No critical security issues
+- Ready for Phase 2 (CLI integration)
+
+---
+
+## Phase 1 Summary
+
+**Overall Objective**: Deliver a working controller-based architecture with all three core providers (Gitea, Nginx, ArgoCD) that can be deployed and managed through Kubernetes CRs.
+
+**Total Deliverables**:
+- ✅ Platform CR (v1alpha2) with full provider support
+- ✅ GiteaProvider CRD and controller
+- ✅ NginxGateway CRD and controller
+- ✅ ArgoCDProvider CRD and controller
+- ✅ Duck-typing infrastructure for all provider types
+- ✅ Enhanced GitRepositoryReconciler
+- ✅ PlatformReconciler with full orchestration
+- ✅ Test coverage >70%
+- ✅ Complete documentation
+- ✅ Feature parity with existing LocalbuildReconciler
+
+**Key Benefits of Iterative Approach**:
+- Each sub-phase can be developed, tested, and merged independently
+- Early validation of duck-typing pattern in Sub-Phase 1.1
+- Progressive complexity (git → gateway → GitOps)
+- Faster feedback loops
+- Lower risk of large merge conflicts
+- Ability to course-correct between sub-phases
+- Early adopters can start using partial functionality
+
+**Estimated Timeline**:
+- Sub-Phase 1.1 (Platform + Gitea): 2-3 weeks
+- Sub-Phase 1.2 (+ Nginx): 1-2 weeks
+- Sub-Phase 1.3 (+ ArgoCD): 2-3 weeks
+- Sub-Phase 1.4 (Integration + Docs): 1-2 weeks
+- **Total Phase 1**: 6-10 weeks
 
 ### Phase 2: Component Controllers 
 
@@ -1715,28 +2321,35 @@ This implementation plan follows an **iterative, end-to-end approach**. Instead 
 
 ## Phase Timeline & Milestones
 
-**Phase 1** (Weeks 1-6): Core end-to-end with existing providers
-- Milestone: Can deploy Platform CR with Gitea + Nginx + ArgoCD
+**Phase 1** (Weeks 1-10): Core end-to-end with existing providers (Iterative)
+- Sub-Phase 1.1 (Weeks 1-3): Platform + GiteaProvider
+  - Milestone: Can deploy Platform CR with Gitea provider via duck-typing
+- Sub-Phase 1.2 (Weeks 4-5): Add NginxGateway
+  - Milestone: Gitea accessible through Nginx ingress
+- Sub-Phase 1.3 (Weeks 6-8): Add ArgoCDProvider
+  - Milestone: Full GitOps functionality with all three providers
+- Sub-Phase 1.4 (Weeks 9-10): Integration, testing, and documentation
+  - Milestone: Production-ready Phase 1 with >70% test coverage
 
-**Phase 2** (Weeks 7-10): CLI integration and migration
+**Phase 2** (Weeks 11-14): CLI integration and migration
 - Milestone: CLI users can use new architecture transparently
 
-**Phase 3** (Weeks 11-12): GitHub provider
+**Phase 3** (Weeks 15-16): GitHub provider
 - Milestone: Users can choose GitHub instead of Gitea
 
-**Phase 4** (Weeks 13-14): GitLab provider
+**Phase 4** (Weeks 17-18): GitLab provider
 - Milestone: Three Git provider options available
 
-**Phase 5** (Weeks 15-16): Envoy Gateway
+**Phase 5** (Weeks 19-20): Envoy Gateway
 - Milestone: Multiple gateway providers supported
 
-**Phase 6** (Weeks 17-18): Istio Gateway
+**Phase 6** (Weeks 21-22): Istio Gateway
 - Milestone: Service mesh integration available
 
-**Phase 7** (Weeks 19-20): Flux provider
+**Phase 7** (Weeks 23-24): Flux provider
 - Milestone: Multiple GitOps providers supported
 
-**Phase 8** (Weeks 21-26): Production features & stabilization
+**Phase 8** (Weeks 25-30): Production features & stabilization
 - Milestone: v1.0.0 release candidate
    - Display endpoints and credentials
    - Show ArgoCD application health
@@ -1928,12 +2541,14 @@ The following changes will require user action:
 
 ### Deprecation Timeline
 
-- **v0.8.0 (Phase 1-2, Months 1-3)**: New architecture introduced with core providers (Gitea, Nginx, ArgoCD), CLI integration, and migration tool
-- **v0.9.0 (Phase 3-4, Months 4-5)**: Alternative Git providers (GitHub, GitLab) added, old architecture marked deprecated with warnings
-- **v0.10.0 (Phase 5-6, Months 6-7)**: Alternative gateways (Envoy, Istio) added
-- **v0.11.0 (Phase 7, Month 8)**: Flux provider added, old LocalbuildReconciler removed (migration tool still available)
-- **v0.12.0 (Phase 8, Months 9-11)**: Production features and stabilization
-- **v1.0.0 (Month 12)**: First stable release with full provider ecosystem
+- **v0.8.0 (Phase 1, Months 1-3)**: New architecture introduced with core providers (Gitea, Nginx, ArgoCD) implemented iteratively
+  - Sub-phases allow early adoption and feedback
+  - Each sub-phase can be merged independently
+- **v0.9.0 (Phase 2, Month 4)**: CLI integration and migration tool added, old architecture marked deprecated with warnings
+- **v0.10.0 (Phases 3-4, Months 5-6)**: Alternative Git providers (GitHub, GitLab) added
+- **v0.11.0 (Phases 5-6, Months 7-8)**: Alternative gateways (Envoy, Istio) added, old LocalbuildReconciler removed (migration tool still available)
+- **v0.12.0 (Phase 7, Month 9)**: Flux provider added
+- **v1.0.0 (Phase 8, Months 10-12)**: Production features, stabilization, and first stable release with full provider ecosystem
 
 ## Benefits & Impact
 
