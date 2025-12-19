@@ -1287,160 +1287,38 @@ status:
 
 ## Implementation Plan
 
-### Phase 1: Foundation 
+This implementation plan follows an **iterative, end-to-end approach**. Instead of implementing all APIs first and then all controllers, we'll implement a narrow vertical slice that migrates existing idpbuilder functionality to the new architecture. Once that's working end-to-end, we'll add alternative providers incrementally.
 
-**Objective**: Establish the controller framework and new CRD definitions
+### Phase 1: Core End-to-End Implementation (Existing Providers)
+
+**Objective**: Implement a working end-to-end platform controller architecture using the existing providers (Gitea, Nginx, ArgoCD) that replicates current idpbuilder functionality.
+
+#### Scope:
+- Implement **only** the providers that exist today: Gitea, Nginx, ArgoCD
+- Migrate existing LocalbuildReconciler logic to new controller architecture
+- Validate the duck-typing pattern works with real implementations
+- Achieve feature parity with current CLI-driven installation
 
 #### Tasks:
-1. **Define New CRDs**
-   - Create `Platform` type
-   - Create Git provider CRDs: `GiteaProvider`, `GitHubProvider`, `GitLabProvider`
-   - Create Gateway provider CRDs: `NginxGateway`, `EnvoyGateway`, `IstioGateway`
-   - Create GitOps provider CRDs: `ArgoCDProvider`, `FluxProvider`
-   - Define duck-typed common status fields across all provider types
+
+1. **Core CRD Definitions**
+   - Define `Platform` CR (v1alpha2)
+   - Define `GiteaProvider` CR
+   - Define `NginxGateway` CR
+   - Define `ArgoCDProvider` CR
+   - Define duck-typed common status fields
    - Generate CRD manifests using controller-gen
-   - Update API version (v1alpha2 to indicate significant change)
+   - **Skip**: GitHub, GitLab, Envoy, Istio, Flux CRDs (added later)
 
-2. **Controller Scaffolding**
-   - Create new controller packages:
-     - `pkg/controllers/platform/`
-     - `pkg/controllers/gitprovider/` (with subpackages for each provider)
-       - `gitea_controller.go`
-       - `github_controller.go`
-       - `gitlab_controller.go`
-     - `pkg/controllers/gateway/` (with subpackages for each gateway)
-       - `nginx_controller.go`
-       - `envoy_controller.go`
-       - `istio_controller.go`
-     - `pkg/controllers/gitopsprovider/` (with subpackages for each provider)
-       - `argocd_controller.go`
-       - `flux_controller.go`
-   - Implement basic reconciliation loops
-   - Set up owner references and finalizers
-   - Create shared interfaces for duck-typed status access
+2. **Duck-Typing Infrastructure**
+   - Create `pkg/util/provider/` package for duck-typed access
+   - Implement `GetGitProviderStatus()` function using unstructured access
+   - Implement `GetGatewayProviderStatus()` function
+   - Implement `GetGitOpsProviderStatus()` function
+   - Create shared condition helpers and status utilities
 
-3. **Helm Integration**
-   - Add Helm SDK dependencies
-   - Create Helm client wrapper utilities
-   - Implement chart installation/upgrade/deletion logic
-
-4. **Testing Framework**
-   - Set up envtest for controller unit tests
-   - Create test fixtures and mock components
-   - Establish CI test harness
-
-**Deliverables**:
-- CRD definitions committed
-- Basic controller structure in place
-- Initial test coverage (>60%)
-
-### Phase 2: Component Controllers 
-
-**Objective**: Implement individual component controllers with full lifecycle management
-
-#### Tasks:
-
-1. **GitOps Provider Controllers**
-
-   Each GitOps provider has its own dedicated reconciler:
-
-   **ArgoCDProviderReconciler**:
-   ```go
-   // pkg/controllers/gitopsprovider/argocd_controller.go
-   type ArgoCDProviderReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-       HelmClient *helm.Client
-   }
-
-   func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch ArgoCDProvider CR
-       // 2. Install/upgrade ArgoCD via Helm
-       // 3. Generate admin credentials if needed
-       // 4. Create ArgoCD projects
-       // 5. Wait for ArgoCD to be healthy
-       // 6. Update status with duck-typed fields:
-       //    - endpoint
-       //    - internalEndpoint
-       //    - credentialsSecretRef
-   }
-   ```
-
-   **FluxProviderReconciler**:
-   ```go
-   // pkg/controllers/gitopsprovider/flux_controller.go
-   type FluxProviderReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-       HelmClient *helm.Client
-   }
-
-   func (r *FluxProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch FluxProvider CR
-       // 2. Install Flux controllers via Helm
-       // 3. Configure source controller
-       // 4. Configure kustomize and helm controllers
-       // 5. Wait for all controllers to be healthy
-       // 6. Update status with duck-typed fields:
-       //    - endpoint
-       //    - internalEndpoint
-       //    - credentialsSecretRef
-   }
-   ```
-
-   **Using GitOps Providers (Duck-Typed Access)**:
+3. **Provider Controllers - Core Three**
    
-   Other controllers access GitOps providers through the common interface:
-   ```go
-   // pkg/util/gitops/client.go
-   type GitOpsProviderStatus struct {
-       Endpoint             string
-       InternalEndpoint     string
-       CredentialsSecretRef corev1.SecretReference
-   }
-
-   func GetGitOpsProvider(ctx context.Context, c client.Client, ref v1alpha1.GitOpsProviderRef) (*GitOpsProviderStatus, error) {
-       u := &unstructured.Unstructured{}
-       u.SetGroupVersionKind(schema.GroupVersionKind{
-           Group:   "idpbuilder.cnoe.io",
-           Version: "v1alpha1",
-           Kind:    ref.Kind, // ArgoCDProvider, FluxProvider
-       })
-       
-       err := c.Get(ctx, types.NamespacedName{
-           Name:      ref.Name,
-           Namespace: ref.Namespace,
-       }, u)
-       if err != nil {
-           return nil, fmt.Errorf("failed to get GitOps provider: %w", err)
-       }
-       
-       // Extract common status fields (duck-typed interface)
-       status, found, err := unstructured.NestedMap(u.Object, "status")
-       if err != nil || !found {
-           return nil, fmt.Errorf("GitOps provider status not available")
-       }
-       
-       endpoint, _, _ := unstructured.NestedString(status, "endpoint")
-       internalEndpoint, _, _ := unstructured.NestedString(status, "internalEndpoint")
-       
-       return &GitOpsProviderStatus{
-           Endpoint:         endpoint,
-           InternalEndpoint: internalEndpoint,
-       }, nil
-   }
-   ```
-
-   This pattern enables:
-   - Adding new GitOps providers without modifying consumers
-   - Running multiple GitOps engines (ArgoCD for apps, Flux for infrastructure)
-   - Package controllers dynamically selecting which GitOps provider to use
-   - Easy testing with mock GitOps providers
-
-2. **Git Provider Controllers**
-
-   Each Git provider has its own dedicated reconciler:
-
    **GiteaProviderReconciler**:
    ```go
    // pkg/controllers/gitprovider/gitea_controller.go
@@ -1452,57 +1330,17 @@ status:
    }
 
    func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // Migrate logic from current LocalbuildReconciler.reconcileGitea()
        // 1. Fetch GiteaProvider CR
-       // 2. Install/upgrade Gitea via Helm
-       // 3. Initialize admin user
-       // 4. Create organizations
-       // 5. Generate API tokens
-       // 6. Update status with duck-typed fields:
-       //    - endpoint
-       //    - internalEndpoint
-       //    - credentialsSecretRef
-   }
-   ```
-
-   **GitHubProviderReconciler**:
-   ```go
-   // pkg/controllers/gitprovider/github_controller.go
-   type GitHubProviderReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-   }
-
-   func (r *GitHubProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch GitHubProvider CR
-       // 2. Validate GitHub credentials
-       // 3. Verify organization access
+       // 2. Install Gitea via Helm (reuse existing embedded manifests)
+       // 3. Create admin user and organization
        // 4. Update status with duck-typed fields
    }
    ```
-
-   **GitLabProviderReconciler**:
-   ```go
-   // pkg/controllers/gitprovider/gitlab_controller.go
-   type GitLabProviderReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-   }
-
-   func (r *GitLabProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch GitLabProvider CR
-       // 2. Validate GitLab credentials
-       // 3. Verify group access
-       // 4. Update status with duck-typed fields
-   }
-   ```
-
-3. **Gateway Provider Controllers**
-
-   Each gateway provider has its own dedicated reconciler:
 
    **NginxGatewayReconciler**:
    ```go
-   // pkg/controllers/gateway/nginx_controller.go
+   // pkg/controllers/gatewayprovider/nginx_controller.go
    type NginxGatewayReconciler struct {
        client.Client
        Scheme *runtime.Scheme
@@ -1510,193 +1348,49 @@ status:
    }
 
    func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // Migrate logic from current LocalbuildReconciler.reconcileNginx()
        // 1. Fetch NginxGateway CR
-       // 2. Install/upgrade Nginx Ingress Controller via Helm
-       // 3. Configure IngressClass resource
-       // 4. Wait for controller to be ready
-       // 5. Update status with duck-typed fields:
-       //    - ingressClassName
-       //    - loadBalancerEndpoint
-       //    - internalEndpoint
+       // 2. Install Nginx Ingress via Helm (reuse existing manifests)
+       // 3. Configure IngressClass
+       // 4. Update status with duck-typed fields
    }
    ```
 
-   **EnvoyGatewayReconciler**:
+   **ArgoCDProviderReconciler**:
    ```go
-   // pkg/controllers/gateway/envoy_controller.go
-   type EnvoyGatewayReconciler struct {
+   // pkg/controllers/gitopsprovider/argocd_controller.go
+   type ArgoCDProviderReconciler struct {
        client.Client
        Scheme *runtime.Scheme
        HelmClient *helm.Client
    }
 
-   func (r *EnvoyGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch EnvoyGateway CR
-       // 2. Install Envoy Gateway via Helm
-       // 3. Configure GatewayClass resource
-       // 4. Create Gateway resource
-       // 5. Update status with duck-typed fields
+   func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // Migrate logic from current LocalbuildReconciler.reconcileArgoCD()
+       // 1. Fetch ArgoCDProvider CR
+       // 2. Install ArgoCD via Helm (reuse existing manifests)
+       // 3. Create admin credentials and projects
+       // 4. Update status with duck-typed fields
    }
    ```
-
-   **IstioGatewayReconciler**:
-   ```go
-   // pkg/controllers/gateway/istio_controller.go
-   type IstioGatewayReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-       HelmClient *helm.Client
-   }
-
-   func (r *IstioGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch IstioGateway CR
-       // 2. Install Istio control plane
-       // 3. Create Istio Gateway resource
-       // 4. Configure service mesh settings
-       // 5. Update status with duck-typed fields
-   }
-   ```
-
-   **Using Gateway Providers (Duck-Typed Access)**:
-   
-   Other controllers access gateway providers through the common interface:
-   ```go
-   // pkg/util/gateway/client.go
-   type GatewayProviderStatus struct {
-       IngressClassName     string
-       LoadBalancerEndpoint string
-       InternalEndpoint     string
-   }
-
-   func GetGatewayProvider(ctx context.Context, c client.Client, ref v1alpha1.GatewayProviderRef) (*GatewayProviderStatus, error) {
-       u := &unstructured.Unstructured{}
-       u.SetGroupVersionKind(schema.GroupVersionKind{
-           Group:   "idpbuilder.cnoe.io",
-           Version: "v1alpha1",
-           Kind:    ref.Kind, // NginxGateway, EnvoyGateway, IstioGateway
-       })
-       
-       err := c.Get(ctx, types.NamespacedName{
-           Name:      ref.Name,
-           Namespace: ref.Namespace,
-       }, u)
-       if err != nil {
-           return nil, fmt.Errorf("failed to get gateway provider: %w", err)
-       }
-       
-       // Extract common status fields (duck-typed interface)
-       status, found, err := unstructured.NestedMap(u.Object, "status")
-       if err != nil || !found {
-           return nil, fmt.Errorf("gateway provider status not available")
-       }
-       
-       ingressClassName, _, _ := unstructured.NestedString(status, "ingressClassName")
-       loadBalancerEndpoint, _, _ := unstructured.NestedString(status, "loadBalancerEndpoint")
-       internalEndpoint, _, _ := unstructured.NestedString(status, "internalEndpoint")
-       
-       return &GatewayProviderStatus{
-           IngressClassName:     ingressClassName,
-           LoadBalancerEndpoint: loadBalancerEndpoint,
-           InternalEndpoint:     internalEndpoint,
-       }, nil
-   }
-
-   // Example usage in component controller
-   func (r *ComponentReconciler) createIngress(ctx context.Context, 
-                                                component *v1alpha1.Component, 
-                                                gatewayRef v1alpha1.GatewayProviderRef) error {
-       gateway, err := GetGatewayProvider(ctx, r.Client, gatewayRef)
-       if err != nil {
-           return err
-       }
-       
-       ingress := &networkingv1.Ingress{
-           ObjectMeta: metav1.ObjectMeta{
-               Name:      component.Name + "-ingress",
-               Namespace: component.Namespace,
-           },
-           Spec: networkingv1.IngressSpec{
-               IngressClassName: &gateway.IngressClassName, // Works with any gateway type
-               Rules: []networkingv1.IngressRule{
-                   {
-                       Host: component.Spec.Host,
-                       IngressRuleValue: networkingv1.IngressRuleValue{
-                           HTTP: &networkingv1.HTTPIngressRuleValue{
-                               Paths: []networkingv1.HTTPIngressPath{
-                                   {
-                                       Path:     "/",
-                                       PathType: (*networkingv1.PathType)(pointer.String("Prefix")),
-                                       Backend: networkingv1.IngressBackend{
-                                           Service: &networkingv1.IngressServiceBackend{
-                                               Name: component.Name,
-                                               Port: networkingv1.ServiceBackendPort{Number: 80},
-                                           },
-                                       },
-                                   },
-                               },
-                           },
-                       },
-                   },
-               },
-           },
-       }
-       
-       return r.Client.Create(ctx, ingress)
-   }
-   ```
-
-   This pattern enables:
-   - Adding new gateway providers without modifying consumers
-   - Running multiple gateways simultaneously (e.g., Nginx for external, Envoy for internal)
-   - Components dynamically selecting which gateway to use
-   - Easy testing with mock gateway providers
-
-4. **Git Provider Controllers**
-
-
-3. **NginxReconciler**
-   ```go
-   // pkg/controllers/nginx/controller.go
-   type NginxComponentReconciler struct {
-       client.Client
-       Scheme *runtime.Scheme
-       HelmClient *helm.Client
-   }
-
-   func (r *NginxComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch NginxComponent CR
-       // 2. Install/upgrade ingress-nginx via Helm
-       // 3. Configure default backend
-       // 4. Set up TLS secrets
-       // 5. Verify admission webhook readiness
-       // 6. Update status
-   }
-   ```
-   
-   - Helm-based nginx ingress installation
-   - TLS certificate management
-   - Service exposure configuration (NodePort/LoadBalancer)
-   - Admission webhook readiness checks
 
 4. **Enhanced GitRepositoryReconciler**
-   - Support multiple Git server types (not just Gitea)
-   - Implement source merging from multiple origins
-   - Add conflict resolution strategies
-   - Improve sync performance with incremental updates
+   ```go
+   // pkg/controllers/gitrepository/controller.go
+   func (r *GitRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // Update to use duck-typed Git provider access
+       // 1. Fetch GitRepository CR
+       // 2. Get Git provider using GetGitProviderStatus()
+       // 3. Create repository using provider credentials
+       // 4. Sync content from sources
+   }
+   ```
+   - Update to work with any Git provider via duck-typing
+   - Migrate existing Gitea client code
+   - Reuse existing content sync logic
+   - **Skip**: Complex multi-source merging (added later)
 
-**Deliverables**:
-- Fully functional component controllers
-- Comprehensive unit tests (>70% coverage)
-- Integration tests with real Helm charts
-- Documentation for each controller
-
-### Phase 3: Platform Orchestration 
-
-**Objective**: Implement the Platform controller that orchestrates component lifecycle
-
-#### Tasks:
-
-1. **PlatformReconciler Implementation**
+5. **PlatformReconciler Implementation**
    ```go
    // pkg/controllers/platform/controller.go
    type PlatformReconciler struct {
@@ -1705,76 +1399,61 @@ status:
    }
 
    func (r *PlatformReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       platform := &v1alpha1.Platform{}
-       // Fetch platform CR
-       
-       // Reconcile components in order:
-       // 1. Nginx (required for ingress)
-       // 2. Gitea (required for GitOps)
-       // 3. ArgoCD (manages everything else)
-       
-       // For each component:
-       //   - Create/update component CR
-       //   - Wait for component to be ready
-       //   - Update platform status
-       
-       // Bootstrap GitOps:
-       //   - Create GitRepository CRs for each component
-       //   - Create ArgoCD Applications
-       //   - Transition to GitOps management
-       
-       return ctrl.Result{}, nil
+       // Orchestrate provider lifecycle
+       // 1. Fetch Platform CR
+       // 2. Ensure provider CRs exist (create if missing)
+       // 3. Wait for providers to be Ready
+       // 4. Create GitRepository CRs for bootstrap
+       // 5. Aggregate status from providers
+       // 6. Update Platform status
    }
    ```
 
-2. **Component Dependency Management**
-   - Implement dependency graph resolution
-   - Ensure components start in correct order
-   - Handle circular dependency detection
-   - Support parallel installation where possible
+6. **Helm Integration**
+   - Add Helm SDK dependencies (helm.sh/helm/v3)
+   - Create Helm client wrapper in `pkg/util/helm/`
+   - Implement chart installation/upgrade/deletion
+   - Support embedded charts and remote repositories
 
-3. **Status Aggregation**
-   - Collect status from all components
-   - Provide unified platform health view
-   - Implement condition types (Ready, Degraded, Progressing)
-   - Support status observability
-
-4. **GitOps Transition**
-   - Create bootstrap GitRepository CRs
-   - Generate ArgoCD Applications for components
-   - Implement "hand-off" mechanism where ArgoCD takes over
-   - Support bidirectional sync (controller ← GitOps)
+7. **Testing Framework**
+   - Set up envtest for controller unit tests
+   - Create test fixtures for core providers
+   - Add integration tests using real Helm charts
+   - Establish CI test harness
 
 **Deliverables**:
-- Functional PlatformReconciler
-- Dependency management system
-- GitOps bootstrap automation
-- E2E tests for full platform lifecycle
+- ✅ Working Platform + 3 provider CRDs
+- ✅ Functional reconcilers for Gitea, Nginx, ArgoCD
+- ✅ Duck-typing infrastructure validated
+- ✅ Enhanced GitRepository controller
+- ✅ Test coverage >60%
+- ✅ Feature parity with existing LocalbuildReconciler
 
-### Phase 4: CLI Integration 
+**Success Criteria**:
+- Can create a Platform CR and have all three components install successfully
+- GitRepository CRs work with GiteaProvider via duck-typing
+- Status aggregation shows platform health
+- Existing embedded manifests reused without changes
 
-**Objective**: Update CLI to work with new controller architecture
+### Phase 2: Component Controllers 
+
+**Objective**: Implement individual component controllers with full lifecycle management
 
 #### Tasks:
 
-1. **Update `idpbuilder create` Command**
-   ```go
-   // pkg/cmd/create/root.go
-   func createPlatform(ctx context.Context, opts *CreateOptions) error {
-       // 1. Create Kind cluster (unchanged)
-       // 2. Install idpbuilder controllers (new)
-       // 3. Create Platform CR (new)
-       // 4. Wait for platform ready (updated)
-       // 5. Display access info
-   }
-   ```
-   
-   - Install idpbuilder controllers via Helm chart or static manifests
-   - Create Platform CR from CLI flags
-   - Wait for platform components to be ready
-   - Maintain backward compatibility with existing flags
+1. **GitOps Provider Controllers**
 
-2. **Controller Installation**
+   Each GitOps provider has its own dedicated reconciler:
+
+---
+
+### Phase 2: CLI Integration & Migration Path
+
+**Objective**: Update the CLI to use the new controller architecture and provide migration path for existing users.
+
+#### Tasks:
+
+1. **Controller Deployment**
    - Create Helm chart for idpbuilder controllers
      ```
      charts/idpbuilder/
@@ -1785,18 +1464,280 @@ status:
          rbac.yaml
          crds/
      ```
-   - Support air-gapped installation
-   - Include controller image in releases
-   - Document manual installation process
+   - Build controller container image
+   - Support air-gapped installation with embedded images
+
+2. **Update `idpbuilder create` Command**
+   ```go
+   // pkg/cmd/create/root.go
+   func createPlatform(ctx context.Context, opts *CreateOptions) error {
+       // 1. Create Kind cluster (unchanged)
+       // 2. Install idpbuilder controllers (Helm chart or static manifests)
+       // 3. Create provider CRs (GiteaProvider, NginxGateway, ArgoCDProvider)
+       // 4. Create Platform CR referencing providers
+       // 5. Wait for Platform to be Ready
+       // 6. Display access info
+   }
+   ```
+   - Maintain backward compatibility with existing flags
+   - Auto-generate provider CRs from CLI flags
+   - Wait for controller reconciliation
+   - Display endpoints and credentials as before
 
 3. **Flag Mapping**
-   - Map existing CLI flags to Platform CR spec
-   - Maintain backward compatibility
-   - Add new flags for controller-specific options
-   - Update help documentation
+   - Map `--package-dir` to Platform spec
+   - Map `--custom-package` to Package CRs
+   - Map ingress/TLS flags to provider configurations
+   - Maintain all existing CLI flags
 
-4. **Status Reporting**
-   - Enhance `get` commands to show component status
+4. **Migration Command**
+   ```bash
+   idpbuilder migrate --cluster-name localdev
+   ```
+   - Detect existing Localbuild CR
+   - Extract configuration
+   - Install controllers
+   - Create equivalent provider CRs + Platform CR
+   - Validate migration success
+   - Provide rollback option
+
+5. **Backward Compatibility**
+   - Keep LocalbuildReconciler functional (deprecated)
+   - Add deprecation warnings to logs
+   - Support both architectures side-by-side
+   - Auto-detect which mode to use
+
+**Deliverables**:
+- ✅ Updated CLI maintaining backward compatibility
+- ✅ idpbuilder Helm chart for controllers
+- ✅ Controller container image in registry
+- ✅ Migration tool and documentation
+- ✅ Updated CLI help and examples
+
+---
+
+### Phase 3: GitHub Provider (First Alternative)
+
+**Objective**: Add GitHub as an alternative Git provider to validate the duck-typing pattern with external services.
+
+#### Tasks:
+
+1. **GitHubProvider CRD**
+   - Define `GitHubProvider` CR in `api/v1alpha2/`
+   - Implement common duck-typed status fields
+   - Add GitHub-specific configuration (org, teams, auth)
+
+2. **GitHubProviderReconciler**
+   ```go
+   // pkg/controllers/gitprovider/github_controller.go
+   type GitHubProviderReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+   }
+
+   func (r *GitHubProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch GitHubProvider CR
+       // 2. Validate GitHub credentials (no installation needed)
+       // 3. Verify organization access
+       // 4. Update status with duck-typed fields
+   }
+   ```
+
+3. **GitHub Client Integration**
+   - Add github.com/google/go-github dependency
+   - Implement authentication (token, GitHub App)
+   - Create repository management functions
+   - Handle API rate limiting
+
+4. **GitRepository Enhancement**
+   - Update GitRepository controller to support GitHub
+   - Implement GitHub-specific repository creation
+   - Handle visibility settings (public/private)
+   - Test with both Gitea and GitHub
+
+5. **Testing**
+   - Unit tests with mocked GitHub client
+   - Integration tests (optional, may require real GitHub token)
+   - Validate duck-typing works across providers
+
+**Deliverables**:
+- ✅ GitHubProvider CRD and controller
+- ✅ GitHub client integration
+- ✅ GitRepository works with both Gitea and GitHub
+- ✅ Documentation for using GitHub as Git provider
+- ✅ CLI support for `--git-provider=github`
+
+---
+
+### Phase 4: GitLab Provider (Second Alternative)
+
+**Objective**: Add GitLab as another Git provider option.
+
+#### Tasks:
+
+1. **GitLabProvider CRD and Controller**
+   - Define `GitLabProvider` CR
+   - Implement GitLabProviderReconciler
+   - Add gitlab.com/gitlab-org/api/client-go dependency
+   - Support both gitlab.com and self-hosted GitLab
+
+2. **Testing & Validation**
+   - Validate duck-typing works with three Git providers
+   - Ensure GitRepository controller handles all three
+   - Document GitLab-specific configuration
+
+**Deliverables**:
+- ✅ GitLabProvider CRD and controller
+- ✅ GitRepository supports three Git providers
+- ✅ Documentation and examples
+
+---
+
+### Phase 5: Envoy Gateway Provider (First Alternative Gateway)
+
+**Objective**: Add Envoy Gateway as an alternative ingress option.
+
+#### Tasks:
+
+1. **EnvoyGateway CRD and Controller**
+   - Define `EnvoyGateway` CR
+   - Implement EnvoyGatewayReconciler
+   - Install Envoy Gateway via Helm
+   - Configure Gateway API resources
+
+2. **Multi-Gateway Support in Platform**
+   - Allow Platform to reference multiple gateways
+   - Components choose gateway via annotations
+   - Test Nginx + Envoy running simultaneously
+
+**Deliverables**:
+- ✅ EnvoyGateway CRD and controller
+- ✅ Platform supports multiple gateways
+- ✅ Documentation for Envoy Gateway
+
+---
+
+### Phase 6: Istio Gateway Provider (Service Mesh Gateway)
+
+**Objective**: Add Istio as a service mesh gateway option.
+
+#### Tasks:
+
+1. **IstioGateway CRD and Controller**
+   - Define `IstioGateway` CR
+   - Implement IstioGatewayReconciler
+   - Install Istio via Helm
+   - Configure Istio Gateway resources
+
+**Deliverables**:
+- ✅ IstioGateway CRD and controller
+- ✅ Documentation for Istio integration
+
+---
+
+### Phase 7: Flux Provider (Alternative GitOps)
+
+**Objective**: Add Flux as an alternative to ArgoCD for GitOps.
+
+#### Tasks:
+
+1. **FluxProvider CRD and Controller**
+   - Define `FluxProvider` CR
+   - Implement FluxProviderReconciler
+   - Install Flux controllers via Helm
+   - Create Flux source and sync resources
+
+2. **Multi-GitOps Support**
+   - Allow Platform to use multiple GitOps providers
+   - Package controller supports both ArgoCD and Flux
+   - Document use cases (ArgoCD for apps, Flux for infra)
+
+**Deliverables**:
+- ✅ FluxProvider CRD and controller
+- ✅ Multi-GitOps documentation
+
+---
+
+### Phase 8: Production Features & Stabilization
+
+**Objective**: Add production-ready features and comprehensive testing.
+
+#### Tasks:
+
+1. **High Availability**
+   - Support multiple replicas for components
+   - Leader election for controllers
+   - Database persistence for Gitea
+   - ArgoCD HA configuration
+
+2. **Monitoring & Observability**
+   - Prometheus metrics for all controllers
+   - Component health dashboards
+   - Alert rules for component failures
+   - OpenTelemetry integration
+
+3. **Security Enhancements**
+   - RBAC for component CRs
+   - Secret management improvements
+   - TLS everywhere
+   - Pod security standards
+
+4. **Multi-Cluster Support**
+   - Support vCluster as infrastructure provider
+   - Support Cluster API
+   - Remote cluster management
+
+5. **Package Ecosystem**
+   - Package catalog / marketplace
+   - Package versioning
+   - Package dependencies graph
+
+6. **Comprehensive Testing**
+   - E2E test coverage >80%
+   - Chaos testing
+   - Performance testing
+   - Upgrade/downgrade testing
+
+7. **Documentation**
+   - Complete API reference
+   - Architecture deep-dives
+   - Operator guide
+   - Developer guide
+   - Troubleshooting runbooks
+
+**Deliverables**:
+- ✅ Production-ready release
+- ✅ Complete documentation
+- ✅ Test coverage >80%
+- ✅ Release artifacts
+
+---
+
+## Phase Timeline & Milestones
+
+**Phase 1** (Weeks 1-6): Core end-to-end with existing providers
+- Milestone: Can deploy Platform CR with Gitea + Nginx + ArgoCD
+
+**Phase 2** (Weeks 7-10): CLI integration and migration
+- Milestone: CLI users can use new architecture transparently
+
+**Phase 3** (Weeks 11-12): GitHub provider
+- Milestone: Users can choose GitHub instead of Gitea
+
+**Phase 4** (Weeks 13-14): GitLab provider
+- Milestone: Three Git provider options available
+
+**Phase 5** (Weeks 15-16): Envoy Gateway
+- Milestone: Multiple gateway providers supported
+
+**Phase 6** (Weeks 17-18): Istio Gateway
+- Milestone: Service mesh integration available
+
+**Phase 7** (Weeks 19-20): Flux provider
+- Milestone: Multiple GitOps providers supported
+
+**Phase 8** (Weeks 21-26): Production features & stabilization
+- Milestone: v1.0.0 release candidate
    - Display endpoints and credentials
    - Show ArgoCD application health
    - Improve error messages
@@ -1987,11 +1928,12 @@ The following changes will require user action:
 
 ### Deprecation Timeline
 
-- **v0.8.0** (Month 1): New architecture introduced, old architecture continues to work
-- **v0.9.0** (Month 3): Old architecture marked deprecated, warnings added
-- **v0.10.0** (Month 6): Old architecture removed, migration tool still available
-- **v0.11.0** (Month 9): Migration tool deprecated
-- **v1.0.0** (Month 12): First stable release with new architecture only
+- **v0.8.0 (Phase 1-2, Months 1-3)**: New architecture introduced with core providers (Gitea, Nginx, ArgoCD), CLI integration, and migration tool
+- **v0.9.0 (Phase 3-4, Months 4-5)**: Alternative Git providers (GitHub, GitLab) added, old architecture marked deprecated with warnings
+- **v0.10.0 (Phase 5-6, Months 6-7)**: Alternative gateways (Envoy, Istio) added
+- **v0.11.0 (Phase 7, Month 8)**: Flux provider added, old LocalbuildReconciler removed (migration tool still available)
+- **v0.12.0 (Phase 8, Months 9-11)**: Production features and stabilization
+- **v1.0.0 (Month 12)**: First stable release with full provider ecosystem
 
 ## Benefits & Impact
 
