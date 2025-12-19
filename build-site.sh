@@ -46,9 +46,6 @@ echo "Creating _redirects file..."
 cat > "$OUTPUT_DIR/_redirects" << 'EOF'
 # Redirect /docs to /docs/index.html
 /docs /docs/index.html 200
-
-# 404 page
-/* /404.html 404
 EOF
 
 echo "Build completed successfully!"
