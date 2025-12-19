@@ -183,36 +183,21 @@ spec:
         dex:
           enabled: false
     
-    # Git Provider - supports multiple implementations
-    git:
-      enabled: true
-      provider: gitea  # Options: gitea, github, gitlab
-      namespace: gitea
-      
-      # Provider-specific configuration
-      gitea:
-        version: 1.24.3
-      helmChart:
-        repository: https://dl.gitea.com/charts/
-        version: 12.1.2
-      adminUser:
-        username: giteaAdmin
-        passwordSecretRef:
-          name: gitea-admin-secret
-          key: password
+    # Git Providers - references to provider CRs
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+      # Additional providers can be added
+      # - name: github-external
+      #   kind: GitHubProvider
+      #   namespace: idpbuilder-system
     
-    # Gateway Provider - supports multiple implementations
+    # Gateway - reference to gateway provider CR
     gateway:
-      enabled: true
-      provider: nginx  # Options: nginx, envoy, istio
-      namespace: ingress-nginx
-      
-      # Provider-specific configuration
-      nginx:
-        version: 1.13.0
-      helmChart:
-        repository: https://kubernetes.github.io/ingress-nginx
-        version: 4.11.0
+      name: nginx-gateway
+      kind: NginxGateway
+      namespace: idpbuilder-system
   
   # GitOps bootstrap configuration
   bootstrap:
@@ -254,123 +239,228 @@ status:
   phase: Ready
 ```
 
-#### GitProvider CR
+#### Git Provider CRs (Duck-Typed)
 
-The GitProvider CR supports multiple Git implementations through a provider field:
+Git providers are defined as separate CR types that share common status fields, allowing other controllers to interact with them uniformly regardless of implementation.
+
+**Common Status Fields (Duck-Typed Interface):**
+
+All Git provider CRs must expose these status fields:
+```yaml
+status:
+  # Standard conditions
+  conditions:
+    - type: Ready
+      status: "True"
+  
+  # Common fields for Git operations
+  endpoint: string           # External URL for web UI and cloning
+  internalEndpoint: string   # Cluster-internal URL for API access
+  credentialsSecretRef:      # Secret containing access credentials
+    name: string
+    namespace: string
+    key: string              # Key within secret (e.g., "token", "password")
+```
+
+##### GiteaProvider CR
 
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
-kind: GitProvider
+kind: GiteaProvider
 metadata:
-  name: git
+  name: gitea-local
   namespace: idpbuilder-system
-  ownerReferences:
-    - apiVersion: idpbuilder.cnoe.io/v1alpha1
-      kind: Platform
-      name: localdev
 spec:
-  provider: gitea  # Options: gitea, github, gitlab
+  # Deployment namespace
+  namespace: gitea
+  version: 1.24.3
   
-  # Gitea provider configuration
-  gitea:
-    namespace: gitea
-    version: 1.24.3
+  # Installation method
+  installMethod:
+    type: Helm
+    helm:
+      repository: https://dl.gitea.com/charts/
+      chart: gitea
+      version: 12.1.2
+  
+  # Gitea-specific configuration
+  config:
+    ingress:
+      enabled: true
+      className: nginx
+      host: gitea.cnoe.localtest.me
     
-    installMethod:
-      type: Helm
-      helm:
-        repository: https://dl.gitea.com/charts/
-        chart: gitea
-        version: 12.1.2
+    persistence:
+      enabled: true
+      size: 10Gi
     
-    config:
-      ingress:
-        enabled: true
-        className: nginx
-        hosts:
-          - host: gitea.cnoe.localtest.me
-      
-      persistence:
-        enabled: true
-        size: 10Gi
-      
-      database:
-        builtIn:
-          sqlite:
-            enabled: true
-    
-    adminUser:
-      username: giteaAdmin
-      email: admin@cnoe.localtest.me
-      passwordSecretRef:
-        name: gitea-admin-secret
-        namespace: gitea
-        key: password
-      autoGenerate: true
-    
-    organizations:
-      - name: idpbuilder
-        description: IDP Builder Bootstrap Organization
+    database:
+      type: sqlite  # Options: sqlite, postgres, mysql
+  
+  # Admin user configuration
+  adminUser:
+    username: giteaAdmin
+    email: admin@cnoe.localtest.me
+    passwordSecretRef:
+      name: gitea-admin-secret
+      namespace: gitea
+      key: password
+    autoGenerate: true
+  
+  # Organizations to create
+  organizations:
+    - name: idpbuilder
+      description: IDP Builder Bootstrap Organization
 
 status:
   conditions:
     - type: Ready
       status: "True"
-  provider: gitea
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  endpoint: https://gitea.cnoe.localtest.me
+  internalEndpoint: http://gitea-http.gitea.svc.cluster.local:3000
+  credentialsSecretRef:
+    name: gitea-admin-secret
+    namespace: gitea
+    key: token
+  
+  # Gitea-specific status
   installed: true
   version: 1.24.3
   phase: Ready
-  endpoint: https://gitea.cnoe.localtest.me
-  internalEndpoint: http://gitea-http.gitea.svc.cluster.local:3000
   adminUser:
     username: giteaAdmin
-    secretRef:
-      name: gitea-admin-secret
-      namespace: gitea
 ```
 
-**Alternative: GitHub Provider Configuration**
+##### GitHubProvider CR
 
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
-kind: GitProvider
+kind: GitHubProvider
 metadata:
-  name: git
+  name: github-external
   namespace: idpbuilder-system
 spec:
-  provider: github
+  # GitHub organization
+  organization: my-organization
   
-  # GitHub provider configuration
-  github:
-    organization: my-organization
-    
-    # GitHub API endpoint (use for GitHub Enterprise)
-    endpoint: https://api.github.com
-    
-    # Credentials for GitHub API access
-    credentialsSecretRef:
-      name: github-credentials
+  # GitHub API endpoint (for GitHub Enterprise)
+  endpoint: https://api.github.com  # Default for github.com
+  
+  # Credentials for GitHub API access
+  credentialsSecretRef:
+    name: github-credentials
+    namespace: idpbuilder-system
+    key: token  # GitHub Personal Access Token or App private key
+  
+  # Authentication method
+  authType: token  # Options: token, app
+  
+  # For GitHub App authentication
+  appAuth:
+    appID: "123456"
+    installationID: "789012"
+    privateKeySecretRef:
+      name: github-app-key
       namespace: idpbuilder-system
-    
-    # Repository defaults
-    repositoryDefaults:
-      visibility: private  # Options: public, private, internal
-      autoInit: true
-      defaultBranch: main
-    
-    # Team configuration
-    teams:
-      - name: platform-team
-        permission: admin
+      key: private-key.pem
+  
+  # Repository defaults
+  repositoryDefaults:
+    visibility: private  # Options: public, private, internal
+    autoInit: true
+    defaultBranch: main
+    allowSquashMerge: true
+    allowMergeCommit: true
+    allowRebaseMerge: true
+  
+  # Team configuration
+  teams:
+    - name: platform-team
+      permission: admin  # Options: pull, push, admin, maintain
 
 status:
   conditions:
     - type: Ready
       status: "True"
-  provider: github
-  phase: Ready
-  endpoint: https://api.github.com
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  endpoint: https://github.com/my-organization
+  internalEndpoint: https://api.github.com
+  credentialsSecretRef:
+    name: github-credentials
+    namespace: idpbuilder-system
+    key: token
+  
+  # GitHub-specific status
   organization: my-organization
+  authenticated: true
+  rateLimit:
+    remaining: 4999
+    limit: 5000
+    resetAt: "2025-12-19T11:00:00Z"
+```
+
+##### GitLabProvider CR
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitLabProvider
+metadata:
+  name: gitlab-external
+  namespace: idpbuilder-system
+spec:
+  # GitLab instance URL
+  endpoint: https://gitlab.com  # Or self-hosted GitLab URL
+  
+  # Group path
+  group: my-group
+  
+  # Credentials for GitLab API access
+  credentialsSecretRef:
+    name: gitlab-credentials
+    namespace: idpbuilder-system
+    key: token  # GitLab Personal Access Token or Group Access Token
+  
+  # For self-hosted GitLab with custom CA
+  caSecretRef:
+    name: gitlab-ca-cert
+    namespace: idpbuilder-system
+    key: ca.crt
+  
+  # Repository defaults
+  repositoryDefaults:
+    visibility: private  # Options: public, private, internal
+    defaultBranch: main
+    initializeWithReadme: true
+    cicdEnabled: true
+  
+  # Subgroup configuration
+  subgroups:
+    - name: platform
+      description: Platform repositories
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  endpoint: https://gitlab.com/my-group
+  internalEndpoint: https://gitlab.com/api/v4
+  credentialsSecretRef:
+    name: gitlab-credentials
+    namespace: idpbuilder-system
+    key: token
+  
+  # GitLab-specific status
+  group: my-group
+  groupID: 12345
+  authenticated: true
 ```
 
 #### Gateway CR
@@ -809,18 +899,27 @@ status:
 
 #### Tasks:
 1. **Define New CRDs**
-   - Create `Platform`, `ArgoCDComponent`, `GiteaComponent`, `NginxComponent` types
+   - Create `Platform`, `ArgoCDComponent` types
+   - Create provider CRDs: `GiteaProvider`, `GitHubProvider`, `GitLabProvider`
+   - Create gateway CRDs: `NginxGateway`, `EnvoyGateway`, `IstioGateway`
+   - Define duck-typed common status fields across provider types
    - Generate CRD manifests using controller-gen
-   - Update API version if needed (consider v1alpha2 or v1beta1)
+   - Update API version (v1alpha2 to indicate significant change)
 
 2. **Controller Scaffolding**
    - Create new controller packages:
      - `pkg/controllers/platform/`
      - `pkg/controllers/argocd/`
-     - `pkg/controllers/gitea/`
-     - `pkg/controllers/nginx/`
+     - `pkg/controllers/gitprovider/` (with subpackages for each provider)
+       - `gitea_controller.go`
+       - `github_controller.go`
+       - `gitlab_controller.go`
+     - `pkg/controllers/gateway/` (with subpackages for each gateway)
+       - `nginx_controller.go`
+       - `envoy_controller.go`
    - Implement basic reconciliation loops
    - Set up owner references and finalizers
+   - Create shared interfaces for duck-typed status access
 
 3. **Helm Integration**
    - Add Helm SDK dependencies
@@ -1536,6 +1635,34 @@ idpbuilder_gitrepository_last_sync_timestamp{name="argocd-bootstrap"}
 
 **Minimal Configuration** (Development with Gitea and Nginx):
 
+First, create the provider CRs:
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GiteaProvider
+metadata:
+  name: gitea-local
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  version: 1.24.3
+  adminUser:
+    autoGenerate: true
+  organizations:
+    - name: idpbuilder
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: NginxGateway
+metadata:
+  name: nginx-gateway
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx
+  version: 1.13.0
+```
+
+Then reference them in the Platform:
+
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
@@ -1544,15 +1671,48 @@ metadata:
   namespace: idpbuilder-system
 spec:
   domain: cnoe.localtest.me
-  # All components use default settings
   components:
-    git:
-      provider: gitea  # In-cluster Git server
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        namespace: idpbuilder-system
     gateway:
-      provider: nginx  # Nginx Ingress Controller
+      name: nginx-gateway
+      kind: NginxGateway
+      namespace: idpbuilder-system
 ```
 
 **GitHub + Envoy Gateway Configuration** (External Git with modern gateway):
+
+First, create the provider CRs:
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitHubProvider
+metadata:
+  name: github-external
+  namespace: idpbuilder-system
+spec:
+  organization: my-company
+  endpoint: https://api.github.com
+  credentialsSecretRef:
+    name: github-token
+    namespace: idpbuilder-system
+    key: token
+  repositoryDefaults:
+    visibility: private
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: EnvoyGateway
+metadata:
+  name: envoy-gateway
+  namespace: idpbuilder-system
+spec:
+  namespace: envoy-gateway-system
+  version: v1.0.0
+```
+
+Then reference them in the Platform:
 
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
@@ -1567,20 +1727,65 @@ spec:
     argocd:
       enabled: true
     
-    git:
-      enabled: true
-      provider: github
-      github:
-        organization: my-company
-        credentialsSecretRef:
-          name: github-token
-          namespace: idpbuilder-system
+    gitProviders:
+      - name: github-external
+        kind: GitHubProvider
+        namespace: idpbuilder-system
     
     gateway:
-      enabled: true
-      provider: envoy
-      envoy:
-        namespace: envoy-gateway-system
+      name: envoy-gateway
+      kind: EnvoyGateway
+      namespace: idpbuilder-system
+```
+
+**Multi-Provider Configuration** (Multiple Git providers):
+
+```yaml
+# Define multiple Git providers
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GiteaProvider
+metadata:
+  name: gitea-dev
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  adminUser:
+    autoGenerate: true
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitHubProvider
+metadata:
+  name: github-prod
+  namespace: idpbuilder-system
+spec:
+  organization: my-company
+  credentialsSecretRef:
+    name: github-prod-token
+    namespace: idpbuilder-system
+    key: token
+---
+# Platform references both
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: hybrid
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  components:
+    # Use multiple Git providers
+    gitProviders:
+      - name: gitea-dev
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+      - name: github-prod
+        kind: GitHubProvider
+        namespace: idpbuilder-system
+    
+    gateway:
+      name: nginx-gateway
+      kind: NginxGateway
+      namespace: idpbuilder-system
 ```
 
 **Production Configuration** (High Availability):
