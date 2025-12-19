@@ -10,6 +10,18 @@
 > This repository contains experimental work for a version 2 concept of idpbuilder. This is not the official current version.
 >
 > **For the official current version of idpbuilder, please visit: [https://cnoe.io/docs/idpbuilder](https://cnoe.io/docs/idpbuilder)**
+>
+> ### Phase 1.1 Implementation Status ✅
+>
+> Phase 1.1 of the controller-based architecture has been implemented with the following features:
+> - ✅ Platform CR with provider aggregation support
+> - ✅ GiteaProvider CR with duck-typed status fields
+> - ✅ PlatformReconciler for orchestrating providers
+> - ✅ GiteaProviderReconciler for managing Gitea installations
+> - ✅ Duck-typing infrastructure for provider status access
+> - ✅ Example YAML manifests in [`examples/`](./examples/)
+>
+> See [examples/README.md](./examples/README.md) for usage examples.
 
 ---
 

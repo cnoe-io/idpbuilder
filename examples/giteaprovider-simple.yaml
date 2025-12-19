@@ -1,0 +1,29 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: my-gitea
+  namespace: gitea
+spec:
+  # Namespace where Gitea will be deployed
+  namespace: gitea
+  
+  # Gitea version to install
+  version: "1.24.3"
+  
+  # Admin user configuration
+  adminUser:
+    username: giteaAdmin
+    email: admin@cnoe.localtest.me
+    autoGenerate: true  # Auto-generate credentials if not provided
+    # To use existing credentials, specify:
+    # passwordSecretRef:
+    #   name: my-gitea-password
+    #   namespace: gitea
+    #   key: password
+  
+  # Organizations to create in Gitea
+  organizations:
+    - name: cnoe
+      description: CNOE Organization
+    - name: demo
+      description: Demo Organization

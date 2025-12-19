@@ -1,0 +1,31 @@
+---
+# First create the GiteaProvider
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: my-gitea
+  namespace: gitea
+spec:
+  namespace: gitea
+  version: "1.24.3"
+  adminUser:
+    username: giteaAdmin
+    email: admin@cnoe.localtest.me
+    autoGenerate: true
+  organizations:
+    - name: cnoe
+      description: CNOE Organization
+---
+# Then create the Platform that references it
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: my-platform
+  namespace: default
+spec:
+  domain: cnoe.localtest.me
+  components:
+    gitProviders:
+      - name: my-gitea
+        kind: GiteaProvider
+        namespace: gitea
