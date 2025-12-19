@@ -13,12 +13,18 @@ on:
 
 jobs:
   e2e:
-    runs-on: ubuntu-22.04
+    runs-on: homelab-mini-runner
     if: ${{ github.event.ref != '' }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
+      - name: Install build dependencies
+        run: |
+          if ! command -v make &> /dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y make
+          fi
       - name: Setup Go
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
@@ -28,7 +34,7 @@ jobs:
           make e2e
   # invoked by slash command workflow
   e2e-slash-command:
-    runs-on: ubuntu-22.04
+    runs-on: homelab-mini-runner
     if: ${{ github.event.action == 'e2e-command' }}
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -36,6 +42,12 @@ jobs:
           repository: ${{ github.event.client_payload.pull_request.head.repo.full_name }}
           ref: ${{ github.event.client_payload.pull_request.head.ref }}
           fetch-depth: 0
+      - name: Install build dependencies
+        run: |
+          if ! command -v make &> /dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y make
+          fi
       - name: Setup Go
         uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:

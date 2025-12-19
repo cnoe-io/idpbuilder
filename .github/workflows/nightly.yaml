@@ -8,7 +8,7 @@ on:
 
 jobs:
   nightly:
-    runs-on: ubuntu-22.04
+    runs-on: homelab-mini-runner
     steps:
       - name: Generate a token
         id: generate-token
