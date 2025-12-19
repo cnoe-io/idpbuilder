@@ -1462,12 +1462,23 @@ This allows each sub-phase to be:
            Complete(r)
    }
    ```
-   - Migrate Gitea installation logic from LocalbuildReconciler
+   - **MIGRATE** Gitea installation logic from `pkg/controllers/localbuild/gitea.go`
+   - **MIGRATE** Gitea embedded manifests from `pkg/controllers/localbuild/resources/gitea/`
+   - **MIGRATE** Gitea client integration and API calls from LocalbuildReconciler
    - Reuse existing embedded manifests without changes
    - Implement Gitea client integration
    - Create admin user and organization
    - Update duck-typed status fields
    - Add proper error handling and conditions
+
+6. **Migration and Cleanup**
+   - **REMOVE** Gitea-related code from `pkg/controllers/localbuild/controller.go`:
+     - Remove `reconcileGitea()` function
+     - Remove Gitea installation calls from main reconcile loop
+   - **REMOVE** `pkg/controllers/localbuild/gitea.go` file (after migration complete)
+   - **REMOVE** Gitea-related fields from Localbuild CR status (if any)
+   - Update LocalbuildReconciler to skip Gitea installation
+   - Add deprecation warnings for Localbuild CR usage
 
 6. **PlatformReconciler Implementation (Minimal)**
    ```go
@@ -1501,6 +1512,8 @@ This allows each sub-phase to be:
    - Unit tests for duck-typing utilities
    - Integration test: Create Platform CR → GiteaProvider created → Gitea installed → Status updated
    - Validation: `kubectl get platform,giteaprovider -n idpbuilder-system`
+   - **Verify** old Localbuild CR still works (for backward compatibility)
+   - **Verify** Gitea functionality removed from LocalbuildReconciler works correctly
 
 **Deliverables**:
 - ✅ Platform CR (v1alpha2) with gitProviders support only
@@ -1510,6 +1523,8 @@ This allows each sub-phase to be:
 - ✅ Unit and integration tests
 - ✅ CRD manifests generated
 - ✅ Documentation for GiteaProvider
+- ✅ **MIGRATED**: Gitea installation logic from LocalbuildReconciler
+- ✅ **REMOVED**: Gitea-related code from `pkg/controllers/localbuild/`
 
 **Success Criteria**:
 - Can create a Platform CR that references a GiteaProvider
@@ -1518,6 +1533,8 @@ This allows each sub-phase to be:
 - Duck-typing access to GiteaProvider status works
 - All tests pass
 - Can be merged and deployed independently
+- **Old Localbuild CR no longer installs Gitea** (functionality moved to GiteaProvider)
+- Backward compatibility maintained (Localbuild CR still functions for other components)
 
 **Validation Steps**:
 ```bash
@@ -1646,30 +1663,41 @@ curl https://gitea.cnoe.localtest.me
        // 6. Set Ready condition
    }
    ```
-   - Migrate Nginx installation logic from LocalbuildReconciler
-   - Reuse existing embedded manifests
+   - **MIGRATE** Nginx installation logic from `pkg/controllers/localbuild/nginx.go`
+   - **MIGRATE** Nginx embedded manifests from `pkg/controllers/localbuild/resources/nginx/`
+   - Reuse existing embedded manifests without changes
    - Get LoadBalancer/NodePort endpoint
    - Update duck-typed status fields
    - Create IngressClass resource
 
-5. **PlatformReconciler Update**
+5. **Migration and Cleanup**
+   - **REMOVE** Nginx-related code from `pkg/controllers/localbuild/controller.go`:
+     - Remove `reconcileNginx()` function
+     - Remove Nginx installation calls from main reconcile loop
+   - **REMOVE** `pkg/controllers/localbuild/nginx.go` file (after migration complete)
+   - **REMOVE** Nginx-related fields from Localbuild CR status (if any)
+   - Update LocalbuildReconciler to skip Nginx installation
+
+6. **PlatformReconciler Update**
    - Update to handle gateways field in Platform spec
    - Aggregate gateway provider status
    - Update Platform status with gateway information
    - Ensure both git providers and gateways are tracked
 
-6. **GiteaProvider Integration with Gateway**
+7. **GiteaProvider Integration with Gateway**
    - Update GiteaProvider to create Ingress resource
    - Use gateway's ingressClassName from Platform
    - Set up Gitea ingress using the gateway
    - Test Gitea accessibility through Nginx
 
-7. **Testing**
+8. **Testing**
    - Unit tests for NginxGatewayReconciler
    - Unit tests for gateway duck-typing
    - Integration test: Platform with Gitea + Nginx
    - Validate Gitea accessible through Nginx ingress
    - Test Platform status aggregation with multiple provider types
+   - **Verify** old Localbuild CR no longer installs Nginx
+   - **Verify** Nginx functionality removed from LocalbuildReconciler
 
 **Deliverables**:
 - ✅ NginxGateway CRD and controller
@@ -1679,6 +1707,8 @@ curl https://gitea.cnoe.localtest.me
 - ✅ Gitea accessible via Nginx ingress
 - ✅ Tests for gateway functionality
 - ✅ Documentation for NginxGateway
+- ✅ **MIGRATED**: Nginx installation logic from LocalbuildReconciler
+- ✅ **REMOVED**: Nginx-related code from `pkg/controllers/localbuild/`
 
 **Success Criteria**:
 - Platform CR can reference both git and gateway providers
@@ -1688,6 +1718,8 @@ curl https://gitea.cnoe.localtest.me
 - Duck-typing works for gateways
 - All tests pass
 - Can be merged independently
+- **Old Localbuild CR no longer installs Nginx** (functionality moved to NginxGateway)
+- Backward compatibility maintained (Localbuild CR still functions for remaining components)
 
 **Validation Steps**:
 ```bash
@@ -1829,14 +1861,25 @@ curl -k https://gitea.cnoe.localtest.me
        // 6. Set Ready condition
    }
    ```
-   - Migrate ArgoCD installation logic from LocalbuildReconciler
-   - Reuse existing embedded manifests
+   - **MIGRATE** ArgoCD installation logic from `pkg/controllers/localbuild/argo.go`
+   - **MIGRATE** ArgoCD embedded manifests from `pkg/controllers/localbuild/resources/argocd/`
+   - Reuse existing embedded manifests without changes
    - Create admin credentials
    - Create ArgoCD projects
    - Update duck-typed status fields
    - Set up ArgoCD ingress using gateway
 
-5. **Enhanced GitRepositoryReconciler**
+5. **Migration and Cleanup**
+   - **REMOVE** ArgoCD-related code from `pkg/controllers/localbuild/controller.go`:
+     - Remove `reconcileArgoCD()` function
+     - Remove ArgoCD installation calls from main reconcile loop
+     - Remove ArgoCD Application creation logic
+   - **REMOVE** `pkg/controllers/localbuild/argo.go` file (after migration complete)
+   - **REMOVE** ArgoCD-related fields from Localbuild CR status (if any)
+   - Update LocalbuildReconciler to skip ArgoCD installation
+   - **At this point, LocalbuildReconciler should be essentially empty** and can be deprecated
+
+6. **Enhanced GitRepositoryReconciler**
    ```go
    // pkg/controllers/gitrepository/controller.go
    func (r *GitRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -1852,30 +1895,34 @@ curl -k https://gitea.cnoe.localtest.me
    - Update existing GitRepositoryReconciler to use duck-typing
    - Support gitServerRef that can point to any Git provider kind
    - Use GetGitProviderStatus() to get credentials
-   - Migrate existing Gitea repository creation logic
+   - **MIGRATE** repository creation logic to work with duck-typed providers
    - Reuse existing content sync logic
 
-6. **PlatformReconciler Update - Bootstrap Integration**
+7. **PlatformReconciler Update - Bootstrap Integration**
    - Update to handle gitOpsProviders field
+   - **MIGRATE** bootstrap repository creation from LocalbuildReconciler
+   - **MIGRATE** ArgoCD Application creation from LocalbuildReconciler
    - Create GitRepository CRs for bootstrap content
    - Create ArgoCD Applications using providers
    - Aggregate GitOps provider status
    - Coordinate between git, gateway, and GitOps providers
 
-7. **Bootstrap GitRepository CRs**
+8. **Bootstrap GitRepository CRs**
    - Create GitRepository CR for ArgoCD bootstrap
    - Create GitRepository CR for Gitea bootstrap
    - Create GitRepository CR for Nginx bootstrap
    - PlatformReconciler creates these automatically
-   - Use embedded content from current implementation
+   - **MIGRATE** embedded content references from LocalbuildReconciler
 
-8. **Testing**
+9. **Testing**
    - Unit tests for ArgoCDProviderReconciler
    - Unit tests for GitOps duck-typing
    - Unit tests for enhanced GitRepositoryReconciler
    - Integration test: Full Platform with all three providers
    - Validate ArgoCD Applications created and synced
    - Test GitRepository creation in Gitea via duck-typing
+   - **Verify** LocalbuildReconciler no longer installs any components
+   - **Verify** all functionality migrated to new provider controllers
 
 **Deliverables**:
 - ✅ ArgoCDProvider CRD and controller
@@ -1885,6 +1932,10 @@ curl -k https://gitea.cnoe.localtest.me
 - ✅ Updated PlatformReconciler with bootstrap logic
 - ✅ Tests for full stack
 - ✅ Documentation for ArgoCDProvider and GitRepository
+- ✅ **MIGRATED**: ArgoCD installation logic from LocalbuildReconciler
+- ✅ **MIGRATED**: Bootstrap repository and Application creation from LocalbuildReconciler
+- ✅ **REMOVED**: ArgoCD-related code from `pkg/controllers/localbuild/`
+- ✅ **REMOVED**: All component installation logic from LocalbuildReconciler
 
 **Success Criteria**:
 - Platform CR can reference git, gateway, and GitOps providers
@@ -1896,6 +1947,8 @@ curl -k https://gitea.cnoe.localtest.me
 - All tests pass
 - Full feature parity with existing LocalbuildReconciler
 - Can be merged independently
+- **LocalbuildReconciler is effectively deprecated** - all component installation moved to provider controllers
+- **Old Localbuild CR is maintained for backward compatibility** but internally delegates to Platform CR (or shows deprecation warnings)
 
 **Validation Steps**:
 ```bash
@@ -1988,6 +2041,17 @@ curl -k https://argocd.cnoe.localtest.me
    - Test with existing package definitions
    - Document any breaking changes
 
+8. **Final Migration Cleanup**
+   - **VERIFY** all component installation logic removed from LocalbuildReconciler
+   - **VERIFY** `pkg/controllers/localbuild/gitea.go` removed
+   - **VERIFY** `pkg/controllers/localbuild/nginx.go` removed
+   - **VERIFY** `pkg/controllers/localbuild/argo.go` removed
+   - Update LocalbuildReconciler to either:
+     - Show deprecation warnings and delegate to Platform CR, OR
+     - Maintain minimal compatibility shim for backward compatibility
+   - Document deprecation path for Localbuild CR
+   - Clean up any unused code or dependencies
+
 **Deliverables**:
 - ✅ Comprehensive E2E test suite
 - ✅ Test coverage >70%
@@ -1998,6 +2062,8 @@ curl -k https://argocd.cnoe.localtest.me
 - ✅ Troubleshooting guide
 - ✅ Performance benchmarks
 - ✅ Security review completed
+- ✅ **FINAL CLEANUP**: All component installation code removed from LocalbuildReconciler
+- ✅ **FINAL CLEANUP**: Individual component files (`gitea.go`, `nginx.go`, `argo.go`) removed from localbuild package
 
 **Success Criteria**:
 - All E2E tests pass consistently
@@ -2006,6 +2072,8 @@ curl -k https://argocd.cnoe.localtest.me
 - Performance is equal or better than existing implementation
 - No critical security issues
 - Ready for Phase 2 (CLI integration)
+- **All component installation code successfully migrated** from LocalbuildReconciler to provider controllers
+- **LocalbuildReconciler cleaned up** with only backward compatibility shim remaining (if needed)
 
 ---
 
@@ -2024,15 +2092,26 @@ curl -k https://argocd.cnoe.localtest.me
 - ✅ Test coverage >70%
 - ✅ Complete documentation
 - ✅ Feature parity with existing LocalbuildReconciler
+- ✅ **MIGRATED**: All component installation logic from LocalbuildReconciler to provider controllers
+- ✅ **REMOVED**: Component-specific code from `pkg/controllers/localbuild/` (gitea.go, nginx.go, argo.go)
+- ✅ **CLEANED**: LocalbuildReconciler reduced to minimal compatibility shim (or deprecated)
+
+**Migration Strategy Per Sub-Phase**:
+- **Sub-Phase 1.1**: Migrate Gitea → Remove Gitea code from LocalbuildReconciler
+- **Sub-Phase 1.2**: Migrate Nginx → Remove Nginx code from LocalbuildReconciler
+- **Sub-Phase 1.3**: Migrate ArgoCD → Remove ArgoCD code from LocalbuildReconciler
+- **Sub-Phase 1.4**: Final cleanup → Verify all migrations complete, remove old files
 
 **Key Benefits of Iterative Approach**:
 - Each sub-phase can be developed, tested, and merged independently
 - Early validation of duck-typing pattern in Sub-Phase 1.1
 - Progressive complexity (git → gateway → GitOps)
+- Incremental migration reduces risk
 - Faster feedback loops
 - Lower risk of large merge conflicts
 - Ability to course-correct between sub-phases
 - Early adopters can start using partial functionality
+- **Old functionality removed progressively** as new controllers prove stable
 
 **Estimated Timeline**:
 - Sub-Phase 1.1 (Platform + Gitea): 2-3 weeks
