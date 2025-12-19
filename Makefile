@@ -26,6 +26,7 @@ HELM ?= $(LOCALBIN)/helm
 
 ## Tool Versions
 CONTROLLER_TOOLS_VERSION ?= v0.16.5
+KUSTOMIZE_VERSION ?= v5.5.0
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -60,10 +61,10 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 .PHONY: kustomize
-kustomize: ## Download kustomize if necessary
-ifeq (,$(wildcard $(KUSTOMIZE)))
-	cd $(LOCALBIN) && curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
-endif
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary
+$(KUSTOMIZE): $(LOCALBIN)
+	test -s $(LOCALBIN)/kustomize || \
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION)
 
 helm_os := $(shell uname | tr '[:upper:]' '[:lower:]')
 helm_version ?= 3.15.0
@@ -79,11 +80,17 @@ endif
 
 
 .PHONY: helm
-helm: ## Download helm if necessary
+helm: ## Download helm if necessary or use system helm
 ifeq (,$(wildcard $(HELM)))
-	curl https://get.helm.sh/helm-v$(helm_version)-$(helm_os)-$(helm_arch).tar.gz -o $(HELM_TGZ)
-	tar xvzf $(HELM_TGZ) -C $(LOCALBIN) --strip-components 1 $(helm_os)-$(helm_arch)/helm
-	chmod +x $(HELM)
+	@if command -v helm >/dev/null 2>&1; then \
+		echo "Using system helm"; \
+		ln -sf $$(command -v helm) $(HELM); \
+	else \
+		echo "Downloading helm v$(helm_version)"; \
+		curl https://get.helm.sh/helm-v$(helm_version)-$(helm_os)-$(helm_arch).tar.gz -o $(HELM_TGZ); \
+		tar xvzf $(HELM_TGZ) -C $(LOCALBIN) --strip-components 1 $(helm_os)-$(helm_arch)/helm; \
+		chmod +x $(HELM); \
+	fi
 endif
 
 .PHONY: envtest

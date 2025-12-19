@@ -191,7 +191,7 @@ func (r *GiteaProviderReconciler) reconcileGitea(ctx context.Context, provider *
 // installGiteaResources installs Gitea using embedded manifests from localbuild package
 func (r *GiteaProviderReconciler) installGiteaResources(ctx context.Context, provider *v1alpha2.GiteaProvider) error {
 	logger := log.FromContext(ctx)
-	
+
 	// Use the exported function from localbuild package to get raw Gitea resources
 	rawResources, err := localbuild.RawGiteaInstallResources(r.Config, v1alpha1.PackageCustomization{}, r.Scheme)
 	if err != nil {
@@ -205,7 +205,7 @@ func (r *GiteaProviderReconciler) installGiteaResources(ctx context.Context, pro
 	}
 
 	nsClient := client.NewNamespacedClient(r.Client, provider.Spec.Namespace)
-	
+
 	for _, obj := range installObjs {
 		if err := k8s.EnsureObject(ctx, nsClient, obj, provider.Spec.Namespace); err != nil {
 			return fmt.Errorf("ensuring object %s: %w", obj.GetName(), err)
@@ -255,7 +255,7 @@ func (r *GiteaProviderReconciler) isGiteaReady(ctx context.Context, provider *v1
 	// Check if Gitea API endpoint is accessible
 	baseUrl := util.GiteaBaseUrl(r.Config)
 	logger.V(1).Info("checking gitea api endpoint", "url", baseUrl)
-	
+
 	c := util.GetHttpClient()
 	resp, err := c.Get(baseUrl)
 	if err != nil {
