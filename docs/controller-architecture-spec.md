@@ -86,63 +86,112 @@ The `LocalbuildReconciler` currently performs the following:
 - **Gateway Provider**: Nginx Ingress, Envoy Gateway, Istio Gateway
 
 ### High-Level Design
-- **GitOps Provider**: ArgoCD (default), Flux (future support)
 
-The new architecture introduces dedicated controllers for each core platform component, running on the provisioned cluster:
+The new architecture introduces a composable, provider-based system where platform components are defined as separate Custom Resources with duck-typed interfaces. This enables:
+- **Multiple provider implementations** running simultaneously
+- **Pluggable Git providers**: Gitea (in-cluster), GitHub (external), GitLab
+- **Pluggable Gateway providers**: Nginx Ingress, Envoy Gateway, Istio Gateway
+- **GitOps management**: ArgoCD (default), Flux (future support)
+
+Controllers run on the provisioned cluster and manage their respective providers:
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Infrastructure Layer                           │
-│  CLI/Operator:                                                    │
-│    - Provisions Kubernetes cluster (Kind, vCluster, etc.)        │
-│    - Installs idpbuilder-controllers (Helm chart or manifest)    │
-│    - Creates initial Platform CR                                 │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│               Platform Controllers (On-Cluster)                   │
-│                                                                   │
-│  PlatformReconciler:                                              │
-│    - Orchestrates platform bootstrap                              │
-│    - Creates component CRs (ArgoCD, Gitea, Nginx)                │
-│    - Manages component lifecycle                                  │
-│                                                                   │
-│  ArgoCDReconciler:                                                │
-│    - Installs and configures ArgoCD                              │
-│    - Manages ArgoCD CustomResourceDefinitions                     │
-│    - Reports health status                                        │
-│                                                                   │
-│  GitProviderReconciler:                                                 │
-│    - Manages Git provider (Gitea, GitHub, GitLab)                               │
-│    - Creates repositories and manages credentials                    │
-│    - Provides unified Git server interface                             │
-│                                                                   │
-│  GatewayReconciler:                                               │
-│    - Manages Gateway provider (Nginx, Envoy, Istio)                       │
-│    - Installs and configures selected gateway                                     │
-│    - Manages TLS certificates and routing rules                                     │
-│                                                                   │
-│  GitRepositoryReconciler: (Enhanced)                              │
-│    - Creates repositories in Gitea                                │
-│    - Synchronizes content                                         │
-│    - Supports multiple sources                                    │
-│                                                                   │
-│  PackageReconciler: (Enhanced)                                    │
-│    - Manages application packages                                 │
-│    - Creates ArgoCD Applications                                  │
-│    - Handles package dependencies                                 │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                     Platform Services                             │
-│  - ArgoCD (managed by ArgoCDReconciler)                          │
-│  - Gitea (managed by GiteaReconciler)                            │
-│  - Ingress-Nginx (managed by IngressReconciler)                  │
-│  - User Applications (managed via ArgoCD + GitOps)               │
-└──────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                      Infrastructure Layer                            │
+│  CLI/Operator:                                                       │
+│    - Provisions Kubernetes cluster (Kind, vCluster, etc.)           │
+│    - Installs idpbuilder-controllers (Helm chart or manifest)       │
+│    - Creates initial Platform CR                                    │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                 Platform Controllers (On-Cluster)                    │
+│                                                                      │
+│  PlatformReconciler:                                                 │
+│    - Orchestrates platform bootstrap                                 │
+│    - References provider CRs (Git, Gateway)                          │
+│    - Creates ArgoCD component CR                                     │
+│    - Aggregates component status                                     │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  Git Provider Controllers (Duck-Typed)                         │ │
+│  │                                                                │ │
+│  │  GiteaProviderReconciler:                                      │ │
+│  │    - Installs Gitea via Helm                                   │ │
+│  │    - Creates organizations and admin users                     │ │
+│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
+│  │                                                                │ │
+│  │  GitHubProviderReconciler:                                     │ │
+│  │    - Validates GitHub credentials and access                   │ │
+│  │    - Manages organization/team configuration                   │ │
+│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
+│  │                                                                │ │
+│  │  GitLabProviderReconciler:                                     │ │
+│  │    - Validates GitLab credentials and access                   │ │
+│  │    - Manages groups and subgroups                              │ │
+│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  Gateway Provider Controllers (Duck-Typed)                     │ │
+│  │                                                                │ │
+│  │  NginxGatewayReconciler:                                       │ │
+│  │    - Installs Nginx Ingress Controller via Helm               │ │
+│  │    - Creates IngressClass resource                             │ │
+│  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
+│  │                                                                │ │
+│  │  EnvoyGatewayReconciler:                                       │ │
+│  │    - Installs Envoy Gateway via Helm                           │ │
+│  │    - Creates GatewayClass and Gateway resources                │ │
+│  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
+│  │                                                                │ │
+│  │  IstioGatewayReconciler:                                       │ │
+│  │    - Installs Istio control plane and gateway                  │ │
+│  │    - Configures service mesh settings                          │ │
+│  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  ArgoCDComponentReconciler:                                          │
+│    - Installs and configures ArgoCD                                 │
+│    - Manages ArgoCD CustomResourceDefinitions                       │
+│    - Reports health status                                          │
+│                                                                      │
+│  GitRepositoryReconciler: (Enhanced)                                 │
+│    - Works with ANY Git provider via duck-typed interface           │
+│    - Creates repositories using provider's credentials              │
+│    - Synchronizes content from multiple sources                     │
+│                                                                      │
+│  PackageReconciler: (Enhanced)                                       │
+│    - Manages application packages                                   │
+│    - Creates ArgoCD Applications referencing Git providers          │
+│    - Handles package dependencies                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                       Platform Services                              │
+│  ┌───────────────┐  ┌──────────────┐  ┌────────────────────────┐   │
+│  │ Git Providers │  │   Gateways   │  │   GitOps Engine        │   │
+│  ├───────────────┤  ├──────────────┤  ├────────────────────────┤   │
+│  │ • Gitea       │  │ • Nginx      │  │ • ArgoCD               │   │
+│  │ • GitHub      │  │ • Envoy      │  │   (manages user apps   │   │
+│  │ • GitLab      │  │ • Istio      │  │    via GitOps)         │   │
+│  └───────────────┘  └──────────────┘  └────────────────────────┘   │
+│                                                                      │
+│  Multiple providers can coexist - e.g.:                              │
+│    - Gitea for development + GitHub for production                   │
+│    - Nginx for public traffic + Envoy for internal/service mesh     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+**Key Architecture Principles:**
+
+1. **Duck Typing**: Providers expose common status fields without requiring a shared interface type
+2. **Composition**: Platform references multiple provider CRs by name and kind
+3. **Extensibility**: New provider types can be added without modifying Platform CR
+4. **Independence**: Each provider CR can exist and be managed independently
+5. **Flexibility**: Components choose providers dynamically at runtime
 
 ### New Custom Resource Definitions
 
