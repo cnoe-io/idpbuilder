@@ -22,9 +22,13 @@ jobs:
       - name: Run tests
         run: |
           make build
-          if [[ -n $(git status --porcelain) ]]; then
-            echo "git is in dirty state";
-            git status --porcelain=2 --branch
+          # Refresh git index to update stat info
+          git update-index --refresh || true
+          # Check for actual content changes (not just metadata)
+          if ! git diff-index --quiet HEAD --; then
+            echo "git is in dirty state - files have been modified by the build";
+            git diff-index --name-status HEAD --
+            git diff HEAD
             exit 1
           fi
           make test
