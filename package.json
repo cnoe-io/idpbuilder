@@ -1,0 +1,21 @@
+{
+  "name": "idpbuilder-site",
+  "version": "1.0.0",
+  "description": "Static site for IDP Builder project",
+  "scripts": {
+    "build": "./build-site.sh",
+    "dev": "npx http-server ./site -p 8080 -o",
+    "preview": "npx http-server ./public -p 8080 -o"
+  },
+  "keywords": [
+    "idp",
+    "kubernetes",
+    "developer-platform",
+    "cloudflare-pages"
+  ],
+  "author": "CNOE",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

@@ -1,0 +1,23 @@
+# Cloudflare Pages Configuration
+# This file is optional but provides additional configuration options
+
+name = "idpbuilder"
+compatibility_date = "2024-12-19"
+
+# Pages configuration
+[site]
+bucket = "./public"
+
+# Build configuration
+[build]
+command = "./build-site.sh"
+cwd = ""
+watch_dirs = ["site/**/*"]
+
+[build.upload]
+format = "service-worker"
+
+# Environment variables (if needed)
+# [env.production]
+# [env.production.vars]
+# API_URL = "https://api.example.com"

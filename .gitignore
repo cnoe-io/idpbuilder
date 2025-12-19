@@ -5,3 +5,10 @@ cover.out
 __debug*
 .vscode
 .idea
+
+# Static site build artifacts
+public/
+node_modules/
+package-lock.json
+.wrangler/
+.dev.vars
