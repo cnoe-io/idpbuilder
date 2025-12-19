@@ -163,7 +163,7 @@ func (r *PlatformReconciler) reconcileGitProviders(ctx context.Context, platform
 				allReady = false
 				continue
 			}
-			return nil, false, fmt.Errorf("failed to get provider %s/%s: %w", providerRef.Kind, providerRef.Name, err)
+			return nil, false, fmt.Errorf("failed to get provider kind=%s name=%s: %w", providerRef.Kind, providerRef.Name, err)
 		}
 
 		// Use duck-typing to get provider status

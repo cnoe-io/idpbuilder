@@ -81,7 +81,7 @@ func RunControllers(
 		Scheme: mgr.GetScheme(),
 		Config: cfg,
 	}).SetupWithManager(mgr); err != nil {
-		logger.Error(err, "unable to create giteaprovider controller")
+		logger.Error(err, "unable to create GiteaProvider controller")
 		return err
 	}
 
