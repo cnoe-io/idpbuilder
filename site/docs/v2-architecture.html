@@ -6,6 +6,11 @@
     <meta name="description" content="IDP Builder V2 Controller-Based Architecture">
     <title>V2 Controller Architecture | IDP Builder</title>
     <link rel="stylesheet" href="/css/style.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+    <!-- Mermaid.js for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <style>
         .docs-container {
             display: grid;
@@ -74,27 +79,17 @@
         .info-box p {
             margin: 0;
         }
-        .architecture-diagram {
-            background-color: var(--code-bg);
-            padding: 1rem;
-            border-radius: 4px;
-            overflow-x: auto;
+        .mermaid {
             margin: 1.5rem 0;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            line-height: 1.4;
+            text-align: center;
         }
-        .goals-list li:before {
-            content: "🎯";
-            margin-right: 0.5rem;
+        /* Prism code block styling */
+        pre[class*="language-"] {
+            margin: 1.5rem 0;
+            border-radius: 4px;
         }
-        .benefits-list li:before {
-            content: "✨";
-            margin-right: 0.5rem;
-        }
-        .goals-list li, .benefits-list li {
-            list-style: none;
-            margin-left: -2rem;
+        code[class*="language-"] {
+            font-size: 0.9rem;
         }
         @media (max-width: 768px) {
             .docs-container {
@@ -148,7 +143,7 @@
                 <p>The V2 architecture represents a significant evolution of idpbuilder, transitioning from a CLI-driven installation model to a controller-based architecture. This change enables idpbuilder to function as a true Kubernetes-native platform, where infrastructure components and application workloads are managed declaratively through Kubernetes Custom Resources (CRs) and reconciliation loops.</p>
 
                 <h2 id="goals">Goals</h2>
-                <ul class="goals-list">
+                <ul>
                     <li><strong>Kubernetes-Native Management:</strong> Enable all functionality to be managed through kubectl and GitOps tools like ArgoCD</li>
                     <li><strong>Separation of Concerns:</strong> Clearly delineate infrastructure provisioning from application/service management</li>
                     <li><strong>Production Readiness:</strong> Support production workloads and virtualized control planes (e.g., vCluster, Cluster API)</li>
@@ -157,7 +152,7 @@
                 </ul>
 
                 <h2 id="benefits">Key Benefits</h2>
-                <ul class="benefits-list">
+                <ul>
                     <li><strong>Kubernetes-Native:</strong> Everything manageable via kubectl, full GitOps compatibility, standard Kubernetes patterns</li>
                     <li><strong>Operational Excellence:</strong> Better observability through conditions, events, and metrics; easier debugging with kubectl describe and logs</li>
                     <li><strong>Flexibility:</strong> Easy component customization, support for alternative components, plugin architecture</li>
@@ -174,46 +169,44 @@
                     <li>GitOps management (ArgoCD, Flux)</li>
                 </ul>
 
-                <div class="architecture-diagram">
-<pre>┌─────────────────────────────────────────────────────────────────────┐
-│                      Infrastructure Layer                            │
-│  CLI/Operator:                                                       │
-│    - Provisions Kubernetes cluster (Kind, vCluster, etc.)           │
-│    - Installs idpbuilder-controllers (Helm chart or manifest)       │
-│    - Creates initial Platform CR                                    │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                 Platform Controllers (On-Cluster)                    │
-│                                                                      │
-│  PlatformReconciler:                                                 │
-│    - Orchestrates platform bootstrap                                 │
-│    - References provider CRs (Git, Gateway)                          │
-│    - Creates ArgoCD component CR                                     │
-│    - Aggregates component status                                     │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  Git Provider Controllers (Duck-Typed)                         │ │
-│  │  - GiteaProviderReconciler                                     │ │
-│  │  - GitHubProviderReconciler                                    │ │
-│  │  - GitLabProviderReconciler                                    │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  Gateway Provider Controllers (Duck-Typed)                     │ │
-│  │  - NginxGatewayReconciler                                      │ │
-│  │  - EnvoyGatewayReconciler                                      │ │
-│  │  - IstioGatewayReconciler                                      │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  GitOps Provider Controllers (Duck-Typed)                      │ │
-│  │  - ArgoCDProviderReconciler                                    │ │
-│  │  - FluxProviderReconciler                                      │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘</pre>
-                </div>
+                <div class="mermaid">
+graph TB
+    subgraph Infrastructure["Infrastructure Layer"]
+        CLI["CLI/Operator<br/>- Provisions Kubernetes cluster<br/>- Installs idpbuilder-controllers<br/>- Creates initial Platform CR"]
+    end
+    
+    subgraph Platform["Platform Controllers (On-Cluster)"]
+        PR["PlatformReconciler<br/>- Orchestrates platform bootstrap<br/>- References provider CRs<br/>- Aggregates component status"]
+        
+        subgraph GitProviders["Git Provider Controllers"]
+            GP1["GiteaProviderReconciler"]
+            GP2["GitHubProviderReconciler"]
+            GP3["GitLabProviderReconciler"]
+        end
+        
+        subgraph GatewayProviders["Gateway Provider Controllers"]
+            GW1["NginxGatewayReconciler"]
+            GW2["EnvoyGatewayReconciler"]
+            GW3["IstioGatewayReconciler"]
+        end
+        
+        subgraph GitOpsProviders["GitOps Provider Controllers"]
+            GO1["ArgoCDProviderReconciler"]
+            GO2["FluxProviderReconciler"]
+        end
+    end
+    
+    CLI --> PR
+    PR -.-> GitProviders
+    PR -.-> GatewayProviders
+    PR -.-> GitOpsProviders
+    
+    style Infrastructure fill:#e3f2fd
+    style Platform fill:#f5f5f5
+    style GitProviders fill:#fff9c4
+    style GatewayProviders fill:#e1f5fe
+    style GitOpsProviders fill:#f3e5f5
+</div>
 
                 <h3>Key Architecture Principles</h3>
                 <ol>
@@ -228,7 +221,7 @@
                 
                 <h3>Platform CR</h3>
                 <p>The Platform CR represents the entire IDP platform instance:</p>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
   name: localdev
@@ -271,7 +264,7 @@ status:
                 <p>Git providers expose common status fields via duck-typing:</p>
                 
                 <h4>GiteaProvider Example</h4>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: GiteaProvider
 metadata:
   name: gitea-local
@@ -302,7 +295,7 @@ status:
     key: token</code></pre>
 
                 <h4>GitHubProvider Example</h4>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: GitHubProvider
 metadata:
   name: github-external
@@ -336,7 +329,7 @@ status:
                 <p>Gateway providers manage ingress and routing:</p>
                 
                 <h4>NginxGateway Example</h4>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: NginxGateway
 metadata:
   name: nginx-gateway
@@ -370,7 +363,7 @@ status:
                 <p>GitOps providers manage continuous deployment:</p>
                 
                 <h4>ArgoCDProvider Example</h4>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: ArgoCDProvider
 metadata:
   name: argocd
@@ -404,7 +397,7 @@ status:
                 <p>The V2 architecture allows multiple providers of the same type to coexist, enabling flexible configurations:</p>
                 
                 <h3>Multiple Git Providers Example</h3>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
   name: hybrid
@@ -422,7 +415,7 @@ spec:
         namespace: idpbuilder-system</code></pre>
 
                 <h3>Multiple Gateway Providers Example</h3>
-                <pre><code>apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
   name: multi-gateway
@@ -478,5 +471,23 @@ spec:
             <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
         </div>
     </footer>
+    
+    <!-- Prism.js scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    
+    <!-- Initialize Mermaid -->
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
 </body>
 </html>
