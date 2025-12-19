@@ -152,10 +152,19 @@ Controllers run on the provisioned cluster and manage their respective providers
 │  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
-│  ArgoCDComponentReconciler:                                          │
-│    - Installs and configures ArgoCD                                 │
-│    - Manages ArgoCD CustomResourceDefinitions                       │
-│    - Reports health status                                          │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  GitOps Provider Controllers (Duck-Typed)                      │ │
+│  │                                                                │ │
+│  │  ArgoCDProviderReconciler:                                     │ │
+│  │    - Installs ArgoCD via Helm                                  │ │
+│  │    - Creates projects and admin credentials                    │ │
+│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
+│  │                                                                │ │
+│  │  FluxProviderReconciler:                                       │ │
+│  │    - Installs Flux controllers via Helm                        │ │
+│  │    - Configures source and kustomize controllers               │ │
+│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
+│  └────────────────────────────────────────────────────────────────┘ │
 │                                                                      │
 │  GitRepositoryReconciler: (Enhanced)                                 │
 │    - Works with ANY Git provider via duck-typed interface           │
@@ -171,17 +180,19 @@ Controllers run on the provisioned cluster and manage their respective providers
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       Platform Services                              │
-│  ┌───────────────┐  ┌──────────────┐  ┌────────────────────────┐   │
-│  │ Git Providers │  │   Gateways   │  │   GitOps Engine        │   │
-│  ├───────────────┤  ├──────────────┤  ├────────────────────────┤   │
-│  │ • Gitea       │  │ • Nginx      │  │ • ArgoCD               │   │
-│  │ • GitHub      │  │ • Envoy      │  │   (manages user apps   │   │
-│  │ • GitLab      │  │ • Istio      │  │    via GitOps)         │   │
-│  └───────────────┘  └──────────────┘  └────────────────────────┘   │
+│  ┌───────────────┐  ┌──────────────┐  ┌──────────────────────┐     │
+│  │ Git Providers │  │   Gateways   │  │  GitOps Providers    │     │
+│  ├───────────────┤  ├──────────────┤  ├──────────────────────┤     │
+│  │ • Gitea       │  │ • Nginx      │  │ • ArgoCD             │     │
+│  │ • GitHub      │  │ • Envoy      │  │ • Flux               │     │
+│  │ • GitLab      │  │ • Istio      │  │   (manages user apps │     │
+│  │               │  │              │  │    via GitOps)       │     │
+│  └───────────────┘  └──────────────┘  └──────────────────────┘     │
 │                                                                      │
 │  Multiple providers can coexist - e.g.:                              │
-│    - Gitea for development + GitHub for production                   │
-│    - Nginx for public traffic + Envoy for internal/service mesh     │
+│    - Gitea for dev + GitHub for production                           │
+│    - Nginx for public + Envoy for internal/service mesh             │
+│    - ArgoCD for app deployment + Flux for infrastructure            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -215,23 +226,8 @@ spec:
       name: platform-tls
       namespace: idpbuilder-system
   
-  # Component specifications with provider selection
+  # Component specifications with provider references
   components:
-    argocd:
-      enabled: true
-      namespace: argocd
-      version: v2.12.0
-      helmChart:
-        repository: https://argoproj.github.io/argo-helm
-        version: 7.0.0
-      values:
-        server:
-          replicas: 1
-        notifications:
-          enabled: false
-        dex:
-          enabled: false
-    
     # Git Providers - references to provider CRs
     gitProviders:
       - name: gitea-local
@@ -250,6 +246,16 @@ spec:
       # Additional gateways can be added
       # - name: envoy-gateway
       #   kind: EnvoyGateway
+      #   namespace: idpbuilder-system
+    
+    # GitOps Providers - references to GitOps provider CRs
+    gitOpsProviders:
+      - name: argocd
+        kind: ArgoCDProvider
+        namespace: idpbuilder-system
+      # Additional GitOps providers can be added
+      # - name: flux
+      #   kind: FluxProvider
       #   namespace: idpbuilder-system
   
   # GitOps bootstrap configuration
@@ -275,18 +281,20 @@ status:
       reason: AllComponentsReady
       message: "All platform components are operational"
   
-  components:
-    argocd:
-      ready: true
-      version: v2.12.0
-      endpoint: https://argocd.cnoe.localtest.me
-    gitea:
-      ready: true
-      version: 1.24.3
-      endpoint: https://gitea.cnoe.localtest.me
-    nginx:
-      ready: true
-      version: 1.13.0
+  # Provider statuses (aggregated from provider CRs)
+  providers:
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        ready: true
+    gateways:
+      - name: nginx-gateway
+        kind: NginxGateway
+        ready: true
+    gitOpsProviders:
+      - name: argocd
+        kind: ArgoCDProvider
+        ready: true
   
   observedGeneration: 1
   phase: Ready
@@ -826,20 +834,39 @@ status:
   gatewayClassName: idp-gateway
 ```
 
-#### ArgoCD Component CR
+#### GitOps Provider CRs (Duck-Typed)
+
+GitOps providers are defined as separate CR types that share common status fields, allowing other controllers to create and manage GitOps applications uniformly regardless of implementation.
+
+**Common Status Fields (Duck-Typed Interface):**
+
+All GitOps provider CRs must expose these status fields:
+```yaml
+status:
+  # Standard conditions
+  conditions:
+    - type: Ready
+      status: "True"
+  
+  # Common fields for GitOps operations
+  endpoint: string              # External URL for web UI
+  internalEndpoint: string      # Cluster-internal API endpoint
+  credentialsSecretRef:         # Admin credentials
+    name: string
+    namespace: string
+    key: string
+```
+
+##### ArgoCDProvider CR
 
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
-kind: ArgoCDComponent
+kind: ArgoCDProvider
 metadata:
   name: argocd
   namespace: idpbuilder-system
-  ownerReferences:
-    - apiVersion: idpbuilder.cnoe.io/v1alpha1
-      kind: Platform
-      name: localdev
-      uid: <platform-uid>
 spec:
+  # Deployment namespace
   namespace: argocd
   version: v2.12.0
   
@@ -851,7 +878,7 @@ spec:
       chart: argo-cd
       version: 7.0.0
   
-  # Configuration
+  # ArgoCD-specific configuration
   config:
     server:
       ingress:
@@ -885,17 +912,130 @@ spec:
     # Auto-generate if not provided
     autoGenerate: true
   
+  # Projects to create
+  projects:
+    - name: default
+      description: Default project
+    - name: platform
+      description: Platform components
+
 status:
   conditions:
     - type: Ready
       status: "True"
       lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  endpoint: https://argocd.cnoe.localtest.me
+  internalEndpoint: http://argocd-server.argocd.svc.cluster.local
+  credentialsSecretRef:
+    name: argocd-admin-secret
+    namespace: argocd
+    key: password
+  
+  # ArgoCD-specific status
   installed: true
   version: v2.12.0
   phase: Ready
-  endpoint: https://argocd.cnoe.localtest.me
   serverHealth:
     status: Healthy
+  applicationController:
+    ready: true
+```
+
+##### FluxProvider CR
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: FluxProvider
+metadata:
+  name: flux
+  namespace: idpbuilder-system
+spec:
+  # Deployment namespace
+  namespace: flux-system
+  version: v2.4.0
+  
+  # Installation method
+  installMethod:
+    type: Helm
+    helm:
+      repository: https://fluxcd-community.github.io/helm-charts
+      chart: flux2
+      version: 2.14.0
+  
+  # Flux-specific configuration
+  config:
+    # Source Controller configuration
+    sourceController:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    
+    # Kustomize Controller configuration
+    kustomizeController:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    
+    # Helm Controller configuration
+    helmController:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    
+    # Notification Controller (optional)
+    notificationController:
+      enabled: true
+  
+  # Multi-tenancy configuration
+  multitenancy:
+    enabled: true
+    defaultServiceAccount: flux-reconciler
+  
+  # Image automation (optional)
+  imageAutomation:
+    enabled: false
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  endpoint: https://flux-dashboard.cnoe.localtest.me
+  internalEndpoint: http://flux-source-controller.flux-system.svc.cluster.local
+  credentialsSecretRef:
+    name: flux-admin-secret
+    namespace: flux-system
+    key: token
+  
+  # Flux-specific status
+  installed: true
+  version: v2.4.0
+  phase: Ready
+  controllers:
+    sourceController:
+      ready: true
+    kustomizeController:
+      ready: true
+    helmController:
+      ready: true
+    notificationController:
+      ready: true
 ```
 
 #### Gitea Component CR
@@ -1119,7 +1259,7 @@ spec:
   
   # Dependencies (ensures ordering)
   dependencies:
-    - kind: ArgoCDComponent
+    - kind: ArgoCDProvider
       name: argocd
     - kind: GiteaComponent
       name: gitea
@@ -1153,17 +1293,17 @@ status:
 
 #### Tasks:
 1. **Define New CRDs**
-   - Create `Platform`, `ArgoCDComponent` types
-   - Create provider CRDs: `GiteaProvider`, `GitHubProvider`, `GitLabProvider`
-   - Create gateway CRDs: `NginxGateway`, `EnvoyGateway`, `IstioGateway`
-   - Define duck-typed common status fields across provider types
+   - Create `Platform` type
+   - Create Git provider CRDs: `GiteaProvider`, `GitHubProvider`, `GitLabProvider`
+   - Create Gateway provider CRDs: `NginxGateway`, `EnvoyGateway`, `IstioGateway`
+   - Create GitOps provider CRDs: `ArgoCDProvider`, `FluxProvider`
+   - Define duck-typed common status fields across all provider types
    - Generate CRD manifests using controller-gen
    - Update API version (v1alpha2 to indicate significant change)
 
 2. **Controller Scaffolding**
    - Create new controller packages:
      - `pkg/controllers/platform/`
-     - `pkg/controllers/argocd/`
      - `pkg/controllers/gitprovider/` (with subpackages for each provider)
        - `gitea_controller.go`
        - `github_controller.go`
@@ -1171,6 +1311,10 @@ status:
      - `pkg/controllers/gateway/` (with subpackages for each gateway)
        - `nginx_controller.go`
        - `envoy_controller.go`
+       - `istio_controller.go`
+     - `pkg/controllers/gitopsprovider/` (with subpackages for each provider)
+       - `argocd_controller.go`
+       - `flux_controller.go`
    - Implement basic reconciliation loops
    - Set up owner references and finalizers
    - Create shared interfaces for duck-typed status access
@@ -1196,57 +1340,161 @@ status:
 
 #### Tasks:
 
-1. **ArgoCDReconciler**
+1. **GitOps Provider Controllers**
+
+   Each GitOps provider has its own dedicated reconciler:
+
+   **ArgoCDProviderReconciler**:
    ```go
-   // pkg/controllers/argocd/controller.go
-   type ArgoCDComponentReconciler struct {
+   // pkg/controllers/gitopsprovider/argocd_controller.go
+   type ArgoCDProviderReconciler struct {
        client.Client
        Scheme *runtime.Scheme
        HelmClient *helm.Client
    }
 
-   func (r *ArgoCDComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch ArgoCDComponent CR
-       // 2. Validate configuration
-       // 3. Install/upgrade Helm chart
-       // 4. Generate admin credentials if needed
+   func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch ArgoCDProvider CR
+       // 2. Install/upgrade ArgoCD via Helm
+       // 3. Generate admin credentials if needed
+       // 4. Create ArgoCD projects
        // 5. Wait for ArgoCD to be healthy
-       // 6. Update status
-       // 7. Create/update ingress resources
+       // 6. Update status with duck-typed fields:
+       //    - endpoint
+       //    - internalEndpoint
+       //    - credentialsSecretRef
    }
    ```
-   
-   - Implement Helm-based installation
-   - Support customization through values
-   - Handle ArgoCD-specific setup (admin password, projects, etc.)
-   - Monitor ArgoCD health and update status
-   - Support upgrades and rollbacks
 
-2. **GiteaReconciler**
+   **FluxProviderReconciler**:
    ```go
-   // pkg/controllers/gitea/controller.go
-   type GiteaComponentReconciler struct {
+   // pkg/controllers/gitopsprovider/flux_controller.go
+   type FluxProviderReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+       HelmClient *helm.Client
+   }
+
+   func (r *FluxProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch FluxProvider CR
+       // 2. Install Flux controllers via Helm
+       // 3. Configure source controller
+       // 4. Configure kustomize and helm controllers
+       // 5. Wait for all controllers to be healthy
+       // 6. Update status with duck-typed fields:
+       //    - endpoint
+       //    - internalEndpoint
+       //    - credentialsSecretRef
+   }
+   ```
+
+   **Using GitOps Providers (Duck-Typed Access)**:
+   
+   Other controllers access GitOps providers through the common interface:
+   ```go
+   // pkg/util/gitops/client.go
+   type GitOpsProviderStatus struct {
+       Endpoint             string
+       InternalEndpoint     string
+       CredentialsSecretRef corev1.SecretReference
+   }
+
+   func GetGitOpsProvider(ctx context.Context, c client.Client, ref v1alpha1.GitOpsProviderRef) (*GitOpsProviderStatus, error) {
+       u := &unstructured.Unstructured{}
+       u.SetGroupVersionKind(schema.GroupVersionKind{
+           Group:   "idpbuilder.cnoe.io",
+           Version: "v1alpha1",
+           Kind:    ref.Kind, // ArgoCDProvider, FluxProvider
+       })
+       
+       err := c.Get(ctx, types.NamespacedName{
+           Name:      ref.Name,
+           Namespace: ref.Namespace,
+       }, u)
+       if err != nil {
+           return nil, fmt.Errorf("failed to get GitOps provider: %w", err)
+       }
+       
+       // Extract common status fields (duck-typed interface)
+       status, found, err := unstructured.NestedMap(u.Object, "status")
+       if err != nil || !found {
+           return nil, fmt.Errorf("GitOps provider status not available")
+       }
+       
+       endpoint, _, _ := unstructured.NestedString(status, "endpoint")
+       internalEndpoint, _, _ := unstructured.NestedString(status, "internalEndpoint")
+       
+       return &GitOpsProviderStatus{
+           Endpoint:         endpoint,
+           InternalEndpoint: internalEndpoint,
+       }, nil
+   }
+   ```
+
+   This pattern enables:
+   - Adding new GitOps providers without modifying consumers
+   - Running multiple GitOps engines (ArgoCD for apps, Flux for infrastructure)
+   - Package controllers dynamically selecting which GitOps provider to use
+   - Easy testing with mock GitOps providers
+
+2. **Git Provider Controllers**
+
+   Each Git provider has its own dedicated reconciler:
+
+   **GiteaProviderReconciler**:
+   ```go
+   // pkg/controllers/gitprovider/gitea_controller.go
+   type GiteaProviderReconciler struct {
        client.Client
        Scheme *runtime.Scheme
        HelmClient *helm.Client
        GiteaClientFactory func(baseURL, token string) (*gitea.Client, error)
    }
 
-   func (r *GiteaComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-       // 1. Fetch GiteaComponent CR
+   func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch GiteaProvider CR
        // 2. Install/upgrade Gitea via Helm
        // 3. Initialize admin user
        // 4. Create organizations
        // 5. Generate API tokens
-       // 6. Update status with endpoints
+       // 6. Update status with duck-typed fields:
+       //    - endpoint
+       //    - internalEndpoint
+       //    - credentialsSecretRef
    }
    ```
-   
-   - Helm-based Gitea deployment
-   - Admin user initialization
-   - Organization and team management
-   - Token generation and storage
-   - SQLite/PostgreSQL configuration support
+
+   **GitHubProviderReconciler**:
+   ```go
+   // pkg/controllers/gitprovider/github_controller.go
+   type GitHubProviderReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+   }
+
+   func (r *GitHubProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch GitHubProvider CR
+       // 2. Validate GitHub credentials
+       // 3. Verify organization access
+       // 4. Update status with duck-typed fields
+   }
+   ```
+
+   **GitLabProviderReconciler**:
+   ```go
+   // pkg/controllers/gitprovider/gitlab_controller.go
+   type GitLabProviderReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+   }
+
+   func (r *GitLabProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch GitLabProvider CR
+       // 2. Validate GitLab credentials
+       // 3. Verify group access
+       // 4. Update status with duck-typed fields
+   }
+   ```
 
 3. **Gateway Provider Controllers**
 
@@ -1896,7 +2144,36 @@ idpbuilder create --name localdev
 # 2. CLI installs idpbuilder controllers (Helm chart)
 # 3. CLI creates Platform CR:
 
+# First create provider CRs, then reference them in Platform
 cat <<EOF | kubectl apply -f -
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GiteaProvider
+metadata:
+  name: gitea
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  adminUser:
+    autoGenerate: true
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: NginxGateway
+metadata:
+  name: nginx
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: ArgoCDProvider
+metadata:
+  name: argocd
+  namespace: idpbuilder-system
+spec:
+  namespace: argocd
+  adminCredentials:
+    autoGenerate: true
+---
 apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
@@ -1905,71 +2182,90 @@ metadata:
 spec:
   domain: cnoe.localtest.me
   components:
-    nginx:
-      enabled: true
-    gitea:
-      enabled: true
-    argocd:
-      enabled: true
+    gitProviders:
+      - name: gitea
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+    gateways:
+      - name: nginx
+        kind: NginxGateway
+        namespace: idpbuilder-system
+    gitOpsProviders:
+      - name: argocd
+        kind: ArgoCDProvider
+        namespace: idpbuilder-system
 EOF
 
-# 4. PlatformReconciler sees new Platform CR
-# 5. PlatformReconciler creates NginxComponent CR
-# 6. NginxReconciler installs nginx via Helm
-# 7. NginxReconciler updates status to Ready
-# 8. PlatformReconciler creates GiteaComponent CR
-# 9. GiteaReconciler installs Gitea, creates admin user
-# 10. GiteaReconciler updates status to Ready
-# 11. PlatformReconciler creates ArgoCDComponent CR
-# 12. ArgoCDReconciler installs ArgoCD
-# 13. ArgoCDReconciler updates status to Ready
-# 14. PlatformReconciler creates GitRepository CRs for bootstrap
-# 15. GitRepositoryReconciler creates Gitea repos with embedded content
-# 16. PlatformReconciler creates ArgoCD Applications pointing to Gitea
-# 17. ArgoCD syncs applications
-# 18. PlatformReconciler updates Platform status to Ready
-# 19. CLI displays success message and access information
+# 4. Provider reconcilers see new provider CRs
+# 5. GiteaProviderReconciler installs Gitea via Helm
+# 6. GiteaProviderReconciler creates admin user and organizations
+# 7. GiteaProviderReconciler updates status with duck-typed fields
+# 8. NginxGatewayReconciler installs Nginx Ingress via Helm
+# 9. NginxGatewayReconciler creates IngressClass resource
+# 10. NginxGatewayReconciler updates status with duck-typed fields
+# 11. ArgoCDProviderReconciler installs ArgoCD via Helm
+# 12. ArgoCDProviderReconciler creates projects and admin credentials
+# 13. ArgoCDProviderReconciler updates status with duck-typed fields
+# 14. PlatformReconciler sees all providers are Ready
+# 15. PlatformReconciler creates GitRepository CRs for bootstrap
+# 16. GitRepositoryReconciler uses GiteaProvider duck-typed interface
+# 17. GitRepositoryReconciler creates repos with embedded content
+# 18. PlatformReconciler creates ArgoCD Applications using providers
+# 19. ArgoCD syncs applications from Gitea
+# 20. PlatformReconciler updates Platform status to Ready
+# 21. CLI displays success message and access information
 ```
 
 ### B. Component Interaction Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Platform CR                               │
-│  Spec: Components to install, configuration                     │
-│  Status: Aggregated health of all components                    │
-└───────────────┬─────────────────────────────────────────────────┘
-                │ (owns)
-                ├─────────────┬──────────────┬─────────────┐
-                │             │              │             │
-                ▼             ▼              ▼             ▼
-     ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌──────────┐
-     │   Nginx      │ │    Gitea     │ │  ArgoCD  │ │ Package  │
-     │  Component   │ │  Component   │ │Component │ │   CRs    │
-     └──────┬───────┘ └──────┬───────┘ └────┬─────┘ └────┬─────┘
-            │                │               │            │
-            │ (manages)      │ (manages)     │ (manages)  │
-            ▼                ▼               ▼            ▼
-      ┌─────────┐      ┌─────────┐     ┌────────┐  ┌──────────┐
-      │ Ingress │      │  Gitea  │     │ ArgoCD │  │  ArgoCD  │
-      │ -Nginx  │      │ Server  │     │ Server │  │   Apps   │
-      │  Pods   │      │  Pods   │     │  Pods  │  │          │
-      └─────────┘      └────┬────┘     └───┬────┘  └─────┬────┘
-                            │                │            │
-                            │ (hosts)        │ (manages)  │
-                            ▼                └────────────┘
-                       ┌─────────┐                 │
-                       │   Git   │◄────────────────┘
-                       │  Repos  │      (syncs from)
-                       └─────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                          Platform CR                               │
+│  Spec: References to provider CRs                                 │
+│  Status: Aggregated health of all providers                       │
+└───────────────┬───────────────────────────────────────────────────┘
+                │ (references)
+                ├──────────────┬────────────────┬──────────────┐
+                │              │                │              │
+                ▼              ▼                ▼              ▼
+     ┌──────────────┐  ┌─────────────┐  ┌──────────────┐  ┌─────────┐
+     │ GiteaProvider│  │ NginxGateway│  │ ArgoCDProvider│  │ Package │
+     │      CR      │  │     CR      │  │      CR       │  │   CRs   │
+     └──────┬───────┘  └──────┬──────┘  └──────┬───────┘  └────┬────┘
+            │                 │                 │               │
+            │ (manages)       │ (manages)       │ (manages)     │
+            ▼                 ▼                 ▼               │
+      ┌─────────┐       ┌──────────┐      ┌─────────┐         │
+      │  Gitea  │       │ Ingress  │      │ ArgoCD  │         │
+      │ Server  │       │  Nginx   │      │ Server  │         │
+      │  Pods   │       │  Pods    │      │  Pods   │         │
+      └────┬────┘       └──────────┘      └────┬────┘         │
+           │                                    │              │
+           │ (hosts)                            │ (manages)    │
+           ▼                                    └──────────────┘
+      ┌─────────┐                                     │
+      │   Git   │◄────────────────────────────────────┘
+      │  Repos  │              (syncs from)
+      └─────────┘
+
+Duck-Typed Interfaces:
+- Git Providers: endpoint, internalEndpoint, credentialsSecretRef
+- Gateway Providers: ingressClassName, loadBalancerEndpoint, internalEndpoint
+- GitOps Providers: endpoint, internalEndpoint, credentialsSecretRef
+
+Other controllers (GitRepository, Package) use duck-typing to access
+any provider implementation without tight coupling.
 ```
 
 ### C. Resource Naming Conventions
 
 - **Platform CR**: `<cluster-name>` (e.g., `localdev`)
-- **Component CRs**: `<component-type>` (e.g., `nginx`, `gitea`, `argocd`)
+- **Provider CRs**: 
+  - Git Providers: `<name>` (e.g., `gitea`, `github-prod`, `gitlab-dev`)
+  - Gateway Providers: `<name>-gateway` (e.g., `nginx-gateway`, `envoy-gateway`)
+  - GitOps Providers: `<name>` (e.g., `argocd`, `flux`)
 - **Namespace for controllers**: `idpbuilder-system`
-- **Component namespaces**: Component-specific (e.g., `argocd`, `gitea`, `ingress-nginx`)
+- **Provider deployment namespaces**: Provider-specific (e.g., `argocd`, `gitea`, `ingress-nginx`, `flux-system`)
 - **GitRepository CRs**: `<component>-bootstrap` (e.g., `argocd-bootstrap`)
 - **Package CRs**: User-defined (e.g., `backstage`, `crossplane`)
 
@@ -1986,26 +2282,51 @@ Each controller requires specific permissions:
 
 **PlatformReconciler**:
 - Full access to Platform CRs
-- Create/Update/Delete Component CRs
-- Read status from all components
+- Read access to all provider CRs (duck-typed via unstructured)
+- Read status from all providers
 
-**ArgoCDComponentReconciler**:
-- Full access to ArgoCDComponent CRs
-- Create/Update/Delete ArgoCD namespaces
-- Install ArgoCD CRDs
-- Create secrets for credentials
+**Git Provider Reconcilers**:
+- **GiteaProviderReconciler**:
+  - Full access to GiteaProvider CRs
+  - Create/Update/Delete Gitea namespaces
+  - Create secrets for admin credentials
+  - HTTP access to Gitea API (via ServiceAccount)
+- **GitHubProviderReconciler**:
+  - Full access to GitHubProvider CRs
+  - Read GitHub credentials from secrets
+  - HTTP access to GitHub API
+- **GitLabProviderReconciler**:
+  - Full access to GitLabProvider CRs
+  - Read GitLab credentials from secrets
+  - HTTP access to GitLab API
 
-**GiteaComponentReconciler**:
-- Full access to GiteaComponent CRs
-- Create/Update/Delete Gitea namespaces
-- Create secrets for admin credentials
-- HTTP access to Gitea API (via ServiceAccount)
+**Gateway Provider Reconcilers**:
+- **NginxGatewayReconciler**:
+  - Full access to NginxGateway CRs
+  - Create/Update/Delete ingress-nginx namespaces
+  - Manage IngressClass resources
+  - Manage TLS secrets
+  - ValidatingWebhookConfiguration access
+- **EnvoyGatewayReconciler**:
+  - Full access to EnvoyGateway CRs
+  - Create/Update/Delete envoy-gateway namespaces
+  - Manage GatewayClass and Gateway resources
+- **IstioGatewayReconciler**:
+  - Full access to IstioGateway CRs
+  - Create/Update/Delete istio-system namespaces
+  - Manage Istio CRDs and Gateway resources
 
-**NginxComponentReconciler**:
-- Full access to NginxComponent CRs
-- Create/Update/Delete ingress-nginx namespaces
-- Manage TLS secrets
-- ValidatingWebhookConfiguration access
+**GitOps Provider Reconcilers**:
+- **ArgoCDProviderReconciler**:
+  - Full access to ArgoCDProvider CRs
+  - Create/Update/Delete ArgoCD namespaces
+  - Install ArgoCD CRDs
+  - Create secrets for credentials
+- **FluxProviderReconciler**:
+  - Full access to FluxProvider CRs
+  - Create/Update/Delete Flux namespaces
+  - Install Flux CRDs
+  - Create secrets for credentials
 
 ### F. Monitoring & Observability
 
@@ -2262,6 +2583,76 @@ In this setup:
 - Envoy handles internal services (ClusterIP, service mesh)
 - Platform components can choose which gateway to use
 - Different ingress classes allow routing to different controllers
+
+
+
+**Multi-GitOps Provider Configuration** (ArgoCD for applications, Flux for infrastructure):
+
+```yaml
+# Define multiple GitOps providers
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: ArgoCDProvider
+metadata:
+  name: argocd-apps
+  namespace: idpbuilder-system
+spec:
+  namespace: argocd
+  version: v2.12.0
+  adminCredentials:
+    autoGenerate: true
+  projects:
+    - name: applications
+      description: User applications
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: FluxProvider
+metadata:
+  name: flux-infra
+  namespace: idpbuilder-system
+spec:
+  namespace: flux-system
+  version: v2.4.0
+  config:
+    sourceController:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+---
+# Platform references both GitOps providers
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: multi-gitops
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  components:
+    gitProviders:
+      - name: gitea-dev
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+    
+    gateways:
+      - name: nginx-gateway
+        kind: NginxGateway
+        namespace: idpbuilder-system
+    
+    # Use multiple GitOps providers
+    gitOpsProviders:
+      - name: argocd-apps
+        kind: ArgoCDProvider
+        namespace: idpbuilder-system
+      - name: flux-infra
+        kind: FluxProvider
+        namespace: idpbuilder-system
+```
+
+In this setup:
+- ArgoCD manages application deployments
+- Flux manages infrastructure and platform components
+- Each GitOps provider operates independently
+- Different teams can use different GitOps tools
 
 **Production Configuration** (High Availability):
 
