@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   code-analysis:
-    runs-on: ubuntu-22.04
+    runs-on: homelab-mini-runner
     steps:
       - uses: actions/checkout@v4
       - run: ls -al

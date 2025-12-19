@@ -6,7 +6,7 @@ on:
 
 jobs:
   slash_command_dispatch:
-    runs-on: ubuntu-22.04
+    runs-on: homelab-mini-runner
     steps:
       - name: Generate a token
         id: generate-token

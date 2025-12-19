@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IDP Builder Documentation">
+    <title>Documentation | IDP Builder</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .docs-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .docs-sidebar {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+        .docs-sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .docs-sidebar li {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar a {
+            text-decoration: none;
+            color: var(--text-color);
+            padding: 0.5rem;
+            display: block;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .docs-sidebar a:hover,
+        .docs-sidebar a.active {
+            background-color: var(--bg-alt);
+            color: var(--primary-color);
+        }
+        .docs-content {
+            max-width: 800px;
+        }
+        .docs-content h1 {
+            margin-bottom: 1rem;
+        }
+        .docs-content h2 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .docs-content p {
+            margin-bottom: 1rem;
+        }
+        .docs-content ul {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        @media (max-width: 768px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+            .docs-sidebar {
+                position: relative;
+                top: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <h1>IDP Builder</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/docs">Docs</a></li>
+                <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="/docs" class="active">Overview</a></li>
+                    <li><a href="#installation">Installation</a></li>
+                    <li><a href="#getting-started">Getting Started</a></li>
+                    <li><a href="#requirements">Requirements</a></li>
+                    <li><a href="#configuration">Configuration</a></li>
+                    <li><a href="#contributing">Contributing</a></li>
+                    <li><a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">Full Docs ↗</a></li>
+                </ul>
+            </aside>
+
+            <article class="docs-content">
+                <h1>IDP Builder Documentation</h1>
+                <p>Welcome to the IDP Builder documentation. This guide will help you get started with creating your internal developer platform.</p>
+
+                <h2 id="installation">Installation</h2>
+                
+                <h3>Using Homebrew (macOS/Linux)</h3>
+                <p>The easiest way to install IDP Builder is through Homebrew:</p>
+                <pre><code># Install stable version
+brew install cnoe-io/tap/idpbuilder
+
+# Install specific version
+brew install cnoe-io/tap/idpbuilder@&lt;version&gt;
+
+# Install nightly version
+brew install cnoe-io/tap/idpbuilder-nightly</code></pre>
+
+                <h3>From Releases</h3>
+                <p>Download the binary for your platform from the releases page:</p>
+                <pre><code>arch=$(if [[ "$(uname -m)" == "x86_64" ]]; then echo "amd64"; else uname -m; fi)
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+idpbuilder_latest_tag=$(curl --silent "https://api.github.com/repos/cnoe-io/idpbuilder/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -LO https://github.com/cnoe-io/idpbuilder/releases/download/$idpbuilder_latest_tag/idpbuilder-$os-$arch.tar.gz
+tar xvzf idpbuilder-$os-$arch.tar.gz</code></pre>
+
+                <h2 id="getting-started">Getting Started</h2>
+                <p>Once installed, you can create your IDP with a single command:</p>
+                <pre><code>./idpbuilder create</code></pre>
+                <p>This will:</p>
+                <ul>
+                    <li>Set up a local Kubernetes cluster</li>
+                    <li>Install Argo CD for GitOps</li>
+                    <li>Install Backstage for developer portal</li>
+                    <li>Configure necessary resources and integrations</li>
+                </ul>
+
+                <h2 id="requirements">Minimum Requirements</h2>
+                <p>The requirements for your cluster will depend on what it is running, but we recommend a minimum of:</p>
+                <ul>
+                    <li>4 CPU cores</li>
+                    <li>4 GiB of RAM</li>
+                    <li>Docker installed and running</li>
+                </ul>
+
+                <h2 id="configuration">Configuration</h2>
+                
+                <h3>Private Registry Authentication</h3>
+                <p>IDP Builder can be configured to use private registry authentication from the host filesystem by using the <code>--registry-config</code> flag with the <code>create</code> command.</p>
+                <p>By default, this will look for a registry config file in the default podman and docker paths. You can optionally specify a file:</p>
+                <pre><code>idpbuilder create --registry-config=$HOME/path/to/auth.json</code></pre>
+
+                <h3>Pluggable Packages</h3>
+                <p>IDP Builder supports pluggable packages to extend functionality. Check the full documentation for details on available packages and how to create custom ones.</p>
+
+                <h2 id="contributing">Contributing</h2>
+                <p>We welcome contributions! Check out our <a href="https://github.com/cnoe-io/idpbuilder/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">contribution guidelines</a> to get started.</p>
+
+                <h3>Community</h3>
+                <ul>
+                    <li>Join us on <a href="https://cloud-native.slack.com/archives/C05TN9WFN5S" target="_blank" rel="noopener">CNCF Slack</a></li>
+                    <li>Attend our <a href="https://calendar.google.com/calendar/embed?src=064a2adfce866ccb02e61663a09f99147f22f06374e7a8994066bdc81e066986%40group.calendar.google.com&ctz=America%2FLos_Angeles" target="_blank" rel="noopener">community meetings</a></li>
+                    <li>Report issues on <a href="https://github.com/cnoe-io/idpbuilder/issues" target="_blank" rel="noopener">GitHub</a></li>
+                </ul>
+
+                <h2>Additional Resources</h2>
+                <p>For more comprehensive documentation, please visit:</p>
+                <ul>
+                    <li><a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">Official Documentation</a></li>
+                    <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub Repository</a></li>
+                    <li><a href="https://github.com/cnoe-io/idpbuilder/releases" target="_blank" rel="noopener">Release Notes</a></li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IDP Builder - Internal development platform binary launcher">
+    <title>IDP Builder</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <h1>IDP Builder</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#about">About</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#getting-started">Getting Started</a></li>
+                <li><a href="/docs">Docs</a></li>
+                <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <h2>Internal Development Platform Binary Launcher</h2>
+                <p class="subtitle">Spin up a complete internal developer platform using industry standard technologies like Kubernetes, Argo, and Backstage with only Docker required as a dependency.</p>
+                <div class="cta-buttons">
+                    <a href="#getting-started" class="btn btn-primary">Get Started</a>
+                    <a href="https://github.com/cnoe-io/idpbuilder" class="btn btn-secondary" target="_blank" rel="noopener">View on GitHub</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="section">
+            <div class="container">
+                <h2>About</h2>
+                <p>IDP Builder is a tool that helps you create a complete internal developer platform quickly and easily. It uses industry-standard technologies and can be run with minimal dependencies.</p>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>🚀 Quick Setup</h3>
+                        <p>Get started with a single binary - Docker is the only dependency required</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🏗️ Reference Implementation</h3>
+                        <p>Create a single binary demonstrating an IDP reference implementation</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🧪 CI Integration</h3>
+                        <p>Use within CI pipelines to perform integration testing</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>💻 Local Development</h3>
+                        <p>Perfect as a local development environment for platform engineers</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="section section-alt">
+            <div class="container">
+                <h2>Key Features</h2>
+                <ul class="feature-list">
+                    <li>Built with industry-standard technologies (Kubernetes, Argo, Backstage)</li>
+                    <li>Minimal dependencies - only Docker required</li>
+                    <li>Easy installation via Homebrew or binary download</li>
+                    <li>Cross-platform support (Linux, macOS, Windows)</li>
+                    <li>Active community and regular updates</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="getting-started" class="section">
+            <div class="container">
+                <h2>Getting Started</h2>
+                
+                <div class="install-section">
+                    <h3>Installation</h3>
+                    
+                    <h4>Using Homebrew</h4>
+                    <pre><code>brew install cnoe-io/tap/idpbuilder</code></pre>
+                    
+                    <h4>From Releases</h4>
+                    <pre><code>arch=$(if [[ "$(uname -m)" == "x86_64" ]]; then echo "amd64"; else uname -m; fi)
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+idpbuilder_latest_tag=$(curl --silent "https://api.github.com/repos/cnoe-io/idpbuilder/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -LO https://github.com/cnoe-io/idpbuilder/releases/download/$idpbuilder_latest_tag/idpbuilder-$os-$arch.tar.gz
+tar xvzf idpbuilder-$os-$arch.tar.gz</code></pre>
+                </div>
+
+                <div class="usage-section">
+                    <h3>Usage</h3>
+                    <p>Run idpbuilder to spin up your CNOE IDP:</p>
+                    <pre><code>./idpbuilder create</code></pre>
+                </div>
+
+                <div class="docs-link">
+                    <p>For more detailed information, check out our <a href="/docs">documentation</a> or visit <a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">cnoe.io</a>.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section section-alt">
+            <div class="container">
+                <h2>Community</h2>
+                <p>Join our community to get help, share ideas, and contribute:</p>
+                <ul class="community-links">
+                    <li><a href="https://cloud-native.slack.com/archives/C05TN9WFN5S" target="_blank" rel="noopener">CNCF Slack Channel</a></li>
+                    <li><a href="https://calendar.google.com/calendar/embed?src=064a2adfce866ccb02e61663a09f99147f22f06374e7a8994066bdc81e066986%40group.calendar.google.com&ctz=America%2FLos_Angeles" target="_blank" rel="noopener">Community Calendar</a></li>
+                    <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub Repository</a></li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
+        </div>
+    </footer>
+</body>
+</html>
