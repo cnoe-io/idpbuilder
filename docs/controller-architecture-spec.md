@@ -78,7 +78,15 @@ The `LocalbuildReconciler` currently performs the following:
 
 ## Proposed Architecture
 
+
+
+
+- **Git Provider**: Gitea (in-cluster), GitHub (external), GitLab (external or in-cluster)
+
+- **Gateway Provider**: Nginx Ingress, Envoy Gateway, Istio Gateway
+
 ### High-Level Design
+- **GitOps Provider**: ArgoCD (default), Flux (future support)
 
 The new architecture introduces dedicated controllers for each core platform component, running on the provisioned cluster:
 
@@ -105,15 +113,15 @@ The new architecture introduces dedicated controllers for each core platform com
 │    - Manages ArgoCD CustomResourceDefinitions                     │
 │    - Reports health status                                        │
 │                                                                   │
-│  GiteaReconciler:                                                 │
-│    - Installs and configures Gitea                               │
-│    - Manages Gitea users, organizations, repos                    │
-│    - Provides Git server capabilities                             │
+│  GitProviderReconciler:                                                 │
+│    - Manages Git provider (Gitea, GitHub, GitLab)                               │
+│    - Creates repositories and manages credentials                    │
+│    - Provides unified Git server interface                             │
 │                                                                   │
-│  IngressReconciler:                                               │
-│    - Installs and configures Ingress-Nginx                       │
-│    - Manages TLS certificates                                     │
-│    - Configures routing rules                                     │
+│  GatewayReconciler:                                               │
+│    - Manages Gateway provider (Nginx, Envoy, Istio)                       │
+│    - Installs and configures selected gateway                                     │
+│    - Manages TLS certificates and routing rules                                     │
 │                                                                   │
 │  GitRepositoryReconciler: (Enhanced)                              │
 │    - Creates repositories in Gitea                                │
@@ -158,7 +166,7 @@ spec:
       name: platform-tls
       namespace: idpbuilder-system
   
-  # Component specifications
+  # Component specifications with provider selection
   components:
     argocd:
       enabled: true
@@ -175,10 +183,15 @@ spec:
         dex:
           enabled: false
     
-    gitea:
+    # Git Provider - supports multiple implementations
+    git:
       enabled: true
+      provider: gitea  # Options: gitea, github, gitlab
       namespace: gitea
-      version: 1.24.3
+      
+      # Provider-specific configuration
+      gitea:
+        version: 1.24.3
       helmChart:
         repository: https://dl.gitea.com/charts/
         version: 12.1.2
@@ -188,10 +201,15 @@ spec:
           name: gitea-admin-secret
           key: password
     
-    nginx:
+    # Gateway Provider - supports multiple implementations
+    gateway:
       enabled: true
+      provider: nginx  # Options: nginx, envoy, istio
       namespace: ingress-nginx
-      version: 1.13.0
+      
+      # Provider-specific configuration
+      nginx:
+        version: 1.13.0
       helmChart:
         repository: https://kubernetes.github.io/ingress-nginx
         version: 4.11.0
@@ -234,6 +252,234 @@ status:
   
   observedGeneration: 1
   phase: Ready
+```
+
+#### GitProvider CR
+
+The GitProvider CR supports multiple Git implementations through a provider field:
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitProvider
+metadata:
+  name: git
+  namespace: idpbuilder-system
+  ownerReferences:
+    - apiVersion: idpbuilder.cnoe.io/v1alpha1
+      kind: Platform
+      name: localdev
+spec:
+  provider: gitea  # Options: gitea, github, gitlab
+  
+  # Gitea provider configuration
+  gitea:
+    namespace: gitea
+    version: 1.24.3
+    
+    installMethod:
+      type: Helm
+      helm:
+        repository: https://dl.gitea.com/charts/
+        chart: gitea
+        version: 12.1.2
+    
+    config:
+      ingress:
+        enabled: true
+        className: nginx
+        hosts:
+          - host: gitea.cnoe.localtest.me
+      
+      persistence:
+        enabled: true
+        size: 10Gi
+      
+      database:
+        builtIn:
+          sqlite:
+            enabled: true
+    
+    adminUser:
+      username: giteaAdmin
+      email: admin@cnoe.localtest.me
+      passwordSecretRef:
+        name: gitea-admin-secret
+        namespace: gitea
+        key: password
+      autoGenerate: true
+    
+    organizations:
+      - name: idpbuilder
+        description: IDP Builder Bootstrap Organization
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  provider: gitea
+  installed: true
+  version: 1.24.3
+  phase: Ready
+  endpoint: https://gitea.cnoe.localtest.me
+  internalEndpoint: http://gitea-http.gitea.svc.cluster.local:3000
+  adminUser:
+    username: giteaAdmin
+    secretRef:
+      name: gitea-admin-secret
+      namespace: gitea
+```
+
+**Alternative: GitHub Provider Configuration**
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GitProvider
+metadata:
+  name: git
+  namespace: idpbuilder-system
+spec:
+  provider: github
+  
+  # GitHub provider configuration
+  github:
+    organization: my-organization
+    
+    # GitHub API endpoint (use for GitHub Enterprise)
+    endpoint: https://api.github.com
+    
+    # Credentials for GitHub API access
+    credentialsSecretRef:
+      name: github-credentials
+      namespace: idpbuilder-system
+    
+    # Repository defaults
+    repositoryDefaults:
+      visibility: private  # Options: public, private, internal
+      autoInit: true
+      defaultBranch: main
+    
+    # Team configuration
+    teams:
+      - name: platform-team
+        permission: admin
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  provider: github
+  phase: Ready
+  endpoint: https://api.github.com
+  organization: my-organization
+```
+
+#### Gateway CR
+
+The Gateway CR supports multiple gateway implementations:
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Gateway
+metadata:
+  name: gateway
+  namespace: idpbuilder-system
+spec:
+  provider: nginx  # Options: nginx, envoy, istio
+  
+  # Nginx Ingress provider configuration
+  nginx:
+    namespace: ingress-nginx
+    version: 1.13.0
+    
+    installMethod:
+      type: Helm
+      helm:
+        repository: https://kubernetes.github.io/ingress-nginx
+        chart: ingress-nginx
+        version: 4.11.0
+    
+    config:
+      controller:
+        service:
+          type: NodePort
+          nodePorts:
+            http: 30080
+            https: 30443
+        
+        resources:
+          limits:
+            cpu: 100m
+            memory: 90Mi
+          requests:
+            cpu: 100m
+            memory: 90Mi
+        
+        admissionWebhooks:
+          enabled: true
+  
+  # TLS configuration
+  defaultTLS:
+    secretRef:
+      name: platform-tls
+      namespace: idpbuilder-system
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  provider: nginx
+  installed: true
+  version: 1.13.0
+  phase: Ready
+  ingressClassName: nginx
+  loadBalancerIP: 172.18.0.2
+```
+
+**Alternative: Envoy Gateway Provider Configuration**
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Gateway
+metadata:
+  name: gateway
+  namespace: idpbuilder-system
+spec:
+  provider: envoy
+  
+  # Envoy Gateway provider configuration
+  envoy:
+    namespace: envoy-gateway-system
+    version: v1.0.0
+    
+    installMethod:
+      type: Helm
+      helm:
+        repository: oci://docker.io/envoyproxy/gateway-helm
+        chart: gateway-helm
+        version: v1.0.0
+    
+    config:
+      deployment:
+        replicas: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      
+      # Gateway class configuration
+      gatewayClass:
+        name: idp-gateway
+        controllerName: gateway.envoyproxy.io/gatewayclass-controller
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  provider: envoy
+  installed: true
+  version: v1.0.0
+  phase: Ready
+  gatewayClassName: idp-gateway
 ```
 
 #### ArgoCD Component CR
@@ -1288,7 +1534,7 @@ idpbuilder_gitrepository_last_sync_timestamp{name="argocd-bootstrap"}
 
 ### G. Configuration Examples
 
-**Minimal Configuration** (Development):
+**Minimal Configuration** (Development with Gitea and Nginx):
 
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
@@ -1299,6 +1545,42 @@ metadata:
 spec:
   domain: cnoe.localtest.me
   # All components use default settings
+  components:
+    git:
+      provider: gitea  # In-cluster Git server
+    gateway:
+      provider: nginx  # Nginx Ingress Controller
+```
+
+**GitHub + Envoy Gateway Configuration** (External Git with modern gateway):
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: dev-external
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  
+  components:
+    argocd:
+      enabled: true
+    
+    git:
+      enabled: true
+      provider: github
+      github:
+        organization: my-company
+        credentialsSecretRef:
+          name: github-token
+          namespace: idpbuilder-system
+    
+    gateway:
+      enabled: true
+      provider: envoy
+      envoy:
+        namespace: envoy-gateway-system
 ```
 
 **Production Configuration** (High Availability):
