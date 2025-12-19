@@ -10,6 +10,9 @@
     --code-bg: #f5f5f5;
     --shadow: 0 2px 4px rgba(0,0,0,0.1);
     --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+    --warning-bg: #fff3cd;
+    --warning-border: #ffc107;
+    --warning-text: #856404;
 }
 
 * {
@@ -29,6 +32,35 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
+}
+
+/* WIP Banner */
+.wip-banner {
+    background-color: var(--warning-bg);
+    border-bottom: 3px solid var(--warning-border);
+    padding: 1rem 0;
+    text-align: center;
+}
+
+.wip-banner p {
+    margin: 0;
+    color: var(--warning-text);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.wip-banner strong {
+    font-weight: 700;
+}
+
+.wip-banner a {
+    color: var(--warning-text);
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+.wip-banner a:hover {
+    color: #664d03;
 }
 
 /* Header & Navigation */
