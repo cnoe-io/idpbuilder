@@ -193,11 +193,15 @@ spec:
       #   kind: GitHubProvider
       #   namespace: idpbuilder-system
     
-    # Gateway - reference to gateway provider CR
-    gateway:
-      name: nginx-gateway
-      kind: NginxGateway
-      namespace: idpbuilder-system
+    # Gateways - references to gateway provider CRs
+    gateways:
+      - name: nginx-gateway
+        kind: NginxGateway
+        namespace: idpbuilder-system
+      # Additional gateways can be added
+      # - name: envoy-gateway
+      #   kind: EnvoyGateway
+      #   namespace: idpbuilder-system
   
   # GitOps bootstrap configuration
   bootstrap:
@@ -463,49 +467,75 @@ status:
   authenticated: true
 ```
 
-#### Gateway CR
+#### Gateway Provider CRs (Duck-Typed)
 
-The Gateway CR supports multiple gateway implementations:
+Gateway providers are defined as separate CR types that share common status fields, allowing other controllers to route traffic through them uniformly regardless of implementation.
+
+**Common Status Fields (Duck-Typed Interface):**
+
+All Gateway provider CRs must expose these status fields:
+```yaml
+status:
+  # Standard conditions
+  conditions:
+    - type: Ready
+      status: "True"
+  
+  # Common fields for gateway operations
+  ingressClassName: string   # Ingress class name to use in Ingress resources
+  loadBalancerEndpoint: string # External endpoint for accessing services
+  internalEndpoint: string   # Cluster-internal API endpoint
+```
+
+##### NginxGateway CR
 
 ```yaml
 apiVersion: idpbuilder.cnoe.io/v1alpha1
-kind: Gateway
+kind: NginxGateway
 metadata:
-  name: gateway
+  name: nginx-gateway
   namespace: idpbuilder-system
 spec:
-  provider: nginx  # Options: nginx, envoy, istio
+  # Deployment namespace
+  namespace: ingress-nginx
+  version: 1.13.0
   
-  # Nginx Ingress provider configuration
-  nginx:
-    namespace: ingress-nginx
-    version: 1.13.0
-    
-    installMethod:
-      type: Helm
-      helm:
-        repository: https://kubernetes.github.io/ingress-nginx
-        chart: ingress-nginx
-        version: 4.11.0
-    
-    config:
-      controller:
-        service:
-          type: NodePort
-          nodePorts:
-            http: 30080
-            https: 30443
-        
-        resources:
-          limits:
-            cpu: 100m
-            memory: 90Mi
-          requests:
-            cpu: 100m
-            memory: 90Mi
-        
-        admissionWebhooks:
-          enabled: true
+  # Installation method
+  installMethod:
+    type: Helm
+    helm:
+      repository: https://kubernetes.github.io/ingress-nginx
+      chart: ingress-nginx
+      version: 4.11.0
+  
+  # Nginx-specific configuration
+  config:
+    controller:
+      service:
+        type: NodePort
+        nodePorts:
+          http: 30080
+          https: 30443
+      
+      resources:
+        limits:
+          cpu: 100m
+          memory: 90Mi
+        requests:
+          cpu: 100m
+          memory: 90Mi
+      
+      admissionWebhooks:
+        enabled: true
+      
+      config:
+        use-forwarded-headers: "true"
+        compute-full-forwarded-for: "true"
+  
+  # Ingress class configuration
+  ingressClass:
+    name: nginx
+    isDefault: true
   
   # TLS configuration
   defaultTLS:
@@ -517,12 +547,187 @@ status:
   conditions:
     - type: Ready
       status: "True"
-  provider: nginx
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  ingressClassName: nginx
+  loadBalancerEndpoint: http://172.18.0.2
+  internalEndpoint: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local
+  
+  # Nginx-specific status
   installed: true
   version: 1.13.0
   phase: Ready
-  ingressClassName: nginx
-  loadBalancerIP: 172.18.0.2
+  controller:
+    replicas: 1
+    readyReplicas: 1
+```
+
+##### EnvoyGateway CR
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: EnvoyGateway
+metadata:
+  name: envoy-gateway
+  namespace: idpbuilder-system
+spec:
+  # Deployment namespace
+  namespace: envoy-gateway-system
+  version: v1.0.0
+  
+  # Installation method
+  installMethod:
+    type: Helm
+    helm:
+      repository: https://gateway-envoyproxy.io
+      chart: gateway-helm
+      version: v1.0.0
+  
+  # Envoy Gateway-specific configuration
+  config:
+    provider:
+      type: Kubernetes
+    
+    gateway:
+      controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  
+  # Gateway class configuration
+  gatewayClass:
+    name: envoy
+    isDefault: false
+  
+  # Listener configuration
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: platform-tls
+            namespace: idpbuilder-system
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  ingressClassName: envoy
+  loadBalancerEndpoint: http://172.18.0.3
+  internalEndpoint: http://envoy-gateway.envoy-gateway-system.svc.cluster.local
+  
+  # Envoy-specific status
+  installed: true
+  version: v1.0.0
+  phase: Ready
+  gatewayClass: envoy
+  gateway:
+    ready: true
+    addresses:
+      - type: IPAddress
+        value: 172.18.0.3
+```
+
+##### IstioGateway CR
+
+```yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: IstioGateway
+metadata:
+  name: istio-gateway
+  namespace: idpbuilder-system
+spec:
+  # Istio profile
+  profile: default  # Options: default, demo, minimal, ambient
+  
+  # Deployment namespace for Istio control plane
+  namespace: istio-system
+  version: 1.24.0
+  
+  # Installation method
+  installMethod:
+    type: Helm
+    helm:
+      repository: https://istio-release.storage.googleapis.com/charts
+      chart: gateway
+      version: 1.24.0
+  
+  # Istio-specific configuration
+  config:
+    pilot:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+    
+    gateways:
+      istio-ingressgateway:
+        enabled: true
+        type: NodePort
+        ports:
+          - name: http
+            nodePort: 31080
+            port: 80
+          - name: https
+            nodePort: 31443
+            port: 443
+  
+  # Gateway resource configuration
+  gateway:
+    name: istio-ingressgateway
+    selector:
+      istio: ingressgateway
+  
+  # Service mesh features
+  mesh:
+    mtls:
+      mode: PERMISSIVE  # Options: STRICT, PERMISSIVE, DISABLE
+    
+    observability:
+      tracing: true
+      metrics: true
+
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+  
+  # Common fields (duck-typed interface)
+  ingressClassName: istio
+  loadBalancerEndpoint: http://172.18.0.4
+  internalEndpoint: http://istio-ingressgateway.istio-system.svc.cluster.local
+  
+  # Istio-specific status
+  installed: true
+  version: 1.24.0
+  phase: Ready
+  profile: default
+  controlPlane:
+    ready: true
+    version: 1.24.0
+  gateway:
+    ready: true
+    addresses:
+      - type: IPAddress
+        value: 172.18.0.4
 ```
 
 **Alternative: Envoy Gateway Provider Configuration**
@@ -993,6 +1198,164 @@ status:
    - Organization and team management
    - Token generation and storage
    - SQLite/PostgreSQL configuration support
+
+3. **Gateway Provider Controllers**
+
+   Each gateway provider has its own dedicated reconciler:
+
+   **NginxGatewayReconciler**:
+   ```go
+   // pkg/controllers/gateway/nginx_controller.go
+   type NginxGatewayReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+       HelmClient *helm.Client
+   }
+
+   func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch NginxGateway CR
+       // 2. Install/upgrade Nginx Ingress Controller via Helm
+       // 3. Configure IngressClass resource
+       // 4. Wait for controller to be ready
+       // 5. Update status with duck-typed fields:
+       //    - ingressClassName
+       //    - loadBalancerEndpoint
+       //    - internalEndpoint
+   }
+   ```
+
+   **EnvoyGatewayReconciler**:
+   ```go
+   // pkg/controllers/gateway/envoy_controller.go
+   type EnvoyGatewayReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+       HelmClient *helm.Client
+   }
+
+   func (r *EnvoyGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch EnvoyGateway CR
+       // 2. Install Envoy Gateway via Helm
+       // 3. Configure GatewayClass resource
+       // 4. Create Gateway resource
+       // 5. Update status with duck-typed fields
+   }
+   ```
+
+   **IstioGatewayReconciler**:
+   ```go
+   // pkg/controllers/gateway/istio_controller.go
+   type IstioGatewayReconciler struct {
+       client.Client
+       Scheme *runtime.Scheme
+       HelmClient *helm.Client
+   }
+
+   func (r *IstioGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+       // 1. Fetch IstioGateway CR
+       // 2. Install Istio control plane
+       // 3. Create Istio Gateway resource
+       // 4. Configure service mesh settings
+       // 5. Update status with duck-typed fields
+   }
+   ```
+
+   **Using Gateway Providers (Duck-Typed Access)**:
+   
+   Other controllers access gateway providers through the common interface:
+   ```go
+   // pkg/util/gateway/client.go
+   type GatewayProviderStatus struct {
+       IngressClassName     string
+       LoadBalancerEndpoint string
+       InternalEndpoint     string
+   }
+
+   func GetGatewayProvider(ctx context.Context, c client.Client, ref v1alpha1.GatewayProviderRef) (*GatewayProviderStatus, error) {
+       u := &unstructured.Unstructured{}
+       u.SetGroupVersionKind(schema.GroupVersionKind{
+           Group:   "idpbuilder.cnoe.io",
+           Version: "v1alpha1",
+           Kind:    ref.Kind, // NginxGateway, EnvoyGateway, IstioGateway
+       })
+       
+       err := c.Get(ctx, types.NamespacedName{
+           Name:      ref.Name,
+           Namespace: ref.Namespace,
+       }, u)
+       if err != nil {
+           return nil, fmt.Errorf("failed to get gateway provider: %w", err)
+       }
+       
+       // Extract common status fields (duck-typed interface)
+       status, found, err := unstructured.NestedMap(u.Object, "status")
+       if err != nil || !found {
+           return nil, fmt.Errorf("gateway provider status not available")
+       }
+       
+       ingressClassName, _, _ := unstructured.NestedString(status, "ingressClassName")
+       loadBalancerEndpoint, _, _ := unstructured.NestedString(status, "loadBalancerEndpoint")
+       internalEndpoint, _, _ := unstructured.NestedString(status, "internalEndpoint")
+       
+       return &GatewayProviderStatus{
+           IngressClassName:     ingressClassName,
+           LoadBalancerEndpoint: loadBalancerEndpoint,
+           InternalEndpoint:     internalEndpoint,
+       }, nil
+   }
+
+   // Example usage in component controller
+   func (r *ComponentReconciler) createIngress(ctx context.Context, 
+                                                component *v1alpha1.Component, 
+                                                gatewayRef v1alpha1.GatewayProviderRef) error {
+       gateway, err := GetGatewayProvider(ctx, r.Client, gatewayRef)
+       if err != nil {
+           return err
+       }
+       
+       ingress := &networkingv1.Ingress{
+           ObjectMeta: metav1.ObjectMeta{
+               Name:      component.Name + "-ingress",
+               Namespace: component.Namespace,
+           },
+           Spec: networkingv1.IngressSpec{
+               IngressClassName: &gateway.IngressClassName, // Works with any gateway type
+               Rules: []networkingv1.IngressRule{
+                   {
+                       Host: component.Spec.Host,
+                       IngressRuleValue: networkingv1.IngressRuleValue{
+                           HTTP: &networkingv1.HTTPIngressRuleValue{
+                               Paths: []networkingv1.HTTPIngressPath{
+                                   {
+                                       Path:     "/",
+                                       PathType: (*networkingv1.PathType)(pointer.String("Prefix")),
+                                       Backend: networkingv1.IngressBackend{
+                                           Service: &networkingv1.IngressServiceBackend{
+                                               Name: component.Name,
+                                               Port: networkingv1.ServiceBackendPort{Number: 80},
+                                           },
+                                       },
+                                   },
+                               },
+                           },
+                       },
+                   },
+               },
+           },
+       }
+       
+       return r.Client.Create(ctx, ingress)
+   }
+   ```
+
+   This pattern enables:
+   - Adding new gateway providers without modifying consumers
+   - Running multiple gateways simultaneously (e.g., Nginx for external, Envoy for internal)
+   - Components dynamically selecting which gateway to use
+   - Easy testing with mock gateway providers
+
+4. **Git Provider Controllers**
+
 
 3. **NginxReconciler**
    ```go
@@ -1676,8 +2039,9 @@ spec:
       - name: gitea-local
         kind: GiteaProvider
         namespace: idpbuilder-system
-    gateway:
-      name: nginx-gateway
+    gateways:
+
+      - name: nginx-gateway
       kind: NginxGateway
       namespace: idpbuilder-system
 ```
@@ -1732,8 +2096,10 @@ spec:
         kind: GitHubProvider
         namespace: idpbuilder-system
     
-    gateway:
-      name: envoy-gateway
+    gateways:
+
+    
+      - name: envoy-gateway
       kind: EnvoyGateway
       namespace: idpbuilder-system
 ```
@@ -1782,11 +2148,71 @@ spec:
         kind: GitHubProvider
         namespace: idpbuilder-system
     
-    gateway:
-      name: nginx-gateway
+    gateways:
+
+    
+      - name: nginx-gateway
       kind: NginxGateway
       namespace: idpbuilder-system
 ```
+
+
+
+**Multi-Gateway Configuration** (Multiple ingress controllers for different purposes):
+
+```yaml
+# Define multiple gateway providers
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: NginxGateway
+metadata:
+  name: nginx-public
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx-public
+  version: 1.13.0
+  serviceType: LoadBalancer
+  class: nginx-public
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: EnvoyGateway
+metadata:
+  name: envoy-internal
+  namespace: idpbuilder-system
+spec:
+  namespace: envoy-gateway-internal
+  version: v1.0.0
+  serviceType: ClusterIP
+  class: envoy-internal
+---
+# Platform references both gateways
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: multi-gateway
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  components:
+    gitProviders:
+      - name: gitea-dev
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+    
+    # Use multiple gateway providers
+    gateways:
+      - name: nginx-public
+        kind: NginxGateway
+        namespace: idpbuilder-system
+      - name: envoy-internal
+        kind: EnvoyGateway
+        namespace: idpbuilder-system
+```
+
+In this setup:
+- Nginx handles public-facing services (external LoadBalancer)
+- Envoy handles internal services (ClusterIP, service mesh)
+- Platform components can choose which gateway to use
+- Different ingress classes allow routing to different controllers
 
 **Production Configuration** (High Availability):
 
