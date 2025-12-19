@@ -8,7 +8,19 @@ CHART_VERSION="12.1.2"
 echo "# GITEA INSTALL RESOURCES" >${INSTALL_YAML}
 echo "# This file is auto-generated with 'hack/gitea/generate-manifests.sh'" >>${INSTALL_YAML}
 
-helm repo add gitea-charts --force-update https://dl.gitea.com/charts/
+# Add retry logic for helm repo operations
+MAX_RETRIES=3
+RETRY_COUNT=0
+until helm repo add gitea-charts --force-update https://dl.gitea.com/charts/; do
+  RETRY_COUNT=$((RETRY_COUNT+1))
+  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+    echo "Failed to add helm repo after $MAX_RETRIES attempts"
+    exit 1
+  fi
+  echo "Retrying helm repo add... (attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
+  sleep 2
+done
+
 helm repo update
 
 # Use --kube-context="" to ensure helm doesn't try to use any k8s cluster context
