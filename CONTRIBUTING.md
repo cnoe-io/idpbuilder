@@ -118,6 +118,9 @@ This script runs kustomize to modify the basic installation manifests provided b
 Gitea manifests are generated using a bash script available [here](./hack/gitea/generate-manifests.sh).
 This script runs helm template to generate most files. See the values file for more information.
 
+By default, the script skips manifest generation to avoid download failures behind firewalls (controlled by `SKIP_GITEA_MANIFEST_GENERATION=true`).
+To force regeneration of the manifests, run: `SKIP_GITEA_MANIFEST_GENERATION=false ./hack/gitea/generate-manifests.sh`
+
 #### Ingress-nginx
 
 ingress-nginx manifests are generated using a bash script available [here](./hack/ingress-nginx/generate-manifests.sh).
