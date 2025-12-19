@@ -5,6 +5,8 @@ import (
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/custompackage"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitprovider"
+	"github.com/cnoe-io/idpbuilder/pkg/controllers/platform"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/gitrepository"
@@ -63,6 +65,26 @@ func RunControllers(
 	if err != nil {
 		logger.Error(err, "unable to create custom package controller")
 	}
+
+	// Run Platform controller
+	if err := (&platform.PlatformReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		logger.Error(err, "unable to create platform controller")
+		return err
+	}
+
+	// Run GiteaProvider controller
+	if err := (&gitprovider.GiteaProviderReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Config: cfg,
+	}).SetupWithManager(mgr); err != nil {
+		logger.Error(err, "unable to create giteaprovider controller")
+		return err
+	}
+
 	// Start our manager in another goroutine
 	logger.V(1).Info("starting manager")
 

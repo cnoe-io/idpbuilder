@@ -1,0 +1,28 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: my-platform
+  namespace: default
+spec:
+  # Base domain for the platform
+  domain: cnoe.localtest.me
+  
+  # Platform components
+  components:
+    # Git providers - list of Git provider CRs
+    gitProviders:
+      - name: my-gitea
+        kind: GiteaProvider
+        namespace: gitea
+    
+    # Gateways (future use)
+    # gateways:
+    #   - name: my-nginx
+    #     kind: NginxGateway
+    #     namespace: nginx
+    
+    # GitOps providers (future use)
+    # gitOpsProviders:
+    #   - name: my-argocd
+    #     kind: ArgoProvider
+    #     namespace: argocd
