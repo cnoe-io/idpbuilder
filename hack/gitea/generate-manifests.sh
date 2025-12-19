@@ -33,7 +33,11 @@ until helm repo add gitea-charts --force-update https://dl.gitea.com/charts/; do
   RETRY_COUNT=$((RETRY_COUNT+1))
   if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
     echo "Failed to add helm repo after $MAX_RETRIES attempts"
-    echo "Download may be blocked by firewall. Keeping existing $INSTALL_YAML"
+    if [ -f "$INSTALL_YAML" ]; then
+      echo "Download may be blocked by firewall. Keeping existing $INSTALL_YAML"
+    else
+      echo "Download may be blocked by firewall. Unable to generate $INSTALL_YAML"
+    fi
     rm -f "${TEMP_YAML}"
     exit 1
   fi
@@ -52,7 +56,7 @@ helm template my-gitea gitea-charts/gitea \
   --namespace=default >>${TEMP_YAML}
 
 # Remove the third line (helm template comment) and replace namespace
-sed '3d' ${TEMP_YAML} | sed 's/namespace: default/namespace: gitea/g' > ${TEMP_YAML}.2
+sed '3d' ${TEMP_YAML} | sed 's/namespace: default/namespace: gitea/g' > ${TEMP_YAML}_processed
 
 # helm template for pvc uses Release.namespace which doesn't get set
 # when running the helm "template" command
@@ -61,10 +65,10 @@ sed '3d' ${TEMP_YAML} | sed 's/namespace: default/namespace: gitea/g' > ${TEMP_Y
 # and: https://github.com/helm/helm/issues/3553#issuecomment-1186518158
 # and: https://github.com/splunk/splunk-connect-for-kubernetes/pull/790
 
-cat ${GITEA_DIR}/ingress.yaml.tmpl >>${TEMP_YAML}.2
+cat ${GITEA_DIR}/ingress.yaml.tmpl >>${TEMP_YAML}_processed
 
 # Move temp file to final location only if everything succeeded
-mv ${TEMP_YAML}.2 ${INSTALL_YAML}
+mv ${TEMP_YAML}_processed ${INSTALL_YAML}
 rm -f ${TEMP_YAML}
 
 echo "Successfully generated $INSTALL_YAML"
