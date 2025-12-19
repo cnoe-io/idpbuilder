@@ -124,7 +124,8 @@ func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Gitea is ready, update status
 	baseUrl := util.GiteaBaseUrl(r.Config)
-	internalUrl := util.GiteaInternalUrl()
+	// Construct internal URL for cluster-internal access
+	internalUrl := fmt.Sprintf("http://my-gitea-http.%s.svc.cluster.local:3000", provider.Spec.Namespace)
 
 	// Ensure admin secret and token
 	secret, err := r.ensureAdminSecret(ctx, provider)
@@ -198,13 +199,9 @@ func (r *GiteaProviderReconciler) installGiteaResources(ctx context.Context, pro
 	}
 
 	// Convert raw bytes to objects
-	installObjs := []client.Object{}
-	for _, raw := range rawResources {
-		objs, err := k8s.ConvertYAMLToObjects(raw, r.Scheme)
-		if err != nil {
-			return fmt.Errorf("converting YAML to objects: %w", err)
-		}
-		installObjs = append(installObjs, objs...)
+	installObjs, err := k8s.ConvertRawResourcesToObjects(r.Scheme, rawResources)
+	if err != nil {
+		return fmt.Errorf("converting YAML to objects: %w", err)
 	}
 
 	nsClient := client.NewNamespacedClient(r.Client, provider.Spec.Namespace)
