@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found | IDP Builder</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .error-container {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        .error-message {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <h1>IDP Builder</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/docs">Docs</a></li>
+                <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="error-container container">
+            <div class="error-code">404</div>
+            <h2 class="error-message">Page Not Found</h2>
+            <p>The page you're looking for doesn't exist or has been moved.</p>
+            <div class="cta-buttons" style="margin-top: 2rem;">
+                <a href="/" class="btn btn-primary">Go Home</a>
+                <a href="/docs" class="btn btn-secondary">View Docs</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
+        </div>
+    </footer>
+</body>
+</html>
