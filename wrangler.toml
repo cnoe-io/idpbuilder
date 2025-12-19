@@ -4,18 +4,14 @@
 name = "idpbuilder"
 compatibility_date = "2024-12-19"
 
-# Pages configuration
-[site]
-bucket = "./public"
-
 # Build configuration
 [build]
 command = "./build-site.sh"
 cwd = ""
 watch_dirs = ["site/**/*"]
 
-[build.upload]
-format = "service-worker"
+# Pages builds output to ./public by default
+# No [site] or [build.upload] sections needed for Pages deployment
 
 # Environment variables (if needed)
 # [env.production]

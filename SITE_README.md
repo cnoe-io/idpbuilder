@@ -133,7 +133,8 @@ The build script creates a `_headers` file with security headers:
 
 The `_redirects` file handles:
 - `/docs` → `/docs/index.html`
-- Custom 404 page for all unmatched routes
+
+Cloudflare Pages automatically serves the `404.html` file for unmatched routes.
 
 ## Customization
 
