@@ -221,7 +221,7 @@ graph TB
                 
                 <h3>Platform CR</h3>
                 <p>The Platform CR represents the entire IDP platform instance:</p>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
   name: localdev
@@ -264,7 +264,7 @@ status:
                 <p>Git providers expose common status fields via duck-typing:</p>
                 
                 <h4>GiteaProvider Example</h4>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: GiteaProvider
 metadata:
   name: gitea-local
@@ -295,7 +295,7 @@ status:
     key: token</code></pre>
 
                 <h4>GitHubProvider Example</h4>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: GitHubProvider
 metadata:
   name: github-external
@@ -329,7 +329,7 @@ status:
                 <p>Gateway providers manage ingress and routing:</p>
                 
                 <h4>NginxGateway Example</h4>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: NginxGateway
 metadata:
   name: nginx-gateway
@@ -363,7 +363,7 @@ status:
                 <p>GitOps providers manage continuous deployment:</p>
                 
                 <h4>ArgoCDProvider Example</h4>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: ArgoCDProvider
 metadata:
   name: argocd
@@ -397,7 +397,7 @@ status:
                 <p>The V2 architecture allows multiple providers of the same type to coexist, enabling flexible configurations:</p>
                 
                 <h3>Multiple Git Providers Example</h3>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
   name: hybrid
@@ -415,7 +415,7 @@ spec:
         namespace: idpbuilder-system</code></pre>
 
                 <h3>Multiple Gateway Providers Example</h3>
-                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
+                <pre class="line-numbers language-yaml"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: Platform
 metadata:
   name: multi-gateway
