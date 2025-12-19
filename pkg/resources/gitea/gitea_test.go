@@ -30,6 +30,6 @@ func TestNewGiteaAdminSecret(t *testing.T) {
 
 	assert.Equal(t, "gitea-credential", secret.Name)
 	assert.Equal(t, "gitea", secret.Namespace)
-	assert.Equal(t, "giteaAdmin", secret.StringData["username"])
+	assert.Equal(t, v1alpha1.GiteaAdminUserName, secret.StringData["username"])
 	assert.Equal(t, password, secret.StringData["password"])
 }
