@@ -3,6 +3,16 @@
 [![Go Report Card][report-badge]][report-link]
 [![Commit Activity][commit-activity-badge]][commit-activity-link]
 
+---
+
+> **⚠️ WORK IN PROGRESS - VERSION 2 CONCEPT**
+>
+> This repository contains experimental work for a version 2 concept of idpbuilder. This is not the official current version.
+>
+> **For the official current version of idpbuilder, please visit: [https://cnoe.io/docs/idpbuilder](https://cnoe.io/docs/idpbuilder)**
+
+---
+
 # IDP Builder
 
 Internal development platform binary launcher.
