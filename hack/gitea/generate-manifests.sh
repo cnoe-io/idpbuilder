@@ -10,7 +10,14 @@ echo "# This file is auto-generated with 'hack/gitea/generate-manifests.sh'" >>$
 
 helm repo add gitea-charts --force-update https://dl.gitea.com/charts/
 helm repo update
-helm template my-gitea gitea-charts/gitea -f ${GITEA_DIR}/values.yaml --version ${CHART_VERSION} >>${INSTALL_YAML}
+
+# Use --kube-context="" to ensure helm doesn't try to use any k8s cluster context
+# This prevents helm from detecting the CI runner's namespace (arc-runners)
+helm template my-gitea gitea-charts/gitea \
+  -f ${GITEA_DIR}/values.yaml \
+  --version ${CHART_VERSION} \
+  --kube-context="" \
+  --namespace=default >>${INSTALL_YAML}
 
 # Remove the third line (helm template comment) and replace namespace
 sed '3d' ${INSTALL_YAML} | sed 's/namespace: default/namespace: gitea/g' > ${INSTALL_YAML}.tmp
