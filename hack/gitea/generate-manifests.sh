@@ -38,7 +38,7 @@ until helm repo add gitea-charts --force-update https://dl.gitea.com/charts/; do
     else
       echo "Download may be blocked by firewall. Unable to generate $INSTALL_YAML"
     fi
-    rm -f "${TEMP_YAML}"
+    rm -f "${TEMP_YAML}" "${TEMP_YAML}_processed"
     exit 1
   fi
   echo "Retrying helm repo add... (attempt $((RETRY_COUNT+1))/$MAX_RETRIES)"
@@ -69,6 +69,6 @@ cat ${GITEA_DIR}/ingress.yaml.tmpl >>${TEMP_YAML}_processed
 
 # Move temp file to final location only if everything succeeded
 mv ${TEMP_YAML}_processed ${INSTALL_YAML}
-rm -f ${TEMP_YAML}
+rm -f ${TEMP_YAML} ${TEMP_YAML}_processed
 
 echo "Successfully generated $INSTALL_YAML"
