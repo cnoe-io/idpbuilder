@@ -64,6 +64,13 @@
             .docs-sidebar {
                 position: relative;
                 top: 0;
+                background-color: var(--bg-alt);
+                padding: 1rem;
+                border-radius: 5px;
+                margin-bottom: 1rem;
+            }
+            .docs-sidebar h3 {
+                margin-top: 0;
             }
         }
     </style>
@@ -74,7 +81,10 @@
             <div class="logo">
                 <h1>IDP Builder</h1>
             </div>
-            <ul class="nav-links">
+            <button class="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()">
+                ☰
+            </button>
+            <ul class="nav-links" id="navLinks">
                 <li><a href="/">Home</a></li>
                 <li><a href="/docs">Docs</a></li>
                 <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
@@ -255,5 +265,22 @@ helm install idpbuilder-controllers idpbuilder/idpbuilder-controllers \
             <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
         </div>
     </footer>
+
+    <script>
+        function toggleMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('nav');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (!nav.contains(event.target)) {
+                navLinks.classList.remove('active');
+            }
+        });
+    </script>
 </body>
 </html>
