@@ -191,7 +191,7 @@ func TestReconcileCustomPkg(t *testing.T) {
 			t.Fatalf("labels not set")
 		}
 
-		_, ok := app.ObjectMeta.Labels[v1alpha1.PackageNameLabelKey]
+		_, ok := app.ObjectMeta.Labels[v1alpha1.PackageTypeLabelKey]
 		if !ok {
 			t.Fatalf("label %s not set", v1alpha1.PackageTypeLabelKey)
 		}
