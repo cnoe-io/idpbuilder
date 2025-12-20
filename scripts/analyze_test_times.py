@@ -10,7 +10,6 @@ This script reads test timing data from JSON output and creates diagrams showing
 
 import json
 import sys
-import csv
 from collections import defaultdict
 from pathlib import Path
 
