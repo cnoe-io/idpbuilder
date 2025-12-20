@@ -5,22 +5,22 @@ This report shows the execution times of tests in the idpbuilder project.
 ## Overview
 
 - **Total Tests**: 62
-- **Total Execution Time**: 39.39s
+- **Total Execution Time**: 6.22s
 
 ## Slowest Individual Tests
 
 | Rank | Test Name | Time (s) | Package |
 |------|-----------|----------|---------|
-| 1 | `TestGetGiteaToken` | 35.00 | localbuild |
-| 2 | `TestCloneRemoteRepoToDir` | 1.86 | util |
-| 3 | `TestBuildCustomizedManifests` | 0.92 | k8s |
-| 4 | `TestGetWorktreeYamlFiles` | 0.40 | util |
-| 5 | `TestCopyTreeToTree` | 0.38 | util |
-| 6 | `TestGetK8sInstallResources` | 0.20 | localbuild |
-| 7 | `TestGitRepositoryContentReconcile/files_modified` | 0.12 | gitrepository |
-| 8 | `TestGitRepositoryContentReconcile` | 0.12 | gitrepository |
-| 9 | `TestGetConfigCustom` | 0.09 | kind |
-| 10 | `TestGitRepositoryReconcile` | 0.06 | gitrepository |
+| 1 | `TestCloneRemoteRepoToDir` | 2.27 | util |
+| 2 | `TestGetGiteaToken` | 2.00 | localbuild |
+| 3 | `TestGetWorktreeYamlFiles` | 0.61 | util |
+| 4 | `TestCopyTreeToTree` | 0.51 | util |
+| 5 | `TestBuildCustomizedManifests` | 0.43 | k8s |
+| 6 | `TestGetK8sInstallResources` | 0.09 | localbuild |
+| 7 | `TestGetConfigCustom` | 0.06 | kind |
+| 8 | `TestGitRepositoryContentReconcile/files_modified` | 0.05 | gitrepository |
+| 9 | `TestGitRepositoryContentReconcile` | 0.05 | gitrepository |
+| 10 | `TestGitRepositoryReconcile/repo_updates` | 0.03 | gitrepository |
 
 ## Test Times by Category
 
@@ -28,65 +28,65 @@ Tests are categorized based on their functionality:
 
 | Category | Total Time (s) | Test Count | Avg Time (s) |
 |----------|----------------|------------|--------------|
-| Integration | 35.67 | 19 | 1.877 |
-| I/O | 2.64 | 5 | 0.528 |
-| Build/Manifest | 0.92 | 1 | 0.920 |
-| Config/Validation | 0.12 | 7 | 0.017 |
-| Unit | 0.04 | 30 | 0.001 |
+| I/O | 3.39 | 5 | 0.678 |
+| Integration | 2.29 | 19 | 0.121 |
+| Build/Manifest | 0.43 | 1 | 0.430 |
+| Config/Validation | 0.08 | 7 | 0.011 |
+| Unit | 0.03 | 30 | 0.001 |
 
 ### Category Distribution (Mermaid Diagram)
 
 ```mermaid
-pie title Test Execution Time by Category (Total: 39.39s)
-    "Integration" : 35.67
-    "I/O" : 2.64
-    "Build/Manifest" : 0.92
-    "Config/Validation" : 0.12
-    "Unit" : 0.04
+pie title Test Execution Time by Category (Total: 6.22s)
+    "I/O" : 3.39
+    "Integration" : 2.29
+    "Build/Manifest" : 0.43
+    "Config/Validation" : 0.08
+    "Unit" : 0.03
 ```
 
 ### Category Distribution (Text)
 
 ```
-Integration            35.67s  ████████████████████████████████████
-I/O                     2.64s  ██
-Build/Manifest          0.92s  
-Config/Validation       0.12s  
-Unit                    0.04s  
+I/O                     3.39s  █████████████████████
+Integration             2.29s  ██████████████
+Build/Manifest          0.43s  ██
+Config/Validation       0.08s  
+Unit                    0.03s  
 ```
 
 ## Test Times by Package
 
 | Package | Total Time (s) | Test Count |
 |---------|----------------|------------|
-| localbuild | 35.24 | 4 |
-| util | 2.83 | 12 |
-| k8s | 0.96 | 4 |
-| gitrepository | 0.31 | 10 |
-| kind | 0.16 | 6 |
-| platform | 0.05 | 5 |
-| get | 0.03 | 3 |
-| helpers | 0.03 | 2 |
-| build | 0.03 | 3 |
-| fs | 0.01 | 3 |
+| util | 3.57 | 12 |
+| localbuild | 2.11 | 4 |
+| k8s | 0.45 | 4 |
+| gitrepository | 0.15 | 10 |
+| kind | 0.11 | 6 |
+| build | 0.02 | 3 |
+| get | 0.02 | 3 |
+| platform | 0.02 | 5 |
+| helpers | 0.02 | 2 |
+| fs | 0.00 | 3 |
 
 ## Analysis: Why Do Tests Take Long?
 
 ### Key Findings
 
-1. **Slowest Test Category**: `Integration`
-   - Takes 35.67s total (90.6% of total time)
-   - Contains 19 tests
-   - Average time per test: 1.877s
+1. **Slowest Test Category**: `I/O`
+   - Takes 3.39s total (54.5% of total time)
+   - Contains 5 tests
+   - Average time per test: 0.678s
 
-2. **Slowest Package**: `localbuild`
-   - Takes 35.24s total (89.5% of total time)
-   - Contains 4 tests
+2. **Slowest Package**: `util`
+   - Takes 3.57s total (57.4% of total time)
+   - Contains 12 tests
 
-3. **Slowest Single Test**: `TestGetGiteaToken`
-   - Takes 35.00s (88.9% of total time)
-   - This test intentionally sleeps for 35 seconds to test timeout behavior when communicating with Gitea
-   - Located in `pkg/controllers/localbuild/gitea_test.go`
+3. **Slowest Single Test**: `TestCloneRemoteRepoToDir`
+   - Takes 2.27s (36.5% of total time)
+   - This test clones a git repository, which requires network and disk I/O
+   - Located in `pkg/util`
 
 ### Common Reasons for Slow Tests
 
