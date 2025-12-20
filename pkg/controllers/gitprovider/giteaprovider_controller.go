@@ -179,7 +179,7 @@ func (r *GiteaProviderReconciler) reconcileGitea(ctx context.Context, provider *
 		return ctrl.Result{}, fmt.Errorf("ensuring namespace: %w", err)
 	}
 
-	// Install Gitea resources using embedded manifests from localbuild package
+	// Install Gitea resources using embedded manifests
 	if err := r.installGiteaResources(ctx, provider); err != nil {
 		return ctrl.Result{}, fmt.Errorf("installing Gitea resources: %w", err)
 	}
