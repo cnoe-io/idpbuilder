@@ -1,0 +1,11 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: NginxGateway
+metadata:
+  name: nginx-gateway
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx
+  version: "1.13.0"
+  ingressClass:
+    name: nginx
+    isDefault: true

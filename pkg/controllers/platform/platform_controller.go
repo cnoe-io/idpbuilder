@@ -34,6 +34,8 @@ type PlatformReconciler struct {
 //+kubebuilder:rbac:groups=idpbuilder.cnoe.io,resources=platforms,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=idpbuilder.cnoe.io,resources=platforms/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=idpbuilder.cnoe.io,resources=platforms/finalizers,verbs=update
+//+kubebuilder:rbac:groups=idpbuilder.cnoe.io,resources=giteaproviders,verbs=get;list;watch
+//+kubebuilder:rbac:groups=idpbuilder.cnoe.io,resources=nginxgateways,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop
 func (r *PlatformReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -72,142 +74,199 @@ func (r *PlatformReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 	}
 
-	// Reconcile Git providers
-	gitProvidersSummary, allGitProvidersReady, err := r.reconcileGitProviders(ctx, platform)
+	// Aggregate provider statuses
+	allReady := true
+
+	// Aggregate Git Providers
+	gitProviderStatuses, gitReady, err := r.aggregateGitProviders(ctx, platform)
 	if err != nil {
-		logger.Error(err, "Failed to reconcile git providers")
-		meta.SetStatusCondition(&platform.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  metav1.ConditionFalse,
-			Reason:  "GitProvidersFailed",
-			Message: err.Error(),
-		})
-		platform.Status.Phase = "Failed"
-		if statusErr := r.Status().Update(ctx, platform); statusErr != nil {
-			logger.Error(statusErr, "Failed to update status")
-		}
+		logger.Error(err, "Failed to aggregate git providers")
 		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 	}
+	platform.Status.Providers.GitProviders = gitProviderStatuses
+	if !gitReady {
+		allReady = false
+	}
 
-	// Update Platform status with aggregated provider status
-	platform.Status.Providers.GitProviders = gitProvidersSummary
+	// Aggregate Gateway Providers
+	gatewayStatuses, gatewayReady, err := r.aggregateGateways(ctx, platform)
+	if err != nil {
+		logger.Error(err, "Failed to aggregate gateways")
+		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+	}
+	platform.Status.Providers.Gateways = gatewayStatuses
+	if !gatewayReady {
+		allReady = false
+	}
+
+	// Update observed generation
 	platform.Status.ObservedGeneration = platform.Generation
 
-	// Determine overall platform readiness
-	allReady := allGitProvidersReady
-
-	if !allReady {
-		logger.V(1).Info("Not all providers are ready, requeuing")
+	// Set condition and phase based on provider readiness
+	if allReady && len(platform.Spec.Components.GitProviders) > 0 {
+		platform.Status.Phase = "Ready"
+		meta.SetStatusCondition(&platform.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionTrue,
+			Reason:  "AllComponentsReady",
+			Message: "All platform components are operational",
+		})
+	} else {
+		platform.Status.Phase = "Initializing"
 		meta.SetStatusCondition(&platform.Status.Conditions, metav1.Condition{
 			Type:    "Ready",
 			Status:  metav1.ConditionFalse,
-			Reason:  "ProvidersNotReady",
-			Message: "One or more providers are not ready",
+			Reason:  "ComponentsNotReady",
+			Message: "Waiting for platform components to be ready",
 		})
-		platform.Status.Phase = "Pending"
-		if err := r.Status().Update(ctx, platform); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 	}
-
-	// All providers are ready
-	meta.SetStatusCondition(&platform.Status.Conditions, metav1.Condition{
-		Type:    "Ready",
-		Status:  metav1.ConditionTrue,
-		Reason:  "AllProvidersReady",
-		Message: "All providers are ready",
-	})
-	platform.Status.Phase = "Ready"
 
 	if err := r.Status().Update(ctx, platform); err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if !allReady {
+		logger.Info("Platform not fully ready, requeuing")
+		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 	}
 
 	logger.Info("Platform reconciliation complete", "phase", platform.Status.Phase)
 	return ctrl.Result{}, nil
 }
 
-// reconcileGitProviders reconciles all Git provider references and returns aggregated status
-func (r *PlatformReconciler) reconcileGitProviders(ctx context.Context, platform *v1alpha2.Platform) ([]v1alpha2.ProviderStatusSummary, bool, error) {
+// aggregateGitProviders aggregates status from all Git providers
+func (r *PlatformReconciler) aggregateGitProviders(ctx context.Context, platform *v1alpha2.Platform) ([]v1alpha2.ProviderStatusSummary, bool, error) {
 	logger := log.FromContext(ctx)
-	var summary []v1alpha2.ProviderStatusSummary
+	summaries := []v1alpha2.ProviderStatusSummary{}
 	allReady := true
 
-	for _, providerRef := range platform.Spec.Components.GitProviders {
-		logger.V(1).Info("Processing git provider", "name", providerRef.Name, "kind", providerRef.Kind)
-
-		// Fetch the provider using unstructured client for duck-typing
+	for _, gitProviderRef := range platform.Spec.Components.GitProviders {
+		// Fetch provider using unstructured client to support duck-typing
 		gvk := schema.GroupVersionKind{
-			Group:   v1alpha2.GroupVersion.Group,
-			Version: v1alpha2.GroupVersion.Version,
-			Kind:    providerRef.Kind,
+			Group:   "idpbuilder.cnoe.io",
+			Version: "v1alpha2",
+			Kind:    gitProviderRef.Kind,
 		}
 
-		obj := &unstructured.Unstructured{}
-		obj.SetGroupVersionKind(gvk)
+		providerObj := &unstructured.Unstructured{}
+		providerObj.SetGroupVersionKind(gvk)
 
 		err := r.Get(ctx, types.NamespacedName{
-			Name:      providerRef.Name,
-			Namespace: providerRef.Namespace,
-		}, obj)
+			Name:      gitProviderRef.Name,
+			Namespace: gitProviderRef.Namespace,
+		}, providerObj)
 
 		if err != nil {
 			if errors.IsNotFound(err) {
-				logger.Info("Provider not found", "name", providerRef.Name, "kind", providerRef.Kind)
-				summary = append(summary, v1alpha2.ProviderStatusSummary{
-					Name:  providerRef.Name,
-					Kind:  providerRef.Kind,
+				logger.Info("Git provider not found", "name", gitProviderRef.Name, "kind", gitProviderRef.Kind)
+				summaries = append(summaries, v1alpha2.ProviderStatusSummary{
+					Name:  gitProviderRef.Name,
+					Kind:  gitProviderRef.Kind,
 					Ready: false,
 				})
 				allReady = false
 				continue
 			}
-			return nil, false, fmt.Errorf("failed to get provider kind=%s name=%s: %w", providerRef.Kind, providerRef.Name, err)
+			return nil, false, fmt.Errorf("getting git provider %s: %w", gitProviderRef.Name, err)
 		}
 
-		// Use duck-typing to get provider status
-		providerStatus, err := provider.GetGitProviderStatus(obj)
+		// Extract status using duck-typing
+		ready, err := provider.IsGitProviderReady(providerObj)
 		if err != nil {
-			logger.Error(err, "Failed to get provider status using duck-typing", "name", providerRef.Name)
-			summary = append(summary, v1alpha2.ProviderStatusSummary{
-				Name:  providerRef.Name,
-				Kind:  providerRef.Kind,
-				Ready: false,
-			})
-			allReady = false
-			continue
+			logger.Error(err, "Failed to check git provider readiness", "name", gitProviderRef.Name)
+			ready = false
 		}
 
-		summary = append(summary, v1alpha2.ProviderStatusSummary{
-			Name:  providerRef.Name,
-			Kind:  providerRef.Kind,
-			Ready: providerStatus.Ready,
+		summaries = append(summaries, v1alpha2.ProviderStatusSummary{
+			Name:  gitProviderRef.Name,
+			Kind:  gitProviderRef.Kind,
+			Ready: ready,
 		})
 
-		if !providerStatus.Ready {
+		if !ready {
 			allReady = false
 		}
 	}
 
-	return summary, allReady, nil
+	return summaries, allReady, nil
 }
 
-// handleDeletion handles cleanup when Platform is deleted
+// aggregateGateways aggregates status from all Gateway providers
+func (r *PlatformReconciler) aggregateGateways(ctx context.Context, platform *v1alpha2.Platform) ([]v1alpha2.ProviderStatusSummary, bool, error) {
+	logger := log.FromContext(ctx)
+	summaries := []v1alpha2.ProviderStatusSummary{}
+	allReady := true
+
+	for _, gatewayRef := range platform.Spec.Components.Gateways {
+		// Fetch provider using unstructured client to support duck-typing
+		gvk := schema.GroupVersionKind{
+			Group:   "idpbuilder.cnoe.io",
+			Version: "v1alpha2",
+			Kind:    gatewayRef.Kind,
+		}
+
+		providerObj := &unstructured.Unstructured{}
+		providerObj.SetGroupVersionKind(gvk)
+
+		err := r.Get(ctx, types.NamespacedName{
+			Name:      gatewayRef.Name,
+			Namespace: gatewayRef.Namespace,
+		}, providerObj)
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("Gateway provider not found", "name", gatewayRef.Name, "kind", gatewayRef.Kind)
+				summaries = append(summaries, v1alpha2.ProviderStatusSummary{
+					Name:  gatewayRef.Name,
+					Kind:  gatewayRef.Kind,
+					Ready: false,
+				})
+				allReady = false
+				continue
+			}
+			return nil, false, fmt.Errorf("getting gateway provider %s: %w", gatewayRef.Name, err)
+		}
+
+		// Extract status using duck-typing
+		ready, err := provider.IsGatewayProviderReady(providerObj)
+		if err != nil {
+			logger.Error(err, "Failed to check gateway provider readiness", "name", gatewayRef.Name)
+			ready = false
+		}
+
+		summaries = append(summaries, v1alpha2.ProviderStatusSummary{
+			Name:  gatewayRef.Name,
+			Kind:  gatewayRef.Kind,
+			Ready: ready,
+		})
+
+		if !ready {
+			allReady = false
+		}
+	}
+
+	return summaries, allReady, nil
+}
+
+// handleDeletion handles the deletion of Platform
 func (r *PlatformReconciler) handleDeletion(ctx context.Context, platform *v1alpha2.Platform) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Handling Platform deletion")
 
-	// Remove finalizer
-	controllerutil.RemoveFinalizer(platform, platformFinalizer)
-	if err := r.Update(ctx, platform); err != nil {
-		return ctrl.Result{}, err
+	if controllerutil.ContainsFinalizer(platform, platformFinalizer) {
+		// Perform cleanup if needed
+		logger.Info("Cleaning up Platform resources")
+
+		// Remove finalizer
+		controllerutil.RemoveFinalizer(platform, platformFinalizer)
+		if err := r.Update(ctx, platform); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager
+// SetupWithManager sets up the controller with the Manager.
 func (r *PlatformReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha2.Platform{}).

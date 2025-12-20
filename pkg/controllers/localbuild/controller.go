@@ -84,6 +84,12 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	// Create NginxGateway CR early in reconciliation
+	if err := r.ensureNginxGatewayExists(ctx, &localBuild); err != nil {
+		logger.Error(err, "Failed to ensure NginxGateway exists")
+		return ctrl.Result{RequeueAfter: errRequeueTime}, nil
+	}
+
 	instCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	errChan := make(chan error, 3)
@@ -95,7 +101,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	case instErr := <-errChan:
 		if instErr != nil {
-			// likely due to ingress-nginx admission hook not ready. debug log and try again.
+			// Failed installing core package. Debug log and try again.
 			logger.V(1).Info("failed installing core package. likely not fatal. will try again", "error", instErr)
 			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
 		}
@@ -158,9 +164,8 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 	var wg sync.WaitGroup
 
 	installers := map[string]subReconciler{
-		v1alpha1.IngressNginxPackageName: r.ReconcileNginx,
-		v1alpha1.ArgoCDPackageName:       r.ReconcileArgo,
-		v1alpha1.GiteaPackageName:        r.ReconcileGitea,
+		v1alpha1.ArgoCDPackageName: r.ReconcileArgo,
+		v1alpha1.GiteaPackageName:  r.ReconcileGitea,
 	}
 	logger.V(1).Info("installing core packages")
 	for k, v := range installers {
@@ -240,7 +245,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 
 	// push bootstrap app manifests to Gitea. let ArgoCD take over
 	// will need a way to filter them based on user input
-	bootStrapApps := []string{v1alpha1.ArgoCDPackageName, v1alpha1.IngressNginxPackageName, v1alpha1.GiteaPackageName}
+	bootStrapApps := []string{v1alpha1.ArgoCDPackageName, v1alpha1.GiteaPackageName}
 	for _, n := range bootStrapApps {
 		result, err := r.reconcileEmbeddedApp(ctx, n, resource)
 		if err != nil {
@@ -963,8 +968,6 @@ func GetEmbeddedRawInstallResources(name string, templateData any, config v1alph
 		return RawArgocdInstallResources(templateData, config, scheme)
 	case v1alpha1.GiteaPackageName:
 		return RawGiteaInstallResources(templateData, config, scheme)
-	case v1alpha1.IngressNginxPackageName:
-		return RawNginxInstallResources(templateData, config, scheme)
 	default:
 		return nil, fmt.Errorf("unsupported embedded app name %s", name)
 	}

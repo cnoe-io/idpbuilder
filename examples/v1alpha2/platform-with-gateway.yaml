@@ -1,0 +1,16 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: localdev
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  components:
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+    gateways:
+      - name: nginx-gateway
+        kind: NginxGateway
+        namespace: idpbuilder-system

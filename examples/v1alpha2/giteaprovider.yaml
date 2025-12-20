@@ -1,0 +1,15 @@
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: gitea-local
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  version: "1.24.3"
+  adminUser:
+    username: giteaAdmin
+    email: admin@cnoe.localtest.me
+    autoGenerate: true
+  organizations:
+    - name: idpbuilder
+      description: IDP Builder Bootstrap Organization

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-INSTALL_YAML="pkg/controllers/localbuild/resources/nginx/k8s/ingress-nginx.yaml"
+INSTALL_YAML="pkg/controllers/gatewayprovider/resources/nginx/k8s/ingress-nginx.yaml"
 NGINX_DIR="./hack/ingress-nginx"
 
 

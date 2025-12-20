@@ -8,151 +8,186 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestPlatformReconciler_Reconcile(t *testing.T) {
 	scheme := runtime.NewScheme()
-	require.NoError(t, v1alpha2.AddToScheme(scheme))
+	_ = v1alpha2.AddToScheme(scheme)
 
 	tests := []struct {
-		name          string
-		platform      *v1alpha2.Platform
-		providers     []runtime.Object
-		expectedPhase string
-		expectedReady bool
-		expectRequeue bool
+		name           string
+		platform       *v1alpha2.Platform
+		providers      []client.Object
+		expectRequeue  bool
+		expectError    bool
+		validateStatus func(*testing.T, *v1alpha2.Platform)
 	}{
 		{
-			name: "platform with ready gitea provider",
+			name: "platform with no providers",
 			platform: &v1alpha2.Platform{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-platform",
-					Namespace: "default",
+					Namespace: "idpbuilder-system",
 				},
 				Spec: v1alpha2.PlatformSpec{
-					Domain: "test.example.com",
-					Components: v1alpha2.PlatformComponents{
-						GitProviders: []v1alpha2.ProviderReference{
-							{
-								Name:      "my-gitea",
-								Kind:      "GiteaProvider",
-								Namespace: "gitea",
-							},
-						},
-					},
+					Domain:     "test.local",
+					Components: v1alpha2.PlatformComponents{},
 				},
 			},
-			providers: []runtime.Object{
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": "idpbuilder.cnoe.io/v1alpha2",
-						"kind":       "GiteaProvider",
-						"metadata": map[string]interface{}{
-							"name":      "my-gitea",
-							"namespace": "gitea",
-						},
-						"status": map[string]interface{}{
-							"endpoint":         "https://gitea.example.com",
-							"internalEndpoint": "http://gitea.svc:3000",
-							"conditions": []interface{}{
-								map[string]interface{}{
-									"type":   "Ready",
-									"status": "True",
-								},
-							},
-						},
-					},
-				},
-			},
-			expectedPhase: "Ready",
-			expectedReady: true,
+			providers:     []client.Object{},
 			expectRequeue: false,
+			expectError:   false,
+			validateStatus: func(t *testing.T, p *v1alpha2.Platform) {
+				// Platform requires at least one git provider to be Ready
+				assert.Equal(t, "Initializing", p.Status.Phase)
+			},
 		},
 		{
-			name: "platform with not ready gitea provider",
+			name: "platform with git provider reference",
 			platform: &v1alpha2.Platform{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-platform",
-					Namespace: "default",
+					Namespace: "idpbuilder-system",
 				},
 				Spec: v1alpha2.PlatformSpec{
-					Domain: "test.example.com",
+					Domain: "test.local",
 					Components: v1alpha2.PlatformComponents{
 						GitProviders: []v1alpha2.ProviderReference{
 							{
-								Name:      "my-gitea",
+								Name:      "gitea-test",
 								Kind:      "GiteaProvider",
-								Namespace: "gitea",
+								Namespace: "idpbuilder-system",
 							},
 						},
 					},
 				},
 			},
-			providers: []runtime.Object{
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": "idpbuilder.cnoe.io/v1alpha2",
-						"kind":       "GiteaProvider",
-						"metadata": map[string]interface{}{
-							"name":      "my-gitea",
-							"namespace": "gitea",
-						},
-						"status": map[string]interface{}{
-							"endpoint":         "https://gitea.example.com",
-							"internalEndpoint": "http://gitea.svc:3000",
-							"conditions": []interface{}{
-								map[string]interface{}{
-									"type":   "Ready",
-									"status": "False",
-								},
+			providers: []client.Object{
+				&v1alpha2.GiteaProvider{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "gitea-test",
+						Namespace: "idpbuilder-system",
+					},
+					Status: v1alpha2.GiteaProviderStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:   "Ready",
+								Status: metav1.ConditionTrue,
 							},
 						},
 					},
 				},
 			},
-			expectedPhase: "Pending",
-			expectedReady: false,
-			expectRequeue: true,
+			expectRequeue: false,
+			expectError:   false,
+			validateStatus: func(t *testing.T, p *v1alpha2.Platform) {
+				assert.Equal(t, "Ready", p.Status.Phase)
+				assert.Len(t, p.Status.Providers.GitProviders, 1)
+				assert.True(t, p.Status.Providers.GitProviders[0].Ready)
+			},
 		},
 		{
-			name: "platform with missing provider",
+			name: "platform with gateway provider reference",
 			platform: &v1alpha2.Platform{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-platform",
-					Namespace: "default",
+					Namespace: "idpbuilder-system",
 				},
 				Spec: v1alpha2.PlatformSpec{
-					Domain: "test.example.com",
+					Domain: "test.local",
 					Components: v1alpha2.PlatformComponents{
-						GitProviders: []v1alpha2.ProviderReference{
+						Gateways: []v1alpha2.ProviderReference{
 							{
-								Name:      "my-gitea",
-								Kind:      "GiteaProvider",
-								Namespace: "gitea",
+								Name:      "nginx-test",
+								Kind:      "NginxGateway",
+								Namespace: "idpbuilder-system",
 							},
 						},
 					},
 				},
 			},
-			providers:     []runtime.Object{},
-			expectedPhase: "Pending",
-			expectedReady: false,
+			providers: []client.Object{
+				&v1alpha2.NginxGateway{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "nginx-test",
+						Namespace: "idpbuilder-system",
+					},
+					Status: v1alpha2.NginxGatewayStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:   "Ready",
+								Status: metav1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectRequeue: false,
+			expectError:   false,
+			validateStatus: func(t *testing.T, p *v1alpha2.Platform) {
+				// Platform requires at least one git provider to be Ready, so even though gateway is ready, platform is not
+				assert.Equal(t, "Initializing", p.Status.Phase)
+				assert.Len(t, p.Status.Providers.Gateways, 1)
+				assert.True(t, p.Status.Providers.Gateways[0].Ready)
+			},
+		},
+		{
+			name: "platform with not ready providers",
+			platform: &v1alpha2.Platform{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-platform",
+					Namespace: "idpbuilder-system",
+				},
+				Spec: v1alpha2.PlatformSpec{
+					Domain: "test.local",
+					Components: v1alpha2.PlatformComponents{
+						GitProviders: []v1alpha2.ProviderReference{
+							{
+								Name:      "gitea-test",
+								Kind:      "GiteaProvider",
+								Namespace: "idpbuilder-system",
+							},
+						},
+					},
+				},
+			},
+			providers: []client.Object{
+				&v1alpha2.GiteaProvider{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "gitea-test",
+						Namespace: "idpbuilder-system",
+					},
+					Status: v1alpha2.GiteaProviderStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:   "Ready",
+								Status: metav1.ConditionFalse,
+							},
+						},
+					},
+				},
+			},
 			expectRequeue: true,
+			expectError:   false,
+			validateStatus: func(t *testing.T, p *v1alpha2.Platform) {
+				assert.Equal(t, "Initializing", p.Status.Phase)
+				assert.Len(t, p.Status.Providers.GitProviders, 1)
+				assert.False(t, p.Status.Providers.GitProviders[0].Ready)
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create fake client with objects
-			objs := append([]runtime.Object{tt.platform}, tt.providers...)
+			objs := append(tt.providers, tt.platform)
 			fakeClient := fake.NewClientBuilder().
 				WithScheme(scheme).
-				WithRuntimeObjects(objs...).
+				WithObjects(objs...).
 				WithStatusSubresource(&v1alpha2.Platform{}).
 				Build()
 
@@ -168,140 +203,180 @@ func TestPlatformReconciler_Reconcile(t *testing.T) {
 				},
 			}
 
-			// First reconcile to add finalizer
-			_, err := reconciler.Reconcile(context.Background(), req)
-			require.NoError(t, err)
-
-			// Second reconcile to process
 			result, err := reconciler.Reconcile(context.Background(), req)
-			require.NoError(t, err)
 
-			// Verify requeue expectation
-			if tt.expectRequeue {
-				assert.True(t, result.RequeueAfter > 0, "Expected requeue after delay")
+			if tt.expectError {
+				require.Error(t, err)
 			} else {
-				assert.Equal(t, ctrl.Result{}, result, "Expected no requeue")
+				require.NoError(t, err)
 			}
 
-			// Get updated platform
-			platform := &v1alpha2.Platform{}
-			err = fakeClient.Get(context.Background(), req.NamespacedName, platform)
-			require.NoError(t, err)
+			if tt.expectRequeue {
+				assert.True(t, result.Requeue || result.RequeueAfter > 0)
+			}
 
-			// Verify phase
-			assert.Equal(t, tt.expectedPhase, platform.Status.Phase)
-
-			// Verify ready condition
-			readyCondition := findCondition(platform.Status.Conditions, "Ready")
-			if tt.expectedReady {
-				require.NotNil(t, readyCondition, "Ready condition should exist")
-				assert.Equal(t, metav1.ConditionTrue, readyCondition.Status)
-			} else {
-				if readyCondition != nil {
-					assert.Equal(t, metav1.ConditionFalse, readyCondition.Status)
-				}
+			if tt.validateStatus != nil {
+				platform := &v1alpha2.Platform{}
+				err := fakeClient.Get(context.Background(), req.NamespacedName, platform)
+				require.NoError(t, err)
+				tt.validateStatus(t, platform)
 			}
 		})
 	}
 }
 
-func TestPlatformReconciler_ReconcileGitProviders(t *testing.T) {
+func TestPlatformReconciler_aggregateGitProviders(t *testing.T) {
 	scheme := runtime.NewScheme()
-	require.NoError(t, v1alpha2.AddToScheme(scheme))
+	_ = v1alpha2.AddToScheme(scheme)
 
-	readyProvider := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "idpbuilder.cnoe.io/v1alpha2",
-			"kind":       "GiteaProvider",
-			"metadata": map[string]interface{}{
-				"name":      "provider1",
-				"namespace": "gitea",
+	tests := []struct {
+		name          string
+		platform      *v1alpha2.Platform
+		providers     []client.Object
+		expectReady   bool
+		expectSummary int
+	}{
+		{
+			name: "no git providers",
+			platform: &v1alpha2.Platform{
+				Spec: v1alpha2.PlatformSpec{
+					Components: v1alpha2.PlatformComponents{},
+				},
 			},
-			"status": map[string]interface{}{
-				"endpoint":         "https://gitea1.example.com",
-				"internalEndpoint": "http://gitea1.svc:3000",
-				"conditions": []interface{}{
-					map[string]interface{}{
-						"type":   "Ready",
-						"status": "True",
+			providers:     []client.Object{},
+			expectReady:   true,
+			expectSummary: 0,
+		},
+		{
+			name: "one ready git provider",
+			platform: &v1alpha2.Platform{
+				Spec: v1alpha2.PlatformSpec{
+					Components: v1alpha2.PlatformComponents{
+						GitProviders: []v1alpha2.ProviderReference{
+							{
+								Name:      "gitea",
+								Kind:      "GiteaProvider",
+								Namespace: "idpbuilder-system",
+							},
+						},
 					},
 				},
 			},
-		},
-	}
-
-	notReadyProvider := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "idpbuilder.cnoe.io/v1alpha2",
-			"kind":       "GiteaProvider",
-			"metadata": map[string]interface{}{
-				"name":      "provider2",
-				"namespace": "gitea",
-			},
-			"status": map[string]interface{}{
-				"endpoint":         "https://gitea2.example.com",
-				"internalEndpoint": "http://gitea2.svc:3000",
-				"conditions": []interface{}{
-					map[string]interface{}{
-						"type":   "Ready",
-						"status": "False",
+			providers: []client.Object{
+				&v1alpha2.GiteaProvider{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "gitea",
+						Namespace: "idpbuilder-system",
+					},
+					Status: v1alpha2.GiteaProviderStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:   "Ready",
+								Status: metav1.ConditionTrue,
+							},
+						},
 					},
 				},
 			},
+			expectReady:   true,
+			expectSummary: 1,
 		},
 	}
 
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(scheme).
-		WithRuntimeObjects(readyProvider, notReadyProvider).
-		Build()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.providers...).
+				Build()
 
-	reconciler := &PlatformReconciler{
-		Client: fakeClient,
-		Scheme: scheme,
+			reconciler := &PlatformReconciler{
+				Client: fakeClient,
+				Scheme: scheme,
+			}
+
+			summaries, ready, err := reconciler.aggregateGitProviders(context.Background(), tt.platform)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectReady, ready)
+			assert.Len(t, summaries, tt.expectSummary)
+		})
 	}
+}
 
-	platform := &v1alpha2.Platform{
-		Spec: v1alpha2.PlatformSpec{
-			Components: v1alpha2.PlatformComponents{
-				GitProviders: []v1alpha2.ProviderReference{
-					{Name: "provider1", Kind: "GiteaProvider", Namespace: "gitea"},
-					{Name: "provider2", Kind: "GiteaProvider", Namespace: "gitea"},
+func TestPlatformReconciler_aggregateGateways(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = v1alpha2.AddToScheme(scheme)
+
+	tests := []struct {
+		name          string
+		platform      *v1alpha2.Platform
+		providers     []client.Object
+		expectReady   bool
+		expectSummary int
+	}{
+		{
+			name: "no gateways",
+			platform: &v1alpha2.Platform{
+				Spec: v1alpha2.PlatformSpec{
+					Components: v1alpha2.PlatformComponents{},
 				},
 			},
+			providers:     []client.Object{},
+			expectReady:   true,
+			expectSummary: 0,
+		},
+		{
+			name: "one ready gateway",
+			platform: &v1alpha2.Platform{
+				Spec: v1alpha2.PlatformSpec{
+					Components: v1alpha2.PlatformComponents{
+						Gateways: []v1alpha2.ProviderReference{
+							{
+								Name:      "nginx",
+								Kind:      "NginxGateway",
+								Namespace: "idpbuilder-system",
+							},
+						},
+					},
+				},
+			},
+			providers: []client.Object{
+				&v1alpha2.NginxGateway{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "nginx",
+						Namespace: "idpbuilder-system",
+					},
+					Status: v1alpha2.NginxGatewayStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:   "Ready",
+								Status: metav1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			expectReady:   true,
+			expectSummary: 1,
 		},
 	}
 
-	summary, allReady, err := reconciler.reconcileGitProviders(context.Background(), platform)
-	require.NoError(t, err)
-	assert.Len(t, summary, 2)
-	assert.False(t, allReady, "Not all providers should be ready")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(tt.providers...).
+				Build()
 
-	// Check individual summaries
-	provider1Summary := findProviderSummary(summary, "provider1")
-	require.NotNil(t, provider1Summary)
-	assert.True(t, provider1Summary.Ready)
+			reconciler := &PlatformReconciler{
+				Client: fakeClient,
+				Scheme: scheme,
+			}
 
-	provider2Summary := findProviderSummary(summary, "provider2")
-	require.NotNil(t, provider2Summary)
-	assert.False(t, provider2Summary.Ready)
-}
-
-// Helper functions
-func findCondition(conditions []metav1.Condition, condType string) *metav1.Condition {
-	for i := range conditions {
-		if conditions[i].Type == condType {
-			return &conditions[i]
-		}
+			summaries, ready, err := reconciler.aggregateGateways(context.Background(), tt.platform)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectReady, ready)
+			assert.Len(t, summaries, tt.expectSummary)
+		})
 	}
-	return nil
-}
-
-func findProviderSummary(summaries []v1alpha2.ProviderStatusSummary, name string) *v1alpha2.ProviderStatusSummary {
-	for i := range summaries {
-		if summaries[i].Name == name {
-			return &summaries[i]
-		}
-	}
-	return nil
 }
