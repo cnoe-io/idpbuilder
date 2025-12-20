@@ -43,32 +43,15 @@ This separation enables two deployment modes:
 
 Today, idpbuilder operates in two distinct phases:
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                         CLI Phase                                 │
-│  1. Parse flags                                                   │
-│  2. Create Kind cluster                                           │
-│  3. Start controller manager                                      │
-│  4. Create Localbuild CR                                          │
-│  5. Wait for ready state                                          │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    Controller Phase                               │
-│  LocalbuildReconciler:                                            │
-│    - Installs core packages (nginx, argocd, gitea)               │
-│    - Creates GitRepository CRs                                    │
-│    - Creates ArgoCD Applications                                  │
-│                                                                   │
-│  RepositoryReconciler:                                            │
-│    - Creates Gitea repositories                                   │
-│    - Populates repository content                                 │
-│                                                                   │
-│  CustomPackageReconciler:                                         │
-│    - Processes custom packages                                    │
-│    - Creates GitRepository CRs and ArgoCD apps                    │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    CLI["<b>CLI Phase</b><br/>1. Parse flags<br/>2. Create Kind cluster<br/>3. Start controller manager<br/>4. Create Localbuild CR<br/>5. Wait for ready state"]
+    Controller["<b>Controller Phase</b><br/><br/><b>LocalbuildReconciler:</b><br/>- Installs core packages (nginx, argocd, gitea)<br/>- Creates GitRepository CRs<br/>- Creates ArgoCD Applications<br/><br/><b>RepositoryReconciler:</b><br/>- Creates Gitea repositories<br/>- Populates repository content<br/><br/><b>CustomPackageReconciler:</b><br/>- Processes custom packages<br/>- Creates GitRepository CRs and ArgoCD apps"]
+    
+    CLI --> Controller
+    
+    style CLI fill:#e1f5ff,stroke:#01579b
+    style Controller fill:#fff9c4,stroke:#f57f17
 ```
 
 ### Core Components Installation Flow
@@ -152,114 +135,69 @@ The new architecture introduces a composable, provider-based system where platfo
 
 Controllers run on the provisioned cluster and manage their respective providers:
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      Infrastructure Layer                            │
-│                                                                      │
-│  Two Deployment Modes:                                              │
-│                                                                      │
-│  Mode 1 - CLI-Driven (Development):                                 │
-│    • idpbuilder CLI provisions Kind cluster                         │
-│    • CLI deploys idpbuilder-controllers (Helm/manifests)            │
-│    • CLI creates Platform and Provider CRs                          │
-│                                                                      │
-│  Mode 2 - GitOps-Driven (Production):                               │
-│    • Pre-provisioned Kubernetes cluster (any distribution)          │
-│    • Install controllers via Helm chart or kubectl apply            │
-│    • Deploy Platform/Provider CRs via GitOps (ArgoCD/Flux)          │
-│    • No CLI required - fully declarative                            │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                 Platform Controllers (On-Cluster)                    │
-│                                                                      │
-│  PlatformReconciler:                                                 │
-│    - Orchestrates platform bootstrap                                 │
-│    - References provider CRs (Git, Gateway, GitOps)                 │
-│    - Creates GitRepository CRs for bootstrap content                │
-│    - Aggregates component status                                     │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  Git Provider Controllers (Duck-Typed)                         │ │
-│  │                                                                │ │
-│  │  GiteaProviderReconciler:                                      │ │
-│  │    - Installs Gitea via Helm                                   │ │
-│  │    - Creates organizations and admin users                     │ │
-│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
-│  │                                                                │ │
-│  │  GitHubProviderReconciler:                                     │ │
-│  │    - Validates GitHub credentials and access                   │ │
-│  │    - Manages organization/team configuration                   │ │
-│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
-│  │                                                                │ │
-│  │  GitLabProviderReconciler:                                     │ │
-│  │    - Validates GitLab credentials and access                   │ │
-│  │    - Manages groups and subgroups                              │ │
-│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  Gateway Provider Controllers (Duck-Typed)                     │ │
-│  │                                                                │ │
-│  │  NginxGatewayReconciler:                                       │ │
-│  │    - Installs Nginx Ingress Controller via Helm               │ │
-│  │    - Creates IngressClass resource                             │ │
-│  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
-│  │                                                                │ │
-│  │  EnvoyGatewayReconciler:                                       │ │
-│  │    - Installs Envoy Gateway via Helm                           │ │
-│  │    - Creates GatewayClass and Gateway resources                │ │
-│  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
-│  │                                                                │ │
-│  │  IstioGatewayReconciler:                                       │ │
-│  │    - Installs Istio control plane and gateway                  │ │
-│  │    - Configures service mesh settings                          │ │
-│  │    - Exposes: ingressClassName, loadBalancerEndpoint           │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  ┌────────────────────────────────────────────────────────────────┐ │
-│  │  GitOps Provider Controllers (Duck-Typed)                      │ │
-│  │                                                                │ │
-│  │  ArgoCDProviderReconciler:                                     │ │
-│  │    - Installs ArgoCD via Helm                                  │ │
-│  │    - Creates projects and admin credentials                    │ │
-│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
-│  │                                                                │ │
-│  │  FluxProviderReconciler:                                       │ │
-│  │    - Installs Flux controllers via Helm                        │ │
-│  │    - Configures source and kustomize controllers               │ │
-│  │    - Exposes: endpoint, internalEndpoint, credentialsSecretRef │ │
-│  └────────────────────────────────────────────────────────────────┘ │
-│                                                                      │
-│  GitRepositoryReconciler: (Enhanced)                                 │
-│    - Works with ANY Git provider via duck-typed interface           │
-│    - Creates repositories using provider's credentials              │
-│    - Synchronizes content from multiple sources                     │
-│                                                                      │
-│  PackageReconciler: (Enhanced)                                       │
-│    - Manages application packages                                   │
-│    - Creates ArgoCD Applications referencing Git providers          │
-│    - Handles package dependencies                                   │
-└─────────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                       Platform Services                              │
-│  ┌───────────────┐  ┌──────────────┐  ┌──────────────────────┐     │
-│  │ Git Providers │  │   Gateways   │  │  GitOps Providers    │     │
-│  ├───────────────┤  ├──────────────┤  ├──────────────────────┤     │
-│  │ • Gitea       │  │ • Nginx      │  │ • ArgoCD             │     │
-│  │ • GitHub      │  │ • Envoy      │  │ • Flux               │     │
-│  │ • GitLab      │  │ • Istio      │  │   (manages user apps │     │
-│  │               │  │              │  │    via GitOps)       │     │
-│  └───────────────┘  └──────────────┘  └──────────────────────┘     │
-│                                                                      │
-│  Multiple providers can coexist - e.g.:                              │
-│    - Gitea for dev + GitHub for production                           │
-│    - Nginx for public + Envoy for internal/service mesh             │
-│    - ArgoCD for app deployment + Flux for infrastructure            │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Infrastructure["Infrastructure Layer"]
+        Mode1["<b>Mode 1 - CLI-Driven (Development):</b><br/>• idpbuilder CLI provisions Kind cluster<br/>• CLI deploys idpbuilder-controllers (Helm/manifests)<br/>• CLI creates Platform and Provider CRs"]
+        Mode2["<b>Mode 2 - GitOps-Driven (Production):</b><br/>• Pre-provisioned Kubernetes cluster<br/>• Install controllers via Helm/kubectl<br/>• Deploy Platform/Provider CRs via GitOps<br/>• No CLI required - fully declarative"]
+    end
+    
+    subgraph Platform["Platform Controllers (On-Cluster)"]
+        PR["<b>PlatformReconciler:</b><br/>- Orchestrates platform bootstrap<br/>- References provider CRs (Git, Gateway, GitOps)<br/>- Creates GitRepository CRs for bootstrap content<br/>- Aggregates component status"]
+        
+        subgraph GitProviders["Git Provider Controllers (Duck-Typed)"]
+            GP1["<b>GiteaProviderReconciler:</b><br/>- Installs Gitea via Helm<br/>- Creates organizations and admin users<br/>- Exposes: endpoint, internalEndpoint,<br/>  credentialsSecretRef"]
+            GP2["<b>GitHubProviderReconciler:</b><br/>- Validates GitHub credentials<br/>- Manages organization/team config<br/>- Exposes: endpoint, internalEndpoint,<br/>  credentialsSecretRef"]
+            GP3["<b>GitLabProviderReconciler:</b><br/>- Validates GitLab credentials<br/>- Manages groups and subgroups<br/>- Exposes: endpoint, internalEndpoint,<br/>  credentialsSecretRef"]
+        end
+        
+        subgraph GatewayProviders["Gateway Provider Controllers (Duck-Typed)"]
+            GW1["<b>NginxGatewayReconciler:</b><br/>- Installs Nginx Ingress via Helm<br/>- Creates IngressClass resource<br/>- Exposes: ingressClassName,<br/>  loadBalancerEndpoint"]
+            GW2["<b>EnvoyGatewayReconciler:</b><br/>- Installs Envoy Gateway via Helm<br/>- Creates GatewayClass/Gateway resources<br/>- Exposes: ingressClassName,<br/>  loadBalancerEndpoint"]
+            GW3["<b>IstioGatewayReconciler:</b><br/>- Installs Istio control plane<br/>- Configures service mesh settings<br/>- Exposes: ingressClassName,<br/>  loadBalancerEndpoint"]
+        end
+        
+        subgraph GitOpsProviders["GitOps Provider Controllers (Duck-Typed)"]
+            GO1["<b>ArgoCDProviderReconciler:</b><br/>- Installs ArgoCD via Helm<br/>- Creates projects and admin credentials<br/>- Exposes: endpoint, internalEndpoint,<br/>  credentialsSecretRef"]
+            GO2["<b>FluxProviderReconciler:</b><br/>- Installs Flux controllers via Helm<br/>- Configures source/kustomize controllers<br/>- Exposes: endpoint, internalEndpoint,<br/>  credentialsSecretRef"]
+        end
+        
+        GR["<b>GitRepositoryReconciler (Enhanced):</b><br/>- Works with ANY Git provider via duck-typed interface<br/>- Creates repositories using provider's credentials<br/>- Synchronizes content from multiple sources"]
+        
+        PKG["<b>PackageReconciler (Enhanced):</b><br/>- Manages application packages<br/>- Creates ArgoCD Applications referencing Git providers<br/>- Handles package dependencies"]
+    end
+    
+    subgraph Services["Platform Services"]
+        subgraph GitSvc["Git Providers"]
+            G1["• Gitea"]
+            G2["• GitHub"]
+            G3["• GitLab"]
+        end
+        
+        subgraph GatewaySvc["Gateways"]
+            GS1["• Nginx"]
+            GS2["• Envoy"]
+            GS3["• Istio"]
+        end
+        
+        subgraph GitOpsSvc["GitOps Providers"]
+            GOS1["• ArgoCD"]
+            GOS2["• Flux<br/>(manages user apps<br/>via GitOps)"]
+        end
+        
+        Note["<b>Multiple providers can coexist:</b><br/>• Gitea for dev + GitHub for production<br/>• Nginx for public + Envoy for internal/service mesh<br/>• ArgoCD for app deployment + Flux for infrastructure"]
+    end
+    
+    Infrastructure --> Platform
+    Platform --> Services
+    
+    style Infrastructure fill:#e1f5ff,stroke:#01579b
+    style Platform fill:#fff9c4,stroke:#f57f17
+    style Services fill:#e8f5e9,stroke:#2e7d32
+    style GitProviders fill:#f3e5f5,stroke:#7b1fa2
+    style GatewayProviders fill:#fce4ec,stroke:#c2185b
+    style GitOpsProviders fill:#e0f2f1,stroke:#00695c
+    style Note fill:#fff3e0,stroke:#e65100
 ```
 
 **Key Architecture Principles:**
@@ -280,56 +218,44 @@ Instead of requiring providers to implement a shared Go interface, the V2 archit
 
 **Duck-Typed Status Fields Architecture:**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              Consumer Controllers                                │
-│  (Access providers via duck-typed status fields)                │
-│                                                                  │
-│  • GitRepositoryReconciler - needs Git provider info            │
-│  • PackageReconciler - needs GitOps provider info               │
-│  • IngressReconciler - needs Gateway provider info              │
-│  • PlatformReconciler - aggregates all provider status          │
-└───────────────┬──────────────────────────────────────────────────┘
-                │
-                │ Uses unstructured.Unstructured to access
-                │ status fields without knowing specific type
-                │
-                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Provider CRs                                  │
-│               (Duck-Typed Interface)                             │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Git Providers                                                   │
-│  Common status fields:                                           │
-│    • endpoint           - External URL for web UI and git clone  │
-│    • internalEndpoint   - Cluster-internal URL for API access    │
-│    • credentialsSecretRef - Secret containing access credentials │
-│                                                                  │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
-│  │ GiteaProvider  │  │ GitHubProvider │  │ GitLabProvider │   │
-│  └────────────────┘  └────────────────┘  └────────────────┘   │
-│                                                                  │
-│  Gateway Providers                                               │
-│  Common status fields:                                           │
-│    • ingressClassName    - Ingress class name for routing        │
-│    • loadBalancerEndpoint - External endpoint for services       │
-│    • internalEndpoint    - Cluster-internal API endpoint         │
-│                                                                  │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
-│  │ NginxGateway   │  │ EnvoyGateway   │  │ IstioGateway   │   │
-│  └────────────────┘  └────────────────┘  └────────────────┘   │
-│                                                                  │
-│  GitOps Providers                                                │
-│  Common status fields:                                           │
-│    • endpoint           - External URL for web UI                │
-│    • internalEndpoint   - Cluster-internal API endpoint          │
-│    • credentialsSecretRef - Admin credentials                    │
-│                                                                  │
-│  ┌────────────────┐  ┌────────────────┐                        │
-│  │ ArgoCDProvider │  │ FluxProvider   │                        │
-│  └────────────────┘  └────────────────┘                        │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Consumer["Consumer Controllers<br/>(Access providers via duck-typed status fields)"]
+        GRC["GitRepositoryReconciler<br/>needs Git provider info"]
+        PKG["PackageReconciler<br/>needs GitOps provider info"]
+        ING["IngressReconciler<br/>needs Gateway provider info"]
+        PC["PlatformReconciler<br/>aggregates all provider status"]
+    end
+    
+    Access["Uses unstructured.Unstructured to access<br/>status fields without knowing specific type"]
+    
+    subgraph Providers["Provider CRs (Duck-Typed Interface)"]
+        subgraph GitProv["Git Providers<br/>Common status fields:<br/>• endpoint - External URL for web UI and git clone<br/>• internalEndpoint - Cluster-internal URL for API access<br/>• credentialsSecretRef - Secret containing access credentials"]
+            GP1["GiteaProvider"]
+            GP2["GitHubProvider"]
+            GP3["GitLabProvider"]
+        end
+        
+        subgraph GatewayProv["Gateway Providers<br/>Common status fields:<br/>• ingressClassName - Ingress class name for routing<br/>• loadBalancerEndpoint - External endpoint for services<br/>• internalEndpoint - Cluster-internal API endpoint"]
+            GW1["NginxGateway"]
+            GW2["EnvoyGateway"]
+            GW3["IstioGateway"]
+        end
+        
+        subgraph GitOpsProv["GitOps Providers<br/>Common status fields:<br/>• endpoint - External URL for web UI<br/>• internalEndpoint - Cluster-internal API endpoint<br/>• credentialsSecretRef - Admin credentials"]
+            GO1["ArgoCDProvider"]
+            GO2["FluxProvider"]
+        end
+    end
+    
+    Consumer --> Access
+    Access --> Providers
+    
+    style Consumer fill:#e1f5ff,stroke:#01579b
+    style Access fill:#fff9c4,stroke:#f57f17
+    style GitProv fill:#f3e5f5,stroke:#7b1fa2
+    style GatewayProv fill:#fce4ec,stroke:#c2185b
+    style GitOpsProv fill:#e0f2f1,stroke:#00695c
 ```
 
 #### Standard Status Fields by Provider Type
@@ -3301,43 +3227,42 @@ kubectl describe platform production -n idpbuilder-system
 
 ### B. Component Interaction Diagram
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│                          Platform CR                               │
-│  Spec: References to provider CRs                                 │
-│  Status: Aggregated health of all providers                       │
-└───────────────┬───────────────────────────────────────────────────┘
-                │ (references)
-                ├──────────────┬────────────────┬──────────────┐
-                │              │                │              │
-                ▼              ▼                ▼              ▼
-     ┌──────────────┐  ┌─────────────┐  ┌──────────────┐  ┌─────────┐
-     │ GiteaProvider│  │ NginxGateway│  │ ArgoCDProvider│  │ Package │
-     │      CR      │  │     CR      │  │      CR       │  │   CRs   │
-     └──────┬───────┘  └──────┬──────┘  └──────┬───────┘  └────┬────┘
-            │                 │                 │               │
-            │ (manages)       │ (manages)       │ (manages)     │
-            ▼                 ▼                 ▼               │
-      ┌─────────┐       ┌──────────┐      ┌─────────┐         │
-      │  Gitea  │       │ Ingress  │      │ ArgoCD  │         │
-      │ Server  │       │  Nginx   │      │ Server  │         │
-      │  Pods   │       │  Pods    │      │  Pods   │         │
-      └────┬────┘       └──────────┘      └────┬────┘         │
-           │                                    │              │
-           │ (hosts)                            │ (manages)    │
-           ▼                                    └──────────────┘
-      ┌─────────┐                                     │
-      │   Git   │◄────────────────────────────────────┘
-      │  Repos  │              (syncs from)
-      └─────────┘
-
-Duck-Typed Interfaces:
-- Git Providers: endpoint, internalEndpoint, credentialsSecretRef
-- Gateway Providers: ingressClassName, loadBalancerEndpoint, internalEndpoint
-- GitOps Providers: endpoint, internalEndpoint, credentialsSecretRef
-
-Other controllers (GitRepository, Package) use duck-typing to access
-any provider implementation without tight coupling.
+```mermaid
+graph TB
+    Platform["<b>Platform CR</b><br/>Spec: References to provider CRs<br/>Status: Aggregated health of all providers"]
+    
+    Gitea["<b>GiteaProvider CR</b>"]
+    Nginx["<b>NginxGateway CR</b>"]
+    ArgoCD["<b>ArgoCDProvider CR</b>"]
+    Package["<b>Package CRs</b>"]
+    
+    GiteaPods["<b>Gitea Server Pods</b>"]
+    NginxPods["<b>Ingress Nginx Pods</b>"]
+    ArgoCDPods["<b>ArgoCD Server Pods</b>"]
+    
+    Repos["<b>Git Repos</b>"]
+    
+    Platform -->|references| Gitea
+    Platform -->|references| Nginx
+    Platform -->|references| ArgoCD
+    Platform -->|references| Package
+    
+    Gitea -->|manages| GiteaPods
+    Nginx -->|manages| NginxPods
+    ArgoCD -->|manages| ArgoCDPods
+    
+    GiteaPods -->|hosts| Repos
+    ArgoCDPods -->|manages| Package
+    ArgoCDPods -->|syncs from| Repos
+    
+    Note["<b>Duck-Typed Interfaces:</b><br/>• Git Providers: endpoint, internalEndpoint, credentialsSecretRef<br/>• Gateway Providers: ingressClassName, loadBalancerEndpoint, internalEndpoint<br/>• GitOps Providers: endpoint, internalEndpoint, credentialsSecretRef<br/><br/>Other controllers (GitRepository, Package) use duck-typing to access<br/>any provider implementation without tight coupling."]
+    
+    style Platform fill:#e1f5ff,stroke:#01579b
+    style Gitea fill:#f3e5f5,stroke:#7b1fa2
+    style Nginx fill:#fce4ec,stroke:#c2185b
+    style ArgoCD fill:#e0f2f1,stroke:#00695c
+    style Package fill:#fff9c4,stroke:#f57f17
+    style Note fill:#fff3e0,stroke:#e65100
 ```
 
 ### C. Resource Naming Conventions
