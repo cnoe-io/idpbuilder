@@ -82,6 +82,56 @@
             </div>
         </section>
 
+        <section id="architecture" class="section">
+            <div class="container">
+                <h2>Version 2 Architecture</h2>
+                <p>Version 2 introduces a modern controller-based architecture with clear separation between CLI and controllers:</p>
+                
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>🔧 CLI for Development</h3>
+                        <p>Use <code>idpbuilder create</code> to quickly provision local Kind clusters, deploy controllers, and create platform resources</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>☸️ Controllers for Production</h3>
+                        <p>Deploy idpbuilder controllers via Helm or kubectl to any Kubernetes cluster for production use</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔄 GitOps Native</h3>
+                        <p>Manage platform components declaratively through Custom Resources - no CLI required in production</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔌 Pluggable Providers</h3>
+                        <p>Choose your Git provider (Gitea, GitHub, GitLab), Gateway (Nginx, Envoy, Istio), and GitOps tool (ArgoCD, Flux)</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem;">
+                    <h3>Two Deployment Modes</h3>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <h4>Development Mode (CLI-Driven)</h4>
+                            <ul style="text-align: left; padding-left: 1rem;">
+                                <li>CLI provisions Kind cluster</li>
+                                <li>CLI deploys controllers</li>
+                                <li>CLI creates Platform CRs</li>
+                                <li>Quick local development</li>
+                            </ul>
+                        </div>
+                        <div class="feature-card">
+                            <h4>Production Mode (GitOps-Driven)</h4>
+                            <ul style="text-align: left; padding-left: 1rem;">
+                                <li>Pre-provisioned K8s cluster</li>
+                                <li>Install controllers via Helm</li>
+                                <li>CRs managed via GitOps</li>
+                                <li>Fully declarative</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section id="getting-started" class="section">
             <div class="container">
                 <h2>Getting Started</h2>

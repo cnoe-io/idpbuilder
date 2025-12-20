@@ -9,19 +9,33 @@
 
 This document proposes a significant architectural evolution of the idpbuilder tool to transition from a CLI-driven installation model to a controller-based architecture. This change will enable idpbuilder to function as a true Kubernetes-native platform, where infrastructure components and application workloads are managed declaratively through Kubernetes Custom Resources (CRs) and reconciliation loops.
 
+**Key Architectural Change**: The new design introduces a clear separation between the **idpbuilder CLI** and the **idpbuilder controllers**:
+
+- **CLI**: Responsible for local infrastructure provisioning (Kind clusters), deploying controllers, and instantiating CRs for development use cases
+- **Controllers**: Run in-cluster, manage provider lifecycle, and handle all reconciliation - can be deployed without CLI in production
+
+This separation enables two deployment modes:
+1. **CLI-Driven (Development)**: Simple `idpbuilder create` command for local development
+2. **GitOps-Driven (Production)**: Controllers installed via Helm/kubectl, CRs managed via GitOps, no CLI required
+
 ### Goals
 
 1. **Kubernetes-Native Management**: Enable all functionality to be managed through kubectl and GitOps tools like ArgoCD
-2. **Separation of Concerns**: Clearly delineate infrastructure provisioning from application/service management
+2. **Separation of Concerns**: 
+   - **CLI and Controllers**: Clear boundary between infrastructure provisioning (CLI) and platform reconciliation (controllers)
+   - **Infrastructure and Services**: Delineate cluster provisioning from application/service management
 3. **Production Readiness**: Support production workloads and virtualized control planes (e.g., vCluster, Cluster API)
-4. **Extensibility**: Allow easier integration of additional services and customization by end users
-5. **Operational Excellence**: Improve observability, debugging, and lifecycle management through standard Kubernetes patterns
+4. **Deployment Flexibility**: Support both CLI-driven development workflows and GitOps-driven production deployments
+5. **Extensibility**: Allow easier integration of additional services and customization by end users
+6. **Operational Excellence**: Improve observability, debugging, and lifecycle management through standard Kubernetes patterns
+7. **GitOps Native**: Enable deployment and management of controllers without any CLI interaction
 
 ### Non-Goals
 
 1. Breaking changes to the CLI experience (backward compatibility maintained where feasible)
-2. Removing the ability to run idpbuilder as a single binary
+2. Removing the ability to run idpbuilder as a single binary for development use cases
 3. Supporting non-Kubernetes infrastructure
+4. Requiring CLI for production deployments (controllers must be deployable via standard Kubernetes methods)
 
 ## Current Architecture
 
@@ -78,11 +92,54 @@ The `LocalbuildReconciler` currently performs the following:
 
 ## Proposed Architecture
 
+### CLI and Controller Separation
 
+In the new architecture, there is a clear separation between the **CLI** and the **idpbuilder controllers**:
 
+#### CLI Responsibilities
+The idpbuilder CLI serves as a developer-friendly tool for local development scenarios:
+
+1. **Infrastructure Provisioning**: Creates and manages local Kubernetes clusters (Kind, etc.)
+2. **Controller Deployment**: Deploys the idpbuilder controller manager to the cluster
+3. **CR Instantiation**: Creates idpbuilder Custom Resources (Platform, Providers) for common use cases
+4. **Developer Experience**: Provides a simple, opinionated workflow for getting started quickly
+5. **Configuration**: Translates CLI flags into appropriate CRs and configurations
+
+#### Controller Responsibilities
+The idpbuilder controllers run as a deployment in the Kubernetes cluster and handle:
+
+1. **Platform Orchestration**: Manages the Platform CR and coordinates provider installation
+2. **Provider Lifecycle**: Installs, configures, and manages Git, Gateway, and GitOps providers
+3. **GitOps Integration**: Creates and manages GitRepository CRs and ArgoCD Applications
+4. **Status Management**: Updates status conditions and aggregates component health
+5. **Reconciliation**: Continuously ensures desired state matches actual state
+
+#### Two Installation Modes
+
+**Mode 1: CLI-Driven (Development)**
+- Use `idpbuilder create` command
+- CLI provisions Kind cluster
+- CLI deploys idpbuilder controllers
+- CLI creates Platform and Provider CRs
+- Optimized for quick local development
+
+**Mode 2: GitOps-Driven (Production)**
+- Pre-provision Kubernetes cluster (any distribution)
+- Install idpbuilder controllers via Helm chart or manifests
+- Deploy Platform and Provider CRs via GitOps (ArgoCD, Flux, etc.)
+- No CLI required after initial controller installation
+- Full declarative management
+
+This separation enables:
+- **Flexibility**: Use CLI for development, GitOps for production
+- **Portability**: Controllers work on any Kubernetes cluster
+- **GitOps Native**: Controllers can be managed declaratively
+- **Simplicity**: CLI abstracts complexity for developers
+- **Production Ready**: Controllers support enterprise deployment patterns
+
+#### Provider Support
 
 - **Git Provider**: Gitea (in-cluster), GitHub (external), GitLab (external or in-cluster)
-
 - **Gateway Provider**: Nginx Ingress, Envoy Gateway, Istio Gateway
 
 ### High-Level Design
@@ -98,10 +155,19 @@ Controllers run on the provisioned cluster and manage their respective providers
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      Infrastructure Layer                            │
-│  CLI/Operator:                                                       │
-│    - Provisions Kubernetes cluster (Kind, vCluster, etc.)           │
-│    - Installs idpbuilder-controllers (Helm chart or manifest)       │
-│    - Creates initial Platform CR                                    │
+│                                                                      │
+│  Two Deployment Modes:                                              │
+│                                                                      │
+│  Mode 1 - CLI-Driven (Development):                                 │
+│    • idpbuilder CLI provisions Kind cluster                         │
+│    • CLI deploys idpbuilder-controllers (Helm/manifests)            │
+│    • CLI creates Platform and Provider CRs                          │
+│                                                                      │
+│  Mode 2 - GitOps-Driven (Production):                               │
+│    • Pre-provisioned Kubernetes cluster (any distribution)          │
+│    • Install controllers via Helm chart or kubectl apply            │
+│    • Deploy Platform/Provider CRs via GitOps (ArgoCD/Flux)          │
+│    • No CLI required - fully declarative                            │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -110,8 +176,8 @@ Controllers run on the provisioned cluster and manage their respective providers
 │                                                                      │
 │  PlatformReconciler:                                                 │
 │    - Orchestrates platform bootstrap                                 │
-│    - References provider CRs (Git, Gateway)                          │
-│    - Creates ArgoCD component CR                                     │
+│    - References provider CRs (Git, Gateway, GitOps)                 │
+│    - Creates GitRepository CRs for bootstrap content                │
 │    - Aggregates component status                                     │
 │                                                                      │
 │  ┌────────────────────────────────────────────────────────────────┐ │
@@ -2132,72 +2198,153 @@ curl -k https://argocd.cnoe.localtest.me
 
 ---
 
-### Phase 2: CLI Integration & Migration Path
+### Phase 2: CLI Integration & Controller Deployment
 
-**Objective**: Update the CLI to use the new controller architecture and provide migration path for existing users.
+**Objective**: Implement CLI integration to support both development (CLI-driven) and production (GitOps-driven) deployment modes, with clear separation between CLI and controllers.
 
 #### Tasks:
 
-1. **Controller Deployment**
+1. **Controller Packaging**
    - Create Helm chart for idpbuilder controllers
      ```
-     charts/idpbuilder/
+     charts/idpbuilder-controllers/
        Chart.yaml
        values.yaml
        templates/
-         deployment.yaml
-         rbac.yaml
-         crds/
+         deployment.yaml          # Controller manager deployment
+         rbac.yaml                # Service accounts, roles, bindings
+         crds/                    # Platform, Provider CRDs
+         namespace.yaml           # idpbuilder-system namespace
      ```
-   - Build controller container image
+   - Build controller container image with all reconcilers
    - Support air-gapped installation with embedded images
+   - Publish Helm chart to registry for production use
+   - Create static manifest bundle (kubectl apply -f) as alternative
 
-2. **Update `idpbuilder create` Command**
+2. **CLI Update for Controller Deployment**
    ```go
    // pkg/cmd/create/root.go
    func createPlatform(ctx context.Context, opts *CreateOptions) error {
-       // 1. Create Kind cluster (unchanged)
-       // 2. Install idpbuilder controllers (Helm chart or static manifests)
-       // 3. Create provider CRs (GiteaProvider, NginxGateway, ArgoCDProvider)
-       // 4. Create Platform CR referencing providers
-       // 5. Wait for Platform to be Ready
-       // 6. Display access info
+       // Phase 1: Infrastructure (CLI Responsibility)
+       // 1. Create Kind cluster
+       cluster := createKindCluster(opts.ClusterName)
+       
+       // Phase 2: Controller Installation (CLI Responsibility)
+       // 2. Deploy idpbuilder controllers
+       deployControllers(cluster, opts)  // Via Helm or embedded manifests
+       
+       // 3. Wait for controller manager to be ready
+       waitForControllerReady(cluster)
+       
+       // Phase 3: Platform Creation (CLI Responsibility)
+       // 4. Create provider CRs based on CLI flags
+       createProviderCRs(cluster, opts)  // GiteaProvider, NginxGateway, etc.
+       
+       // 5. Create Platform CR referencing providers
+       createPlatformCR(cluster, opts)
+       
+       // Phase 4: Wait and Display (CLI Responsibility)
+       // 6. Wait for Platform to be Ready (controllers handle reconciliation)
+       waitForPlatformReady(cluster)
+       
+       // 7. Display access info (endpoints, credentials)
+       displayAccessInfo(cluster)
    }
    ```
+   - CLI focuses on infrastructure and initial setup
+   - Controllers handle all component installation and reconciliation
    - Maintain backward compatibility with existing flags
    - Auto-generate provider CRs from CLI flags
-   - Wait for controller reconciliation
    - Display endpoints and credentials as before
 
-3. **Flag Mapping**
-   - Map `--package-dir` to Platform spec
-   - Map `--custom-package` to Package CRs
-   - Map ingress/TLS flags to provider configurations
-   - Maintain all existing CLI flags
+3. **GitOps Installation Documentation**
+   Create comprehensive documentation for GitOps-driven installation:
+   
+   **Production Installation Guide** (`docs/production-installation.md`):
+   ```bash
+   # Step 1: Install idpbuilder controllers (choose one method)
+   
+   # Method A: Helm (Recommended)
+   helm repo add idpbuilder https://cnoe-io.github.io/idpbuilder
+   helm install idpbuilder-controllers idpbuilder/idpbuilder-controllers \
+     --namespace idpbuilder-system --create-namespace
+   
+   # Method B: kubectl with static manifests
+   kubectl apply -f https://github.com/cnoe-io/idpbuilder/releases/latest/download/install.yaml
+   
+   # Step 2: Create Provider CRs via GitOps
+   # Add to your GitOps repository (ArgoCD, Flux, etc.)
+   # See examples/production/giteaprovider.yaml
+   # See examples/production/nginxgateway.yaml
+   # See examples/production/argocdprovider.yaml
+   
+   # Step 3: Create Platform CR via GitOps
+   # Add to your GitOps repository
+   # See examples/production/platform.yaml
+   
+   # The controllers will handle everything else!
+   ```
+   
+   **Key Documentation Points**:
+   - No CLI required for production deployments
+   - Controllers are standard Kubernetes deployments
+   - All configuration via CRs (declarative)
+   - Full GitOps compatibility
+   - RBAC requirements for controllers
+   - Resource requirements and limits
 
-4. **Migration Command**
+4. **Flag Mapping for Development Mode**
+   - Map `--package-dir` to Platform spec bootstrap repositories
+   - Map `--custom-package` to Package CRs
+   - Map `--port` to NginxGateway service port configuration
+   - Map ingress/TLS flags to provider configurations
+   - Map `--protocol` to Platform domain configuration
+   - Maintain all existing CLI flags for backward compatibility
+
+5. **Migration Command**
    ```bash
    idpbuilder migrate --cluster-name localdev
    ```
    - Detect existing Localbuild CR
    - Extract configuration
-   - Install controllers
+   - Deploy controllers (if not already present)
    - Create equivalent provider CRs + Platform CR
    - Validate migration success
    - Provide rollback option
+   - Support dry-run mode
 
-5. **Backward Compatibility**
-   - Keep LocalbuildReconciler functional (deprecated)
-   - Add deprecation warnings to logs
-   - Support both architectures side-by-side
-   - Auto-detect which mode to use
+6. **Deployment Mode Detection**
+   - CLI detects if controllers are already installed
+   - If controllers present: Skip installation, only create CRs
+   - If controllers absent: Install controllers, then create CRs
+   - Environment variable to force specific mode
+   - Clear logging of which mode is active
+
+7. **Controller Health and Monitoring**
+   - CLI checks controller health before creating CRs
+   - Display controller logs on failure
+   - Provide troubleshooting commands
+   - Add `idpbuilder get controllers` command to check status
 
 **Deliverables**:
-- ✅ Updated CLI maintaining backward compatibility
-- ✅ idpbuilder Helm chart for controllers
+- ✅ Helm chart for idpbuilder controllers
 - ✅ Controller container image in registry
+- ✅ Updated CLI with controller deployment logic
+- ✅ CLI-to-Controller separation implemented
+- ✅ Production installation documentation
+- ✅ GitOps deployment examples
 - ✅ Migration tool and documentation
 - ✅ Updated CLI help and examples
+- ✅ Clear documentation of two deployment modes
+- ✅ Installation guide for bypassing CLI entirely
+
+**Success Criteria**:
+- CLI users can use new architecture transparently (development mode)
+- Platform teams can deploy controllers without CLI (production mode)
+- Controllers work identically in both modes
+- Clear separation: CLI for infra/setup, controllers for reconciliation
+- Full GitOps compatibility demonstrated
+- Migration path tested and documented
 
 ---
 
@@ -2728,24 +2875,31 @@ The following changes will require user action:
 - [ ] All component controllers (ArgoCD, Gitea, Nginx) fully functional
 - [ ] GitOps hand-off working (ArgoCD manages components)
 - [ ] CLI backward compatibility maintained
+- [ ] CLI successfully deploys controllers in development mode
+- [ ] Controllers work when deployed via GitOps (no CLI)
 - [ ] Migration tool successfully converts existing clusters
 - [ ] Package system works with new architecture
+- [ ] Both deployment modes (CLI-driven and GitOps-driven) validated
 
 ### Quality Criteria
 
 - [ ] Test coverage >70% (unit + integration)
 - [ ] E2E tests passing for all major scenarios
+- [ ] E2E tests for both CLI-driven and GitOps-driven modes
 - [ ] Documentation complete (API reference, guides, runbooks)
+- [ ] Production installation guide complete
 - [ ] Performance parity or better than current implementation
 - [ ] Zero critical bugs in beta testing
 
 ### Adoption Criteria
 
 - [ ] 50+ users successfully migrate to new architecture
+- [ ] Production deployments using GitOps mode validated
+- [ ] Development workflows using CLI mode validated
 - [ ] Positive community feedback
 - [ ] No major blockers reported
 - [ ] Third-party integrations demonstrated
-- [ ] Production deployments validated
+- [ ] Controllers demonstrated working on multiple Kubernetes distributions
 
 ## Open Questions
 
@@ -2769,18 +2923,20 @@ The following changes will require user action:
 
 ## Appendix
 
-### A. Example End-to-End Flow
+### A. Example End-to-End Flows
+
+#### Mode 1: CLI-Driven Development Workflow
 
 ```bash
-# User creates a cluster
+# Developer uses the CLI for quick local setup
 idpbuilder create --name localdev
 
-# Behind the scenes:
+# Behind the scenes - CLI responsibilities:
 # 1. CLI creates Kind cluster
-# 2. CLI installs idpbuilder controllers (Helm chart)
-# 3. CLI creates Platform CR:
+# 2. CLI deploys idpbuilder controllers to cluster (Helm or manifests)
+# 3. CLI waits for controller manager to be ready
+# 4. CLI creates provider CRs based on defaults:
 
-# First create provider CRs, then reference them in Platform
 cat <<EOF | kubectl apply -f -
 apiVersion: idpbuilder.cnoe.io/v1alpha1
 kind: GiteaProvider
@@ -2832,25 +2988,172 @@ spec:
         namespace: idpbuilder-system
 EOF
 
-# 4. Provider reconcilers see new provider CRs
-# 5. GiteaProviderReconciler installs Gitea via Helm
+# Behind the scenes - Controller responsibilities:
+# 5. GiteaProviderReconciler (running in cluster) installs Gitea via Helm
 # 6. GiteaProviderReconciler creates admin user and organizations
 # 7. GiteaProviderReconciler updates status with duck-typed fields
-# 8. NginxGatewayReconciler installs Nginx Ingress via Helm
+# 8. NginxGatewayReconciler (running in cluster) installs Nginx Ingress
 # 9. NginxGatewayReconciler creates IngressClass resource
 # 10. NginxGatewayReconciler updates status with duck-typed fields
-# 11. ArgoCDProviderReconciler installs ArgoCD via Helm
+# 11. ArgoCDProviderReconciler (running in cluster) installs ArgoCD
 # 12. ArgoCDProviderReconciler creates projects and admin credentials
 # 13. ArgoCDProviderReconciler updates status with duck-typed fields
 # 14. PlatformReconciler sees all providers are Ready
-# 15. PlatformReconciler creates GitRepository CRs for bootstrap
+# 15. PlatformReconciler creates GitRepository CRs for bootstrap content
 # 16. GitRepositoryReconciler uses GiteaProvider duck-typed interface
-# 17. GitRepositoryReconciler creates repos with embedded content
-# 18. PlatformReconciler creates ArgoCD Applications using providers
-# 19. ArgoCD syncs applications from Gitea
+# 17. GitRepositoryReconciler creates repos with embedded content in Gitea
+# 18. PlatformReconciler creates ArgoCD Applications referencing repos
+# 19. ArgoCD syncs applications from Gitea repositories
 # 20. PlatformReconciler updates Platform status to Ready
-# 21. CLI displays success message and access information
+
+# Behind the scenes - CLI responsibilities (continued):
+# 21. CLI monitors Platform status until Ready
+# 22. CLI retrieves endpoints and credentials from provider status
+# 23. CLI displays success message and access information to user
+
+# Output shown to user:
+# ✓ Cluster created successfully
+# ✓ Controllers deployed
+# ✓ Platform ready
+# 
+# Access your platform:
+#   Gitea:  https://gitea.cnoe.localtest.me
+#   ArgoCD: https://argocd.cnoe.localtest.me
+#   Admin credentials: kubectl get secret -n idpbuilder-system
 ```
+
+#### Mode 2: GitOps-Driven Production Workflow
+
+```bash
+# Platform team installs to existing production cluster
+# No CLI required - everything is declarative
+
+# Step 1: Install idpbuilder controllers (done once per cluster)
+helm repo add idpbuilder https://cnoe-io.github.io/idpbuilder
+helm install idpbuilder-controllers idpbuilder/idpbuilder-controllers \
+  --namespace idpbuilder-system \
+  --create-namespace \
+  --values values-prod.yaml
+
+# Or using static manifests:
+kubectl apply -f https://github.com/cnoe-io/idpbuilder/releases/latest/download/install.yaml
+
+# Step 2: Add Platform and Provider CRs to GitOps repo
+# In your GitOps repository (managed by ArgoCD/Flux):
+
+# File: platform/providers/gitea.yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: GiteaProvider
+metadata:
+  name: gitea-prod
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  version: 1.24.3
+  config:
+    persistence:
+      enabled: true
+      size: 100Gi
+      storageClass: fast-ssd
+    postgresql:
+      enabled: true
+  adminUser:
+    username: admin
+    email: platform-team@company.com
+    passwordSecretRef:
+      name: gitea-admin-secret
+      namespace: gitea
+  organizations:
+    - name: platform-team
+
+---
+# File: platform/providers/nginx.yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: NginxGateway
+metadata:
+  name: nginx-prod
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx
+  version: 1.13.0
+  config:
+    controller:
+      replicaCount: 3
+      service:
+        type: LoadBalancer
+
+---
+# File: platform/providers/argocd.yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: ArgoCDProvider
+metadata:
+  name: argocd-prod
+  namespace: idpbuilder-system
+spec:
+  namespace: argocd
+  version: v2.12.0
+  config:
+    server:
+      replicas: 3
+    controller:
+      replicas: 3
+
+---
+# File: platform/platform.yaml
+apiVersion: idpbuilder.cnoe.io/v1alpha1
+kind: Platform
+metadata:
+  name: production
+  namespace: idpbuilder-system
+spec:
+  domain: idp.company.com
+  components:
+    gitProviders:
+      - name: gitea-prod
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+    gateways:
+      - name: nginx-prod
+        kind: NginxGateway
+        namespace: idpbuilder-system
+    gitOpsProviders:
+      - name: argocd-prod
+        kind: ArgoCDProvider
+        namespace: idpbuilder-system
+
+# Step 3: Commit and push to GitOps repo
+git add platform/
+git commit -m "Deploy idpbuilder platform"
+git push
+
+# Step 4: ArgoCD/Flux syncs the changes
+# Controllers (already running in cluster) see new CRs and reconcile
+# Same reconciliation logic as CLI mode - controllers are identical
+
+# Step 5: Monitor via kubectl (no CLI needed)
+kubectl get platform -n idpbuilder-system
+kubectl get giteaprovider,nginxgateway,argocdprovider -n idpbuilder-system
+kubectl describe platform production -n idpbuilder-system
+
+# All operations are declarative and auditable through Git
+# No CLI binary required on production systems
+# Platform team manages everything through GitOps workflow
+```
+
+#### Key Differences Between Modes
+
+| Aspect | CLI-Driven (Development) | GitOps-Driven (Production) |
+|--------|-------------------------|---------------------------|
+| **Infrastructure** | CLI provisions Kind | Pre-existing cluster |
+| **Controller Install** | CLI deploys via Helm/manifests | Helm/kubectl/GitOps |
+| **CR Creation** | CLI creates based on flags | GitOps repository |
+| **Workflow** | Single command (`idpbuilder create`) | Declarative Git commits |
+| **Use Case** | Local dev, testing, demos | Production, staging, teams |
+| **Prerequisites** | Docker | Kubernetes cluster |
+| **Auditability** | CLI logs | Git history |
+| **Scalability** | Single user | Multi-cluster, multi-team |
+
+**Important**: Controllers are identical in both modes. The separation is only in how infrastructure is provisioned and how CRs are created initially. Once controllers are running, they operate the same way regardless of deployment mode.
 
 ### B. Component Interaction Diagram
 

@@ -88,6 +88,7 @@
                 <h3>Documentation</h3>
                 <ul>
                     <li><a href="/docs" class="active">Overview</a></li>
+                    <li><a href="#architecture">Architecture</a></li>
                     <li><a href="#installation">Installation</a></li>
                     <li><a href="#getting-started">Getting Started</a></li>
                     <li><a href="#requirements">Requirements</a></li>
@@ -101,6 +102,63 @@
             <article class="docs-content">
                 <h1>IDP Builder Documentation</h1>
                 <p>Welcome to the IDP Builder documentation. This guide will help you get started with creating your internal developer platform.</p>
+
+                <h2 id="architecture">Version 2 Architecture</h2>
+                <p>Version 2 introduces a controller-based architecture with clear separation between the CLI and controllers:</p>
+                
+                <h3>CLI and Controller Separation</h3>
+                <p>The new architecture separates responsibilities:</p>
+                <ul>
+                    <li><strong>CLI Responsibilities:</strong>
+                        <ul>
+                            <li>Infrastructure provisioning (creating Kind clusters)</li>
+                            <li>Controller deployment to the cluster</li>
+                            <li>Custom Resource (CR) instantiation for common use cases</li>
+                            <li>Developer-friendly workflow automation</li>
+                        </ul>
+                    </li>
+                    <li><strong>Controller Responsibilities:</strong>
+                        <ul>
+                            <li>Platform orchestration and lifecycle management</li>
+                            <li>Provider installation and configuration (Git, Gateway, GitOps)</li>
+                            <li>GitOps integration and repository management</li>
+                            <li>Continuous reconciliation of desired state</li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h3>Two Deployment Modes</h3>
+                <p>IDP Builder v2 supports two deployment modes:</p>
+                
+                <h4>Mode 1: CLI-Driven (Development)</h4>
+                <p>For local development, use the CLI for a quick setup:</p>
+                <pre><code>idpbuilder create</code></pre>
+                <p>This will:</p>
+                <ul>
+                    <li>Provision a Kind cluster</li>
+                    <li>Deploy idpbuilder controllers</li>
+                    <li>Create Platform and Provider Custom Resources</li>
+                    <li>Configure all components automatically</li>
+                </ul>
+
+                <h4>Mode 2: GitOps-Driven (Production)</h4>
+                <p>For production deployments, bypass the CLI entirely:</p>
+                <pre><code># Install controllers via Helm
+helm repo add idpbuilder https://cnoe-io.github.io/idpbuilder
+helm install idpbuilder-controllers idpbuilder/idpbuilder-controllers \
+  --namespace idpbuilder-system --create-namespace
+
+# Or use kubectl with static manifests
+kubectl apply -f https://github.com/cnoe-io/idpbuilder/releases/latest/download/install.yaml</code></pre>
+                <p>Then manage Platform and Provider CRs via your GitOps tool (ArgoCD, Flux, etc.)</p>
+
+                <h3>Pluggable Providers</h3>
+                <p>Choose the components that fit your needs:</p>
+                <ul>
+                    <li><strong>Git Providers:</strong> Gitea (in-cluster), GitHub, GitLab</li>
+                    <li><strong>Gateway Providers:</strong> Nginx Ingress, Envoy Gateway, Istio Gateway</li>
+                    <li><strong>GitOps Providers:</strong> ArgoCD, Flux</li>
+                </ul>
 
                 <h2 id="installation">Installation</h2>
                 
@@ -125,15 +183,33 @@ curl -LO https://github.com/cnoe-io/idpbuilder/releases/download/$idpbuilder_lat
 tar xvzf idpbuilder-$os-$arch.tar.gz</code></pre>
 
                 <h2 id="getting-started">Getting Started</h2>
-                <p>Once installed, you can create your IDP with a single command:</p>
+                
+                <h3>Development Mode (Quick Start)</h3>
+                <p>For local development, use the CLI for a quick setup:</p>
                 <pre><code>./idpbuilder create</code></pre>
                 <p>This will:</p>
                 <ul>
-                    <li>Set up a local Kubernetes cluster</li>
-                    <li>Install Argo CD for GitOps</li>
-                    <li>Install Backstage for developer portal</li>
+                    <li>Set up a local Kind Kubernetes cluster</li>
+                    <li>Deploy idpbuilder controllers to the cluster</li>
+                    <li>Install and configure Git provider (Gitea by default)</li>
+                    <li>Install and configure Gateway (Nginx Ingress by default)</li>
+                    <li>Install and configure GitOps provider (ArgoCD by default)</li>
                     <li>Configure necessary resources and integrations</li>
                 </ul>
+
+                <h3>Production Mode (GitOps)</h3>
+                <p>For production deployments to existing Kubernetes clusters:</p>
+                <pre><code># 1. Install controllers
+helm repo add idpbuilder https://cnoe-io.github.io/idpbuilder
+helm install idpbuilder-controllers idpbuilder/idpbuilder-controllers \
+  --namespace idpbuilder-system --create-namespace
+
+# 2. Create Provider CRs (via GitOps repo)
+# - GiteaProvider, NginxGateway, ArgoCDProvider, etc.
+
+# 3. Create Platform CR (via GitOps repo)
+# - References the Provider CRs</code></pre>
+                <p>All configuration is done declaratively through Custom Resources, managed by your GitOps workflow.</p>
 
                 <h2 id="requirements">Minimum Requirements</h2>
                 <p>The requirements for your cluster will depend on what it is running, but we recommend a minimum of:</p>
