@@ -22,11 +22,11 @@ func TestGetGiteaToken(t *testing.T) {
 		time.Sleep(testServerDelayDuration)
 	}))
 	defer ts.Close()
-	
+
 	// Use a context with a short timeout to test timeout behavior
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeoutDuration)
 	defer cancel()
-	
+
 	_, err := util.GetGiteaToken(ctx, ts.URL, "", "")
 	require.Error(t, err)
 }
