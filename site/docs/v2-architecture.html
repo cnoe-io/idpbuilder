@@ -146,6 +146,11 @@
                     <li><a href="/docs#requirements">Requirements</a></li>
                     <li><a href="/docs#configuration">Configuration</a></li>
                     <li><a href="/docs/v2-architecture.html" class="active">V2 Architecture</a></li>
+                    <li style="padding-left: 1rem;"><a href="#executive-summary">Executive Summary</a></li>
+                    <li style="padding-left: 1rem;"><a href="#high-level-design">High-Level Design</a></li>
+                    <li style="padding-left: 1rem;"><a href="#duck-typing">Duck Typing</a></li>
+                    <li style="padding-left: 1rem;"><a href="#custom-resources">Custom Resources</a></li>
+                    <li style="padding-left: 1rem;"><a href="#multi-provider">Multi-Provider Support</a></li>
                     <li><a href="/docs#contributing">Contributing</a></li>
                     <li><a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">Full Docs ↗</a></li>
                 </ul>
@@ -235,6 +240,153 @@ graph TB
                     <li><strong>Independence:</strong> Each provider CR can exist and be managed independently</li>
                     <li><strong>Flexibility:</strong> Components choose providers dynamically at runtime</li>
                 </ol>
+
+                <h2 id="duck-typing">Duck Typing: Provider Independence Through Standard Status Fields</h2>
+                
+                <div class="info-box">
+                    <p><strong>What is Duck Typing?</strong> Duck typing is a design pattern where different implementations (providers) expose common status fields without requiring a shared interface type. The name comes from the phrase "If it walks like a duck and quacks like a duck, it's a duck." In our case, if a provider has the expected status fields, it can be used interchangeably with other providers of the same type.</p>
+                </div>
+
+                <p>The V2 architecture uses duck typing to enable different provider implementations to work together seamlessly. This allows the Platform controller and other components to interact with any Git, Gateway, or GitOps provider through standard status fields, without knowing the specific implementation details.</p>
+
+                <h3>How Duck Typing Works</h3>
+                <p>Each provider type (Git, Gateway, GitOps) exposes a set of common status fields. Other controllers access these fields using unstructured access, allowing them to work with any provider implementation that exposes the required fields.</p>
+
+                <div class="mermaid">
+graph TB
+    subgraph Platform["Platform Controller"]
+        PC["PlatformReconciler<br/>Uses duck-typed interface"]
+    end
+    
+    subgraph Consumers["Consumer Controllers"]
+        GRC["GitRepositoryReconciler<br/>Needs Git provider info"]
+        PKG["PackageReconciler<br/>Needs GitOps provider info"]
+        ING["IngressReconciler<br/>Needs Gateway provider info"]
+    end
+    
+    subgraph GitProviders["Git Providers (Duck-Typed)"]
+        style GitProviders fill:#fff9c4
+        direction LR
+        GP1["GiteaProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+        GP2["GitHubProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+        GP3["GitLabProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+    end
+    
+    subgraph GatewayProviders["Gateway Providers (Duck-Typed)"]
+        style GatewayProviders fill:#e1f5fe
+        direction LR
+        GW1["NginxGateway<br/>status:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
+        GW2["EnvoyGateway<br/>status:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
+        GW3["IstioGateway<br/>status:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
+    end
+    
+    subgraph GitOpsProviders["GitOps Providers (Duck-Typed)"]
+        style GitOpsProviders fill:#f3e5f5
+        direction LR
+        GO1["ArgoCDProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+        GO2["FluxProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+    end
+    
+    PC -.->|reads status via<br/>unstructured access| GitProviders
+    PC -.->|reads status via<br/>unstructured access| GatewayProviders
+    PC -.->|reads status via<br/>unstructured access| GitOpsProviders
+    
+    GRC -.->|uses any Git provider| GitProviders
+    ING -.->|uses any Gateway provider| GatewayProviders
+    PKG -.->|uses any GitOps provider| GitOpsProviders
+    
+    classDef provider fill:#f9f9f9,stroke:#333,stroke-width:2px
+    class GP1,GP2,GP3,GW1,GW2,GW3,GO1,GO2 provider
+                </div>
+
+                <h3>Standard Status Fields by Provider Type</h3>
+
+                <h4>Git Provider Status Fields</h4>
+                <p>All Git providers (Gitea, GitHub, GitLab) must expose these status fields:</p>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">status:
+  # Standard Kubernetes conditions
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+      reason: ProviderReady
+      message: "Git provider is operational"
+  
+  # Duck-typed fields for Git operations
+  endpoint: string              # External URL for web UI and git clone
+  internalEndpoint: string      # Cluster-internal URL for API access
+  credentialsSecretRef:         # Secret containing access credentials
+    name: string                # Secret name
+    namespace: string           # Secret namespace
+    key: string                 # Key within secret (e.g., "token", "password")</code></pre>
+
+                <h4>Gateway Provider Status Fields</h4>
+                <p>All Gateway providers (Nginx, Envoy, Istio) must expose these status fields:</p>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">status:
+  # Standard Kubernetes conditions
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+      reason: GatewayReady
+      message: "Gateway is operational"
+  
+  # Duck-typed fields for routing operations
+  ingressClassName: string      # Ingress class name to use in Ingress resources
+  loadBalancerEndpoint: string  # External endpoint for accessing services
+  internalEndpoint: string      # Cluster-internal API endpoint</code></pre>
+
+                <h4>GitOps Provider Status Fields</h4>
+                <p>All GitOps providers (ArgoCD, Flux) must expose these status fields:</p>
+                <pre class="line-numbers language-yaml"><code class="language-yaml">status:
+  # Standard Kubernetes conditions
+  conditions:
+    - type: Ready
+      status: "True"
+      lastTransitionTime: "2025-12-19T10:00:00Z"
+      reason: GitOpsReady
+      message: "GitOps provider is operational"
+  
+  # Duck-typed fields for GitOps operations
+  endpoint: string              # External URL for web UI
+  internalEndpoint: string      # Cluster-internal API endpoint
+  credentialsSecretRef:         # Admin credentials
+    name: string                # Secret name
+    namespace: string           # Secret namespace
+    key: string                 # Key within secret (e.g., "password", "token")</code></pre>
+
+                <h3>Benefits of Duck Typing</h3>
+                <ul>
+                    <li><strong>Provider Independence:</strong> Controllers can work with any provider implementation without tight coupling</li>
+                    <li><strong>Extensibility:</strong> New provider types can be added without modifying existing controllers</li>
+                    <li><strong>Flexibility:</strong> Multiple providers of the same type can coexist and be swapped easily</li>
+                    <li><strong>Simplified Integration:</strong> Consumer controllers only need to know about standard status fields</li>
+                    <li><strong>No Shared Interfaces:</strong> Providers don't need to implement a common interface in Go code</li>
+                    <li><strong>Runtime Polymorphism:</strong> The Platform can reference different provider kinds dynamically</li>
+                </ul>
+
+                <h3>Example: GitRepository Using Any Git Provider</h3>
+                <p>The GitRepository controller can create repositories in any Git provider by accessing the duck-typed status fields:</p>
+                <pre class="line-numbers language-go"><code class="language-go">// GitRepositoryReconciler works with any Git provider via duck-typing
+func (r *GitRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.Request) {
+    // Fetch the provider CR (could be GiteaProvider, GitHubProvider, etc.)
+    provider := &unstructured.Unstructured{}
+    provider.SetGroupVersionKind(gitRepo.Spec.GitServerRef.GroupVersionKind())
+    err := r.Get(ctx, types.NamespacedName{
+        Name: gitRepo.Spec.GitServerRef.Name,
+        Namespace: gitRepo.Spec.GitServerRef.Namespace,
+    }, provider)
+    
+    // Extract duck-typed status fields using unstructured access
+    status := provider.Object["status"].(map[string]interface{})
+    endpoint := status["endpoint"].(string)
+    internalEndpoint := status["internalEndpoint"].(string)
+    credsRef := status["credentialsSecretRef"].(map[string]interface{})
+    
+    // Use the provider regardless of its specific implementation
+    client := git.NewClient(endpoint, internalEndpoint, credsRef)
+    client.CreateRepository(gitRepo.Spec.Name, gitRepo.Spec.Organization)
+}</code></pre>
 
                 <h2 id="custom-resources">Custom Resource Definitions</h2>
                 

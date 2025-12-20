@@ -270,6 +270,147 @@ Controllers run on the provisioned cluster and manage their respective providers
 4. **Independence**: Each provider CR can exist and be managed independently
 5. **Flexibility**: Components choose providers dynamically at runtime
 
+### Duck Typing: Provider Independence Through Standard Status Fields
+
+Duck typing is a fundamental design pattern in the V2 architecture that enables different provider implementations to work together seamlessly without tight coupling. The name comes from the phrase "If it walks like a duck and quacks like a duck, it's a duck." In our case, if a provider has the expected status fields, it can be used interchangeably with other providers of the same type.
+
+#### How Duck Typing Works
+
+Instead of requiring providers to implement a shared Go interface, the V2 architecture uses **duck-typed status fields**. Each provider type (Git, Gateway, GitOps) exposes a set of common status fields in their Custom Resource status. Other controllers access these fields using unstructured access patterns, allowing them to work with any provider implementation that exposes the required fields.
+
+**Duck-Typed Status Fields Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              Consumer Controllers                                │
+│  (Access providers via duck-typed status fields)                │
+│                                                                  │
+│  • GitRepositoryReconciler - needs Git provider info            │
+│  • PackageReconciler - needs GitOps provider info               │
+│  • IngressReconciler - needs Gateway provider info              │
+│  • PlatformReconciler - aggregates all provider status          │
+└───────────────┬──────────────────────────────────────────────────┘
+                │
+                │ Uses unstructured.Unstructured to access
+                │ status fields without knowing specific type
+                │
+                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Provider CRs                                  │
+│               (Duck-Typed Interface)                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Git Providers (share common status fields):                    │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
+│  │ GiteaProvider  │  │ GitHubProvider │  │ GitLabProvider │   │
+│  │   status:      │  │   status:      │  │   status:      │   │
+│  │   • endpoint   │  │   • endpoint   │  │   • endpoint   │   │
+│  │   • internal   │  │   • internal   │  │   • internal   │   │
+│  │   • credsRef   │  │   • credsRef   │  │   • credsRef   │   │
+│  └────────────────┘  └────────────────┘  └────────────────┘   │
+│                                                                  │
+│  Gateway Providers (share common status fields):                │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
+│  │ NginxGateway   │  │ EnvoyGateway   │  │ IstioGateway   │   │
+│  │   status:      │  │   status:      │  │   status:      │   │
+│  │   • className  │  │   • className  │  │   • className  │   │
+│  │   • lbEndpoint │  │   • lbEndpoint │  │   • lbEndpoint │   │
+│  │   • internal   │  │   • internal   │  │   • internal   │   │
+│  └────────────────┘  └────────────────┘  └────────────────┘   │
+│                                                                  │
+│  GitOps Providers (share common status fields):                 │
+│  ┌────────────────┐  ┌────────────────┐                        │
+│  │ ArgoCDProvider │  │ FluxProvider   │                        │
+│  │   status:      │  │   status:      │                        │
+│  │   • endpoint   │  │   • endpoint   │                        │
+│  │   • internal   │  │   • internal   │                        │
+│  │   • credsRef   │  │   • credsRef   │                        │
+│  └────────────────┘  └────────────────┘                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Standard Status Fields by Provider Type
+
+**Git Provider Status Fields** (GiteaProvider, GitHubProvider, GitLabProvider):
+
+```yaml
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  endpoint: string              # External URL for web UI and git clone
+  internalEndpoint: string      # Cluster-internal URL for API access
+  credentialsSecretRef:
+    name: string
+    namespace: string
+    key: string                 # e.g., "token", "password"
+```
+
+**Gateway Provider Status Fields** (NginxGateway, EnvoyGateway, IstioGateway):
+
+```yaml
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  ingressClassName: string      # Ingress class name for routing
+  loadBalancerEndpoint: string  # External endpoint for services
+  internalEndpoint: string      # Cluster-internal API endpoint
+```
+
+**GitOps Provider Status Fields** (ArgoCDProvider, FluxProvider):
+
+```yaml
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  # Duck-typed fields
+  endpoint: string              # External URL for web UI
+  internalEndpoint: string      # Cluster-internal API endpoint
+  credentialsSecretRef:
+    name: string
+    namespace: string
+    key: string                 # e.g., "password", "token"
+```
+
+#### Benefits of Duck Typing
+
+1. **Provider Independence**: Controllers can work with any provider implementation without tight coupling
+2. **No Shared Interfaces**: Providers don't need to implement a common Go interface
+3. **Runtime Polymorphism**: The Platform can reference different provider kinds dynamically
+4. **Extensibility**: New provider types can be added without modifying existing controllers
+5. **Flexibility**: Multiple providers of the same type can coexist and be swapped easily
+6. **Simplified Integration**: Consumer controllers only need to know about standard status fields
+
+#### Example: Using Duck-Typed Providers
+
+When a GitRepository controller needs to create a repository, it accesses the Git provider's duck-typed status fields:
+
+```go
+// Works with ANY Git provider (Gitea, GitHub, GitLab, etc.)
+provider := &unstructured.Unstructured{}
+provider.SetGroupVersionKind(gitRepo.Spec.GitServerRef.GroupVersionKind())
+err := r.Get(ctx, types.NamespacedName{
+    Name: gitRepo.Spec.GitServerRef.Name,
+    Namespace: gitRepo.Spec.GitServerRef.Namespace,
+}, provider)
+
+// Extract duck-typed status fields
+status := provider.Object["status"].(map[string]interface{})
+endpoint := status["endpoint"].(string)
+internalEndpoint := status["internalEndpoint"].(string)
+credsRef := status["credentialsSecretRef"].(map[string]interface{})
+
+// Use the provider - implementation details don't matter
+gitClient := git.NewClient(endpoint, internalEndpoint, credsRef)
+gitClient.CreateRepository(name, org)
+```
+
+This pattern allows GitRepository to work with any Git provider without knowing whether it's Gitea, GitHub, or GitLab. The same pattern applies to Gateway and GitOps providers, enabling true provider independence and flexibility.
+
 ### New Custom Resource Definitions
 
 #### Platform CR
