@@ -74,6 +74,54 @@ All ArgoCD applications should be synced and healthy. You can check them in the 
 kubectl get application -n argocd
 ```
 
+### Running Tests
+
+To run the unit and integration tests:
+
+```bash
+make test
+```
+
+To run the e2e tests:
+
+```bash
+make e2e
+```
+
+### Test Timing Analysis
+
+The project includes a test timing analysis tool to help identify slow tests and understand test performance characteristics.
+
+To generate a test timing analysis report:
+
+```bash
+make test-timing
+```
+
+This will:
+1. Run all tests with JSON output to capture timing information
+2. Generate a detailed analysis report at `docs/test-timing-analysis.md`
+3. Show which tests take the longest to run and categorize them by type
+
+The report includes:
+- Slowest individual tests
+- Test execution time by category (Integration, I/O, Build/Manifest, etc.)
+- Test execution time by package
+- Analysis of why tests take long
+- Recommendations for improvement
+
+You can also run the analysis manually on existing test output:
+
+```bash
+# Run tests and capture JSON output
+go test --tags=integration -v -timeout 30m ./... -json 2>&1 | tee test-output.json
+
+# Generate analysis
+python3 scripts/analyze_test_times.py test-output.json docs/test-timing-analysis.md
+```
+
+For more information, see [scripts/README.md](scripts/README.md).
+
 ### Upgrading a core component
 
 The process to upgrade a core component: Argo CD, Gitea, Ingress is not so complex but requires to take care about the following points:
