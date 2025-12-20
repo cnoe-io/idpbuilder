@@ -206,6 +206,34 @@ tar xvzf idpbuilder-$os-$arch.tar.gz</code></pre>
                 navLinks.classList.remove('active');
             }
         });
+
+        // Handle scroll to make navigation horizontal on mobile
+        const scrollThreshold = 100; // Pixels to scroll before changing layout
+        const navLinksElement = document.getElementById('navLinks');
+
+        function handleScroll() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Only apply on mobile screens (matching the CSS breakpoint)
+            if (window.innerWidth <= 768) {
+                if (scrollTop > scrollThreshold) {
+                    navLinksElement.classList.add('scrolled');
+                } else {
+                    navLinksElement.classList.remove('scrolled');
+                }
+            } else {
+                navLinksElement.classList.remove('scrolled');
+            }
+        }
+
+        // Add scroll listener
+        window.addEventListener('scroll', handleScroll);
+        
+        // Also handle window resize
+        window.addEventListener('resize', handleScroll);
+        
+        // Initial check
+        handleScroll();
     </script>
 </body>
 </html>
