@@ -100,7 +100,7 @@ make test-timing
 
 This will:
 1. Run all tests with JSON output to capture timing information
-2. Generate a detailed analysis report at `docs/test-timing-analysis.md`
+2. Generate a detailed analysis report at `docs/implementation/test-timing-analysis.md`
 3. Show which tests take the longest to run and categorize them by type
 
 The report includes:
@@ -117,7 +117,7 @@ You can also run the analysis manually on existing test output:
 go test --tags=integration -v -timeout 30m ./... -json 2>&1 | tee test-output.json
 
 # Generate analysis
-python3 scripts/analyze_test_times.py test-output.json docs/test-timing-analysis.md
+python3 scripts/analyze_test_times.py test-output.json docs/implementation/test-timing-analysis.md
 ```
 
 For more information, see [scripts/README.md](scripts/README.md).

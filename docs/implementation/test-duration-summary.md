@@ -97,7 +97,7 @@ make test-timing
 
 # Or manually
 go test --tags=integration -v -timeout 30m ./... -json 2>&1 | tee test-output.json
-python3 scripts/analyze_test_times.py test-output.json docs/test-timing-analysis.md
+python3 scripts/analyze_test_times.py test-output.json docs/implementation/test-timing-analysis.md
 ```
 
 See [scripts/README.md](../scripts/README.md) for more details on the analysis tool.

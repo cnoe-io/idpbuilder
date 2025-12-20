@@ -37,7 +37,7 @@ This document proposes the following:
 
 In this implementation, we will make ArgoCD the technology of choice. However, we will strive to maintain separation between packages and specific CD technologies (Argo) to allow for future CD plug-ability.
 
-![git](images/git.png)
+![git](../images/git.png)
 
 ### Essential Packages
 

@@ -18,6 +18,17 @@
             top: 80px;
             height: fit-content;
         }
+        .docs-sidebar h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+        }
+        .docs-sidebar h3:first-child {
+            margin-top: 0;
+        }
         .docs-sidebar ul {
             list-style: none;
             padding: 0;
@@ -32,6 +43,7 @@
             display: block;
             border-radius: 4px;
             transition: background-color 0.3s;
+            font-size: 0.95rem;
         }
         .docs-sidebar a:hover,
         .docs-sidebar a.active {
@@ -108,7 +120,28 @@
                     <li><a href="#getting-started">Getting Started</a></li>
                     <li><a href="#requirements">Requirements</a></li>
                     <li><a href="#configuration">Configuration</a></li>
-                    <li><a href="/docs/v2-architecture.html">V2 Architecture</a></li>
+                </ul>
+                
+                <h3>Technical Specs</h3>
+                <ul>
+                    <li><a href="/docs/specs/controller-architecture-spec.html">V2 Controller Architecture</a></li>
+                    <li><a href="/docs/specs/pluggable-packages.html">Pluggable Packages</a></li>
+                </ul>
+                
+                <h3>Implementation Docs</h3>
+                <ul>
+                    <li><a href="/docs/implementation/test-duration-summary.html">Test Duration Summary</a></li>
+                    <li><a href="/docs/implementation/test-timing-analysis.html">Test Timing Analysis</a></li>
+                </ul>
+                
+                <h3>User Guides</h3>
+                <ul>
+                    <li><a href="/docs/user/minimum-requirements.html">Minimum Requirements</a></li>
+                    <li><a href="/docs/user/private-registries.html">Private Registries</a></li>
+                </ul>
+                
+                <h3>External Links</h3>
+                <ul>
                     <li><a href="#contributing">Contributing</a></li>
                     <li><a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">Full Docs ↗</a></li>
                 </ul>
@@ -117,6 +150,17 @@
             <article class="docs-content">
                 <h1>IDP Builder Documentation</h1>
                 <p>Welcome to the IDP Builder documentation. This guide will help you get started with creating your internal developer platform.</p>
+                
+                <div style="background-color: var(--bg-alt); padding: 1rem; border-radius: 5px; margin-bottom: 2rem;">
+                    <h3 style="margin-top: 0;">📚 Documentation Structure</h3>
+                    <p style="margin-bottom: 0.5rem;">Our documentation is organized into three main categories:</p>
+                    <ul style="margin-bottom: 0;">
+                        <li><strong>Technical Specs:</strong> Architectural design documents and specifications</li>
+                        <li><strong>Implementation Docs:</strong> Developer guides, testing information, and implementation details</li>
+                        <li><strong>User Guides:</strong> End-user documentation for using IDP Builder</li>
+                    </ul>
+                    <p style="margin-top: 0.5rem; margin-bottom: 0;">Browse these sections using the sidebar to find what you need.</p>
+                </div>
 
                 <h2 id="architecture">Version 2 Architecture</h2>
                 <p>Version 2 introduces a controller-based architecture with clear separation between the CLI and controllers:</p>

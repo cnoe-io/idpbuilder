@@ -17,7 +17,7 @@ go test --tags=integration -v -timeout 30m ./... -json 2>&1 | tee test-output.js
 Then analyze the results:
 
 ```bash
-python3 scripts/analyze_test_times.py test-output.json docs/test-timing-analysis.md
+python3 scripts/analyze_test_times.py test-output.json docs/implementation/test-timing-analysis.md
 ```
 
 This will:
@@ -47,4 +47,4 @@ The script generates two outputs:
 1. **Console Output**: A text-based diagram showing test timing statistics
 2. **Markdown Report**: A detailed report with tables, charts, and analysis (when output file is specified)
 
-See [docs/test-timing-analysis.md](../docs/test-timing-analysis.md) for an example of the generated report.
+See [docs/implementation/test-timing-analysis.md](../docs/implementation/test-timing-analysis.md) for an example of the generated report.
