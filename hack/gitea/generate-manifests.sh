@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-INSTALL_YAML="pkg/controllers/localbuild/resources/gitea/k8s/install.yaml"
+INSTALL_YAML="pkg/resources/gitea/resources/k8s/install.yaml"
 GITEA_DIR="./hack/gitea"
 CHART_VERSION="12.1.2"
 
