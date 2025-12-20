@@ -154,27 +154,30 @@ def generate_text_diagram(stats):
     output.append("-" * 80)
     output.append("")
     
-    # Find the slowest category
-    slowest_category = max(stats['by_category'].items(), key=lambda x: x[1]['total_time'])
-    output.append(f"Slowest Category: {slowest_category[0]}")
-    output.append(f"  - Takes {slowest_category[1]['total_time']:.2f}s total")
-    output.append(f"  - Contains {slowest_category[1]['count']} tests")
-    output.append(f"  - Average time per test: {slowest_category[1]['avg_time']:.3f}s")
-    output.append("")
+    # Find the slowest category (with safety check)
+    if stats['by_category']:
+        slowest_category = max(stats['by_category'].items(), key=lambda x: x[1]['total_time'])
+        output.append(f"Slowest Category: {slowest_category[0]}")
+        output.append(f"  - Takes {slowest_category[1]['total_time']:.2f}s total")
+        output.append(f"  - Contains {slowest_category[1]['count']} tests")
+        output.append(f"  - Average time per test: {slowest_category[1]['avg_time']:.3f}s")
+        output.append("")
     
-    # Find slowest package
-    slowest_pkg = max(stats['by_package'].items(), key=lambda x: x[1]['total_time'])
-    pkg_short = slowest_pkg[0].split('/')[-1]
-    output.append(f"Slowest Package: {pkg_short}")
-    output.append(f"  - Takes {slowest_pkg[1]['total_time']:.2f}s total")
-    output.append(f"  - Contains {slowest_pkg[1]['count']} tests")
-    output.append("")
+    # Find slowest package (with safety check)
+    if stats['by_package']:
+        slowest_pkg = max(stats['by_package'].items(), key=lambda x: x[1]['total_time'])
+        pkg_short = slowest_pkg[0].split('/')[-1]
+        output.append(f"Slowest Package: {pkg_short}")
+        output.append(f"  - Takes {slowest_pkg[1]['total_time']:.2f}s total")
+        output.append(f"  - Contains {slowest_pkg[1]['count']} tests")
+        output.append("")
     
-    # Find the single slowest test
-    slowest_test = stats['slowest_tests'][0]
-    output.append(f"Slowest Single Test: {slowest_test['test']}")
-    output.append(f"  - Takes {slowest_test['elapsed']:.2f}s")
-    output.append(f"  - Package: {slowest_test['package'].split('/')[-1]}")
+    # Find the single slowest test (with safety check)
+    if stats['slowest_tests']:
+        slowest_test = stats['slowest_tests'][0]
+        output.append(f"Slowest Single Test: {slowest_test['test']}")
+        output.append(f"  - Takes {slowest_test['elapsed']:.2f}s")
+        output.append(f"  - Package: {slowest_test['package'].split('/')[-1]}")
     
     # Explain why
     output.append("")
@@ -262,6 +265,12 @@ def generate_markdown_report(stats):
     # Analysis
     output.append("## Analysis: Why Do Tests Take Long?")
     output.append("")
+    
+    # Safety checks for empty collections
+    if not stats['by_category'] or not stats['by_package'] or not stats['slowest_tests']:
+        output.append("No test data available for analysis.")
+        output.append("")
+        return "\n".join(output)
     
     slowest_category = max(stats['by_category'].items(), key=lambda x: x[1]['total_time'])
     slowest_pkg = max(stats['by_package'].items(), key=lambda x: x[1]['total_time'])
