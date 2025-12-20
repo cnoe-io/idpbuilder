@@ -300,31 +300,34 @@ Instead of requiring providers to implement a shared Go interface, the V2 archit
 │               (Duck-Typed Interface)                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Git Providers (share common status fields):                    │
+│  Git Providers                                                   │
+│  Common status fields:                                           │
+│    • endpoint           - External URL for web UI and git clone  │
+│    • internalEndpoint   - Cluster-internal URL for API access    │
+│    • credentialsSecretRef - Secret containing access credentials │
+│                                                                  │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
 │  │ GiteaProvider  │  │ GitHubProvider │  │ GitLabProvider │   │
-│  │   status:      │  │   status:      │  │   status:      │   │
-│  │   • endpoint   │  │   • endpoint   │  │   • endpoint   │   │
-│  │   • internal   │  │   • internal   │  │   • internal   │   │
-│  │   • credsRef   │  │   • credsRef   │  │   • credsRef   │   │
 │  └────────────────┘  └────────────────┘  └────────────────┘   │
 │                                                                  │
-│  Gateway Providers (share common status fields):                │
+│  Gateway Providers                                               │
+│  Common status fields:                                           │
+│    • ingressClassName    - Ingress class name for routing        │
+│    • loadBalancerEndpoint - External endpoint for services       │
+│    • internalEndpoint    - Cluster-internal API endpoint         │
+│                                                                  │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐   │
 │  │ NginxGateway   │  │ EnvoyGateway   │  │ IstioGateway   │   │
-│  │   status:      │  │   status:      │  │   status:      │   │
-│  │   • className  │  │   • className  │  │   • className  │   │
-│  │   • lbEndpoint │  │   • lbEndpoint │  │   • lbEndpoint │   │
-│  │   • internal   │  │   • internal   │  │   • internal   │   │
 │  └────────────────┘  └────────────────┘  └────────────────┘   │
 │                                                                  │
-│  GitOps Providers (share common status fields):                 │
+│  GitOps Providers                                                │
+│  Common status fields:                                           │
+│    • endpoint           - External URL for web UI                │
+│    • internalEndpoint   - Cluster-internal API endpoint          │
+│    • credentialsSecretRef - Admin credentials                    │
+│                                                                  │
 │  ┌────────────────┐  ┌────────────────┐                        │
 │  │ ArgoCDProvider │  │ FluxProvider   │                        │
-│  │   status:      │  │   status:      │                        │
-│  │   • endpoint   │  │   • endpoint   │                        │
-│  │   • internal   │  │   • internal   │                        │
-│  │   • credsRef   │  │   • credsRef   │                        │
 │  └────────────────┘  └────────────────┘                        │
 └─────────────────────────────────────────────────────────────────┘
 ```

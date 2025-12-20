@@ -264,27 +264,27 @@ graph TB
         ING["IngressReconciler<br/>Needs Gateway provider info"]
     end
     
-    subgraph GitProviders["Git Providers (Duck-Typed)"]
+    subgraph GitProviders["Git Providers (Duck-Typed)<br/>Common status fields:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
         style GitProviders fill:#fff9c4
         direction LR
-        GP1["GiteaProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
-        GP2["GitHubProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
-        GP3["GitLabProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+        GP1["GiteaProvider"]
+        GP2["GitHubProvider"]
+        GP3["GitLabProvider"]
     end
     
-    subgraph GatewayProviders["Gateway Providers (Duck-Typed)"]
+    subgraph GatewayProviders["Gateway Providers (Duck-Typed)<br/>Common status fields:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
         style GatewayProviders fill:#e1f5fe
         direction LR
-        GW1["NginxGateway<br/>status:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
-        GW2["EnvoyGateway<br/>status:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
-        GW3["IstioGateway<br/>status:<br/>• ingressClassName<br/>• loadBalancerEndpoint<br/>• internalEndpoint"]
+        GW1["NginxGateway"]
+        GW2["EnvoyGateway"]
+        GW3["IstioGateway"]
     end
     
-    subgraph GitOpsProviders["GitOps Providers (Duck-Typed)"]
+    subgraph GitOpsProviders["GitOps Providers (Duck-Typed)<br/>Common status fields:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
         style GitOpsProviders fill:#f3e5f5
         direction LR
-        GO1["ArgoCDProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
-        GO2["FluxProvider<br/>status:<br/>• endpoint<br/>• internalEndpoint<br/>• credentialsSecretRef"]
+        GO1["ArgoCDProvider"]
+        GO2["FluxProvider"]
     end
     
     PC -.->|reads status via<br/>unstructured access| GitProviders
