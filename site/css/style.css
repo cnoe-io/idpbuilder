@@ -70,6 +70,11 @@ header {
     position: sticky;
     top: 0;
     z-index: 100;
+    transition: transform 0.3s ease-in-out;
+}
+
+header.nav-hidden {
+    transform: translateY(-100%);
 }
 
 nav {

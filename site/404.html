@@ -77,6 +77,43 @@
                 navLinks.classList.remove('active');
             }
         });
+
+        // Auto-hide navigation on scroll down, show on scroll up (mobile only)
+        let lastScrollTop = 0;
+        const header = document.querySelector('header');
+        const navLinksElement = document.getElementById('navLinks');
+        const scrollDelta = 5; // Minimum scroll distance to trigger hide/show
+        
+        function handleNavVisibility() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Only apply auto-hide on mobile screens
+            if (window.innerWidth <= 768) {
+                // Make sure we've scrolled more than the delta
+                if (Math.abs(lastScrollTop - scrollTop) <= scrollDelta) {
+                    return;
+                }
+                
+                // Scrolling down
+                if (scrollTop > lastScrollTop && scrollTop > 100) {
+                    header.classList.add('nav-hidden');
+                    // Also close the mobile menu if it's open
+                    navLinksElement.classList.remove('active');
+                } 
+                // Scrolling up
+                else if (scrollTop < lastScrollTop) {
+                    header.classList.remove('nav-hidden');
+                }
+                
+                lastScrollTop = scrollTop;
+            } else {
+                // Remove nav-hidden class on desktop
+                header.classList.remove('nav-hidden');
+            }
+        }
+        
+        window.addEventListener('scroll', handleNavVisibility);
+        window.addEventListener('resize', handleNavVisibility);
     </script>
 </body>
 </html>
