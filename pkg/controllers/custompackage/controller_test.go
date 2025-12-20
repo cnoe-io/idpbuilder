@@ -544,7 +544,8 @@ func TestReconcileHelmValueObject(t *testing.T) {
 	)
 	require.NoError(t, sb.AddToScheme(s))
 
-	cwd, _ := os.Getwd()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
 
 	// Create namespaces
 	ns1 := &v1.Namespace{
@@ -619,7 +620,7 @@ func TestReconcileHelmValueObject(t *testing.T) {
 		},
 	}
 
-	_, err := r.reconcileHelmValueObject(context.Background(), source, &resource, "test")
+	_, err = r.reconcileHelmValueObject(context.Background(), source, &resource, "test")
 	assert.NoError(t, err)
 	expectJson := `{"arrayMap":[{"nested":{"test":""},"test":""}],"arrayString":["abc",""],"bool":false,"int":456,"nested":{"bool":true,"int":123,"repoURLGit":""},"repoURLGit":""}`
 	assert.JSONEq(t, expectJson, string(source.Helm.ValuesObject.Raw))
