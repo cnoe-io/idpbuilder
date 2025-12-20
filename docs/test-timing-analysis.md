@@ -34,7 +34,18 @@ Tests are categorized based on their functionality:
 | Config/Validation | 0.12 | 7 | 0.017 |
 | Unit | 0.04 | 30 | 0.001 |
 
-### Category Distribution (Visual)
+### Category Distribution (Mermaid Diagram)
+
+```mermaid
+pie title Test Execution Time by Category (Total: 39.39s)
+    "Integration" : 35.67
+    "I/O" : 2.64
+    "Build/Manifest" : 0.92
+    "Config/Validation" : 0.12
+    "Unit" : 0.04
+```
+
+### Category Distribution (Text)
 
 ```
 Integration            35.67s  ████████████████████████████████████

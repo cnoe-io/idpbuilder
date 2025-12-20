@@ -227,8 +227,18 @@ def generate_markdown_report(stats):
         output.append(f"| {category} | {data['total_time']:.2f} | {data['count']} | {data['avg_time']:.3f} |")
     output.append("")
     
+    # Mermaid pie chart
+    output.append("### Category Distribution (Mermaid Diagram)")
+    output.append("")
+    output.append("```mermaid")
+    output.append(f"pie title Test Execution Time by Category (Total: {stats['total_time']:.2f}s)")
+    for category, data in categories:
+        output.append(f'    "{category}" : {data["total_time"]:.2f}')
+    output.append("```")
+    output.append("")
+    
     # Visual bar chart
-    output.append("### Category Distribution (Visual)")
+    output.append("### Category Distribution (Text)")
     output.append("")
     output.append("```")
     for category, data in categories:
@@ -272,7 +282,8 @@ def generate_markdown_report(stats):
     
     output.append(f"3. **Slowest Single Test**: `{slowest_test['test']}`")
     output.append(f"   - Takes {slowest_test['elapsed']:.2f}s ({slowest_test['elapsed']/stats['total_time']*100:.1f}% of total time)")
-    output.append(f"   - This test likely performs network operations or waits for external services")
+    output.append(f"   - This test intentionally sleeps for 35 seconds to test timeout behavior when communicating with Gitea")
+    output.append(f"   - Located in `pkg/controllers/localbuild/gitea_test.go`")
     output.append("")
     
     output.append("### Common Reasons for Slow Tests")

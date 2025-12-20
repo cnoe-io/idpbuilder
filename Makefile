@@ -44,6 +44,14 @@ else
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -p 1 --tags=integration ./... -coverprofile cover.out -run $(RUN)
 endif
 
+.PHONY: test-timing
+test-timing: manifests generate fmt vet envtest ## Run tests and generate timing analysis report.
+	@echo "Running tests with JSON output..."
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -p 1 --tags=integration -v -timeout 30m ./... -json 2>&1 | tee test-output.json
+	@echo "Generating test timing analysis..."
+	python3 scripts/analyze_test_times.py test-output.json docs/test-timing-analysis.md
+	@echo "Report saved to docs/test-timing-analysis.md"
+	@rm -f test-output.json
 	
 
 .PHONY: generate
