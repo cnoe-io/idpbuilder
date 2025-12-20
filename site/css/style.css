@@ -359,6 +359,27 @@ footer a {
         display: flex;
     }
 
+    /* Horizontal layout when scrolled on mobile */
+    .nav-links.scrolled {
+        flex-direction: row;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-links.scrolled li {
+        border-bottom: none;
+        flex-shrink: 0;
+    }
+
+    .nav-links.scrolled a {
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+        font-size: 0.9rem;
+    }
+
     .nav-links li {
         border-bottom: 1px solid var(--border-color);
     }
