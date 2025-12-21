@@ -12,6 +12,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/pkg/status"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +45,7 @@ type Build struct {
 	exitOnSync           bool
 	scheme               *runtime.Scheme
 	CancelFunc           context.CancelFunc
+	statusReporter       *status.Reporter
 }
 
 type NewBuildOptions struct {
@@ -61,6 +63,7 @@ type NewBuildOptions struct {
 	ExitOnSync           bool
 	Scheme               *runtime.Scheme
 	CancelFunc           context.CancelFunc
+	StatusReporter       *status.Reporter
 }
 
 func NewBuild(opts NewBuildOptions) *Build {
@@ -79,6 +82,7 @@ func NewBuild(opts NewBuildOptions) *Build {
 		scheme:               opts.Scheme,
 		cfg:                  opts.TemplateData,
 		CancelFunc:           opts.CancelFunc,
+		statusReporter:       opts.StatusReporter,
 	}
 }
 
@@ -132,7 +136,7 @@ func (b *Build) ReconcileCRDs(ctx context.Context, kubeClient client.Client) err
 }
 
 func (b *Build) RunControllers(ctx context.Context, mgr manager.Manager, exitCh chan error, tmpDir string) error {
-	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync, b.cfg, tmpDir)
+	return controllers.RunControllers(ctx, mgr, exitCh, b.CancelFunc, b.exitOnSync, b.cfg, tmpDir, b.statusReporter)
 }
 
 func (b *Build) isCompatible(ctx context.Context, kubeClient client.Client) (bool, error) {
@@ -166,9 +170,19 @@ func (b *Build) isCompatible(ctx context.Context, kubeClient client.Client) (boo
 }
 
 func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
-	setupLog.Info("Creating kind cluster")
+	// Use status reporter if available, otherwise fallback to logging
+	if b.statusReporter != nil {
+		b.statusReporter.StartStep("cluster")
+	}
+	setupLog.V(1).Info("Creating kind cluster")
 	if err := b.ReconcileKindCluster(ctx, recreateCluster); err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("cluster", err)
+		}
 		return err
+	}
+	if b.statusReporter != nil {
+		b.statusReporter.CompleteStep("cluster")
 	}
 
 	setupLog.V(1).Info("Getting Kube config")
@@ -183,9 +197,18 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
-	setupLog.Info("Adding CRDs to the cluster")
+	if b.statusReporter != nil {
+		b.statusReporter.StartStep("crds")
+	}
+	setupLog.V(1).Info("Adding CRDs to the cluster")
 	if err := b.ReconcileCRDs(ctx, kubeClient); err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("crds", err)
+		}
 		return err
+	}
+	if b.statusReporter != nil {
+		b.statusReporter.CompleteStep("crds")
 	}
 
 	setupLog.V(1).Info("Creating controller manager")
@@ -209,18 +232,30 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 	defer os.RemoveAll(dir)
 	setupLog.V(1).Info("Created temp directory for cloning repositories", "dir", dir)
 
-	setupLog.Info("Setting up CoreDNS")
+	if b.statusReporter != nil {
+		b.statusReporter.StartStep("networking")
+	}
+	setupLog.V(1).Info("Setting up CoreDNS")
 	err = setupCoreDNS(ctx, kubeClient, b.scheme, b.cfg)
 	if err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("networking", err)
+		}
 		return err
 	}
 
-	setupLog.Info("Setting up TLS certificate")
+	setupLog.V(1).Info("Setting up TLS certificate")
 	cert, err := setupSelfSignedCertificate(ctx, setupLog, kubeClient, b.cfg)
 	if err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("networking", err)
+		}
 		return err
 	}
 	b.cfg.SelfSignedCert = string(cert)
+	if b.statusReporter != nil {
+		b.statusReporter.CompleteStep("networking")
+	}
 
 	setupLog.V(1).Info("Checking for incompatible options from a previous run")
 	ok, err := b.isCompatible(ctx, kubeClient)
@@ -240,6 +275,9 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return err
 	}
 
+	if b.statusReporter != nil {
+		b.statusReporter.StartStep("resources")
+	}
 	localBuild := v1alpha1.Localbuild{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: b.name,
@@ -248,7 +286,7 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 
 	cliStartTime := time.Now().Format(time.RFC3339Nano)
 
-	setupLog.Info("Creating localbuild resource")
+	setupLog.V(1).Info("Creating localbuild resource")
 	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient, &localBuild, func() error {
 		if localBuild.ObjectMeta.Annotations == nil {
 			localBuild.ObjectMeta.Annotations = map[string]string{}
@@ -273,27 +311,51 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return nil
 	})
 	if err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("resources", err)
+		}
 		return fmt.Errorf("creating localbuild resource: %w", err)
 	}
 
 	// Create GiteaProvider CR for v2 architecture
-	setupLog.Info("Creating giteaprovider resource")
+	setupLog.V(1).Info("Creating giteaprovider resource")
 	if err := b.createGiteaProvider(ctx, kubeClient); err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("resources", err)
+		}
 		return fmt.Errorf("creating giteaprovider resource: %w", err)
 	}
 
 	// Create Platform CR that references GiteaProvider
-	setupLog.Info("Creating platform resource")
+	setupLog.V(1).Info("Creating platform resource")
 	if err := b.createPlatform(ctx, kubeClient); err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("resources", err)
+		}
 		return fmt.Errorf("creating platform resource: %w", err)
 	}
+	if b.statusReporter != nil {
+		b.statusReporter.CompleteStep("resources")
+	}
 
+	if b.statusReporter != nil {
+		b.statusReporter.StartStep("packages")
+	}
 	select {
 	case mgrErr := <-managerExit:
 		if mgrErr != nil {
+			if b.statusReporter != nil {
+				b.statusReporter.FailStep("packages", mgrErr)
+			}
 			return mgrErr
 		}
+		if b.statusReporter != nil {
+			b.statusReporter.CompleteStep("packages")
+		}
 	case <-ctx.Done():
+		if b.statusReporter != nil {
+			b.statusReporter.CompleteStep("packages")
+		}
 		return nil
 	}
 	return nil

@@ -18,6 +18,8 @@ var (
 	CmdLogger        logr.Logger
 	ColoredOutput    bool
 	ColoredOutputMsg = "Enable colored log messages."
+	LogToStdout      bool
+	LogToStdoutMsg   = "Write logs to stdout instead of stderr."
 )
 
 func SetLogger() error {
@@ -26,8 +28,14 @@ func SetLogger() error {
 		return err
 	}
 
-	slogger := slog.New(logger.NewHandler(os.Stderr, logger.Options{Level: l, Colored: ColoredOutput}))
-	kslogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: getKlogLevel(l)}))
+	// Determine log output destination
+	logOutput := os.Stderr
+	if LogToStdout {
+		logOutput = os.Stdout
+	}
+
+	slogger := slog.New(logger.NewHandler(logOutput, logger.Options{Level: l, Colored: ColoredOutput}))
+	kslogger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: getKlogLevel(l)}))
 	logger := logr.FromSlogHandler(slogger.Handler())
 	klogger := logr.FromSlogHandler(kslogger.Handler())
 

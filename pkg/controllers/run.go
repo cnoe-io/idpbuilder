@@ -25,6 +25,10 @@ func RunControllers(
 	exitOnSync bool,
 	cfg v1alpha1.BuildCustomizationSpec,
 	tmpDir string,
+	statusReporter interface {
+		AddSubStep(parentName, subStepName, description string)
+		UpdateSubStep(parentName, subStepName string, state int)
+	},
 ) error {
 	logger := log.FromContext(ctx)
 
@@ -32,13 +36,14 @@ func RunControllers(
 
 	// Run Localbuild controller
 	if err := (&localbuild.LocalbuildReconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		ExitOnSync: exitOnSync,
-		CancelFunc: ctxCancel,
-		Config:     cfg,
-		TempDir:    tmpDir,
-		RepoMap:    repoMap,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		ExitOnSync:     exitOnSync,
+		CancelFunc:     ctxCancel,
+		Config:         cfg,
+		TempDir:        tmpDir,
+		RepoMap:        repoMap,
+		StatusReporter: statusReporter,
 	}).SetupWithManager(mgr); err != nil {
 		logger.Error(err, "unable to create localbuild controller")
 		return err

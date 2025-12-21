@@ -13,6 +13,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/build"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
+	"github.com/cnoe-io/idpbuilder/pkg/status"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/util/homedir"
 )
@@ -35,7 +36,16 @@ const (
 	extraPackagesUsage             = "Paths to locations containing custom packages"
 	packageCustomizationFilesUsage = "Name of the package and the path to file to customize the core packages with. " +
 		"valid package names are: argocd, nginx, and gitea. e.g. argocd:/tmp/argocd.yaml"
-	noExitUsage = "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories."
+	noExitUsage       = "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories."
+	statusOutputUsage = "Status output mode. Supported values: auto (default), simple, verbose, none. 'auto' uses inline status in terminals, 'simple' shows status without inline updates, 'verbose' shows detailed logs, 'none' disables status output."
+	noColorUsage      = "Disable colored output for both logs and status reporting."
+	quietUsage        = "Suppress status output (equivalent to --status-output=none)."
+
+	// Status output modes
+	statusOutputAuto    = "auto"
+	statusOutputSimple  = "simple"
+	statusOutputVerbose = "verbose"
+	statusOutputNone    = "none"
 )
 
 var (
@@ -55,6 +65,9 @@ var (
 	ingressHost               string
 	port                      string
 	pathRouting               bool
+	statusOutput              string
+	noColor                   bool
+	quiet                     bool
 )
 
 var CreateCmd = &cobra.Command{
@@ -89,6 +102,11 @@ func init() {
 	CreateCmd.Flags().StringSliceVarP(&packageCustomizationFiles, "package-custom-file", "c", []string{}, packageCustomizationFilesUsage)
 	// idpbuilder related flags
 	CreateCmd.Flags().BoolVarP(&noExit, "no-exit", "n", true, noExitUsage)
+
+	// status and output related flags
+	CreateCmd.Flags().StringVar(&statusOutput, "status-output", "auto", statusOutputUsage)
+	CreateCmd.Flags().BoolVar(&noColor, "no-color", false, noColorUsage)
+	CreateCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, quietUsage)
 }
 
 func preCreateE(cmd *cobra.Command, args []string) error {
@@ -149,6 +167,46 @@ func create(cmd *cobra.Command, args []string) error {
 		maybeRegistryConfig = registryConfig
 	}
 
+	// Determine if color should be enabled
+	// Priority: --no-color flag > --color flag > default
+	useColor := helpers.ColoredOutput
+	if noColor {
+		useColor = false
+	}
+
+	// Determine status output mode
+	// Priority: --quiet flag > --status-output flag > default
+	statusMode := statusOutput
+	if quiet {
+		statusMode = statusOutputNone
+	}
+
+	// Validate status output mode
+	validModes := map[string]bool{
+		statusOutputAuto:    true,
+		statusOutputSimple:  true,
+		statusOutputVerbose: true,
+		statusOutputNone:    true,
+	}
+	if !validModes[statusMode] {
+		return fmt.Errorf("invalid status-output value: %s. Supported values are: %s, %s, %s, %s",
+			statusMode, statusOutputAuto, statusOutputSimple, statusOutputVerbose, statusOutputNone)
+	}
+
+	// Create status reporter based on mode
+	var reporter *status.Reporter
+	if statusMode != statusOutputNone && statusMode != statusOutputVerbose {
+		reporter = status.NewReporter(useColor)
+		if statusMode == statusOutputSimple {
+			reporter.SetSimpleMode(true)
+		}
+		reporter.AddStep("cluster", "Creating Kubernetes cluster")
+		reporter.AddStep("crds", "Installing Custom Resource Definitions")
+		reporter.AddStep("networking", "Configuring networking and certificates")
+		reporter.AddStep("resources", "Creating platform resources")
+		reporter.AddStep("packages", "Installing and syncing packages")
+	}
+
 	opts := build.NewBuildOptions{
 		Name:              buildName,
 		KubeVersion:       kubeVersion,
@@ -172,11 +230,19 @@ func create(cmd *cobra.Command, args []string) error {
 		ExitOnSync:           exitOnSync,
 		PackageCustomization: o,
 
-		Scheme:     k8s.GetScheme(),
-		CancelFunc: ctxCancel,
+		Scheme:         k8s.GetScheme(),
+		CancelFunc:     ctxCancel,
+		StatusReporter: reporter,
 	}
 
 	b := build.NewBuild(opts)
+
+	// Ensure summary is always printed if reporter exists
+	defer func() {
+		if reporter != nil {
+			reporter.Summary()
+		}
+	}()
 
 	if err := b.Run(ctx, recreateCluster); err != nil {
 		return err

@@ -62,6 +62,12 @@ type LocalbuildReconciler struct {
 	Config         v1alpha1.BuildCustomizationSpec
 	TempDir        string
 	RepoMap        *util.RepoMap
+	StatusReporter interface {
+		AddSubStep(parentName, subStepName, description string)
+		UpdateSubStep(parentName, subStepName string, state int)
+	}
+	subStepsInitialized bool
+	mu                  sync.Mutex
 }
 
 type subReconciler func(ctx context.Context, req ctrl.Request, resource *v1alpha1.Localbuild) (ctrl.Result, error)
@@ -158,16 +164,58 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 		// NOTE: Gitea removed - now managed by GiteaProvider controller
 	}
 	logger.V(1).Info("installing core packages")
+
+	// Add sub-steps for each package only once
+	r.mu.Lock()
+	shouldAddSubSteps := !r.subStepsInitialized
+	if shouldAddSubSteps {
+		r.subStepsInitialized = true
+	}
+	r.mu.Unlock()
+
+	if shouldAddSubSteps && r.StatusReporter != nil {
+		for name := range installers {
+			r.StatusReporter.AddSubStep("packages", name, name)
+		}
+		// Also add sub-steps for custom packages
+		for i := range resource.Spec.PackageConfigs.CustomPackageDirs {
+			name := fmt.Sprintf("custom-dir-%d", i)
+			r.StatusReporter.AddSubStep("packages", name, resource.Spec.PackageConfigs.CustomPackageDirs[i])
+		}
+		for i := range resource.Spec.PackageConfigs.CustomPackageFiles {
+			name := fmt.Sprintf("custom-file-%d", i)
+			r.StatusReporter.AddSubStep("packages", name, resource.Spec.PackageConfigs.CustomPackageFiles[i])
+		}
+		for i := range resource.Spec.PackageConfigs.CustomPackageUrls {
+			name := fmt.Sprintf("custom-url-%d", i)
+			r.StatusReporter.AddSubStep("packages", name, resource.Spec.PackageConfigs.CustomPackageUrls[i])
+		}
+	}
+
 	for k, v := range installers {
 		wg.Add(1)
 		name := k
 		inst := v
 		go func() {
 			defer wg.Done()
+
+			// Mark as running
+			if r.StatusReporter != nil {
+				r.StatusReporter.UpdateSubStep("packages", name, 1) // StateRunning = 1
+			}
+
 			_, iErr := inst(ctx, req, resource)
 			if iErr != nil {
 				logger.V(1).Info("failed installing", "name", name, "error", iErr)
+				if r.StatusReporter != nil {
+					r.StatusReporter.UpdateSubStep("packages", name, 3) // StateFailed = 3
+				}
 				errChan <- fmt.Errorf("failed installing %s: %w", name, iErr)
+			} else {
+				// Mark as complete
+				if r.StatusReporter != nil {
+					r.StatusReporter.UpdateSubStep("packages", name, 2) // StateComplete = 2
+				}
 			}
 		}()
 	}
@@ -238,6 +286,7 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 	// NOTE: Gitea removed - now managed by GiteaProvider controller, not as an ArgoCD app
 	// NOTE: IngressNginx removed - now managed by NginxGateway controller (v2)
 	bootStrapApps := []string{v1alpha1.ArgoCDPackageName}
+
 	for _, n := range bootStrapApps {
 		result, err := r.reconcileEmbeddedApp(ctx, n, resource)
 		if err != nil {
@@ -249,25 +298,55 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 	// lower priority packages first then having to delete them
 	for i := len(resource.Spec.PackageConfigs.CustomPackageDirs) - 1; i >= 0; i-- {
 		s := resource.Spec.PackageConfigs.CustomPackageDirs[i]
+		name := fmt.Sprintf("custom-dir-%d", i)
+		if r.StatusReporter != nil {
+			r.StatusReporter.UpdateSubStep("packages", name, 1) // StateRunning
+		}
 		result, err := r.reconcileCustomPkgDir(ctx, resource, s, i)
 		if err != nil {
+			if r.StatusReporter != nil {
+				r.StatusReporter.UpdateSubStep("packages", name, 3) // StateFailed
+			}
 			return result, err
+		}
+		if r.StatusReporter != nil {
+			r.StatusReporter.UpdateSubStep("packages", name, 2) // StateComplete
 		}
 	}
 
 	for i := len(resource.Spec.PackageConfigs.CustomPackageFiles) - 1; i >= 0; i-- {
 		s := resource.Spec.PackageConfigs.CustomPackageFiles[i]
+		name := fmt.Sprintf("custom-file-%d", i)
+		if r.StatusReporter != nil {
+			r.StatusReporter.UpdateSubStep("packages", name, 1) // StateRunning
+		}
 		result, err := r.reconcileCustomPkgFile(ctx, resource, s, i)
 		if err != nil {
+			if r.StatusReporter != nil {
+				r.StatusReporter.UpdateSubStep("packages", name, 3) // StateFailed
+			}
 			return result, err
+		}
+		if r.StatusReporter != nil {
+			r.StatusReporter.UpdateSubStep("packages", name, 2) // StateComplete
 		}
 	}
 
 	for i := len(resource.Spec.PackageConfigs.CustomPackageUrls) - 1; i >= 0; i-- {
 		s := resource.Spec.PackageConfigs.CustomPackageUrls[i]
+		name := fmt.Sprintf("custom-url-%d", i)
+		if r.StatusReporter != nil {
+			r.StatusReporter.UpdateSubStep("packages", name, 1) // StateRunning
+		}
 		result, err := r.reconcileCustomPkgUrl(ctx, resource, s, i)
 		if err != nil {
+			if r.StatusReporter != nil {
+				r.StatusReporter.UpdateSubStep("packages", name, 3) // StateFailed
+			}
 			return result, err
+		}
+		if r.StatusReporter != nil {
+			r.StatusReporter.UpdateSubStep("packages", name, 2) // StateComplete
 		}
 	}
 

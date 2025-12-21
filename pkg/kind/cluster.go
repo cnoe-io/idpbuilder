@@ -187,9 +187,7 @@ func (c *Cluster) Reconcile(ctx context.Context, recreate bool) error {
 		return err
 	}
 
-	fmt.Print("########################### Our kind config ############################\n")
-	fmt.Printf("%s", rawConfig)
-	fmt.Print("\n#########################   config end    ############################\n")
+	setupLog.V(1).Info("Kind cluster configuration", "config", string(rawConfig))
 
 	setupLog.Info("Creating kind cluster", "cluster", c.name)
 
