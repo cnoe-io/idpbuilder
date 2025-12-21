@@ -44,6 +44,29 @@ A design document outlining the approach for making packages installed by idpbui
 - Enable fast local development feedback loops
 - Support imperative pipelines via ArgoCD resource hooks
 
+### [Hyperscaler Provider Implementation Specification](./hyperscaler-provider-spec.md)
+
+**Status:** Proposal  
+**Version:** 1.0 Draft  
+**Date:** December 20, 2025
+
+Extends the controller-based architecture specification to describe how major cloud hyperscalers (AWS, Azure, GCP) can implement native providers for the core duck-typed interfaces: Git Provider, Gateway Provider, and GitOps Provider.
+
+**Key Topics:**
+- AWS provider implementations (CodeCommit, ALB Controller, EKS Capabilities)
+- Azure provider implementations (Azure Repos, App Gateway, Flux Azure)
+- GCP provider implementations (Cloud Source Repos, GKE Gateway, Config Sync)
+- Duck-typed status field contracts for provider interoperability
+- Mixed provider scenarios (e.g., AWS infrastructure with ArgoCD)
+- Cloud IAM integration (IRSA, Azure AD Workload Identity, GCP Workload Identity)
+- Cost considerations and authentication setup guides
+
+**Goals:**
+- Enable cloud-native integration with managed Kubernetes services
+- Leverage native cloud services for Git, Gateway, and GitOps
+- Maintain provider flexibility through duck-typing
+- Support hybrid and multi-cloud deployments
+
 ## Purpose
 
 These specifications serve as:

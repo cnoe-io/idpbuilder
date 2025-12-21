@@ -17,6 +17,6 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "http-server": "^14.1.1",
-    "marked": "^11.1.1"
+    "marked": "^11.2.0"
   }
 }

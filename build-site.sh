@@ -6,6 +6,20 @@ set -e
 
 echo "Building IDP Builder static site..."
 
+# Install npm dependencies if needed
+if [ -f "package.json" ]; then
+    echo "Checking npm dependencies..."
+    if command -v npm >/dev/null 2>&1; then
+        # Only install if node_modules doesn't exist or is missing dependencies
+        if [ ! -d "node_modules" ] || [ ! -d "node_modules/marked" ]; then
+            echo "Installing npm dependencies..."
+            npm install --quiet
+        fi
+    else
+        echo "Warning: npm not found. Skipping dependency installation."
+    fi
+fi
+
 # Create output directory
 BUILD_DIR="${BUILD_DIR:-./site}"
 OUTPUT_DIR="${OUTPUT_DIR:-./public}"
