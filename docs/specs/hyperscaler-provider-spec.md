@@ -150,6 +150,226 @@ Each hyperscaler provider leverages native IAM mechanisms:
 
 This eliminates the need for long-lived credentials in most scenarios.
 
+### Owner Reference Pattern for Configuration Discovery
+
+Hyperscaler providers follow the same owner reference pattern as open-source providers, where they wait for the Platform resource to add itself as an owner reference before beginning full reconciliation. This pattern is particularly important for hyperscaler providers where configuration may come from both the Platform resource and cloud-specific settings.
+
+#### Configuration Discovery Flow for Hyperscaler Providers
+
+1. **Initial State**: Hyperscaler provider CR is created (e.g., CodeCommitProvider) without Platform owner reference
+2. **Waiting Phase**: Provider enters "WaitingForPlatform" phase, requeuing periodically
+3. **Platform Assignment**: Platform controller adds itself as owner reference to the provider
+4. **Configuration Discovery**: Provider discovers:
+   - **Platform-level config**: Domain, ingress settings, TLS configuration
+   - **Cloud-specific config**: AWS region, Azure subscription, GCP project
+   - **Cross-provider config**: Gateway settings, other provider endpoints
+5. **Validation**: Provider ensures all required configuration is present
+6. **Installation**: Provider proceeds with cloud resource provisioning using discovered configuration
+
+#### Example: AWS CodeCommit with Platform Configuration Discovery
+
+```go
+// CodeCommitProviderReconciler.Reconcile
+func (r *CodeCommitProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    provider := &v1alpha2.CodeCommitProvider{}
+    if err := r.Get(ctx, req.NamespacedName, provider); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+    
+    // Step 1: Check for Platform owner reference
+    platformRef := getPlatformOwnerReference(provider)
+    if platformRef == nil {
+        meta.SetStatusCondition(&provider.Status.Conditions, metav1.Condition{
+            Type:    "Ready",
+            Status:  metav1.ConditionFalse,
+            Reason:  "WaitingForPlatform",
+            Message: "Waiting for Platform resource to add owner reference",
+        })
+        provider.Status.Phase = "WaitingForPlatform"
+        r.Status().Update(ctx, provider)
+        return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+    }
+    
+    // Step 2: Get Platform resource
+    platform := &v1alpha2.Platform{}
+    platformKey := types.NamespacedName{
+        Name:      platformRef.Name,
+        Namespace: provider.Namespace,
+    }
+    if err := r.Get(ctx, platformKey, platform); err != nil {
+        return ctrl.Result{}, err
+    }
+    
+    // Step 3: Discover configuration from Platform
+    // CodeCommit endpoint uses Platform domain for constructing Git URLs
+    domain := platform.Spec.Domain
+    
+    // Step 4: Validate all required configuration
+    if provider.Spec.Region == "" {
+        return ctrl.Result{}, fmt.Errorf("AWS region must be specified in provider spec")
+    }
+    if domain == "" {
+        return ctrl.Result{}, fmt.Errorf("platform domain is required")
+    }
+    
+    // Step 5: Proceed with AWS CodeCommit setup
+    provider.Status.Phase = "Configuring"
+    r.Status().Update(ctx, provider)
+    
+    // Configure AWS SDK client with IRSA credentials
+    cfg, err := r.getAWSConfig(ctx, provider)
+    if err != nil {
+        return ctrl.Result{}, err
+    }
+    
+    // Continue with CodeCommit configuration...
+    return r.reconcileCodeCommit(ctx, provider, platform, cfg)
+}
+```
+
+#### Hyperscaler-Specific Configuration Patterns
+
+**AWS Providers:**
+- **Region**: Specified in provider spec (required)
+- **Endpoint Construction**: Combines AWS region with Platform domain for Git clone URLs
+- **IAM Authentication**: IRSA credentials automatically discovered via service account
+- **Resource Naming**: Uses `repositoryPrefix` from spec combined with Platform name
+
+**Azure Providers:**
+- **Subscription/Tenant**: Specified in provider spec (required)
+- **Domain Discovery**: Uses Platform domain for Azure DevOps endpoint construction
+- **Workload Identity**: Client ID and tenant ID from provider spec, authentication automatic
+- **Resource Naming**: Combines Azure organization with Platform project structure
+
+**GCP Providers:**
+- **Project ID**: Specified in provider spec (required)
+- **Regional Endpoints**: Constructed using GCP region and Platform domain
+- **Workload Identity**: GCP service account from provider spec, authentication automatic
+- **Resource Tags**: Uses Platform labels combined with GCP-specific tags
+
+#### Example: Platform with Hyperscaler Provider
+
+```yaml
+---
+# Platform CR provides domain and shared configuration
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: aws-production
+  namespace: idpbuilder-system
+spec:
+  domain: idp.example.com
+  ingressConfig:
+    usePathRouting: false
+    tlsSecretRef:
+      name: platform-tls
+      namespace: idpbuilder-system
+  components:
+    gitProviders:
+      - name: codecommit-primary
+        kind: CodeCommitProvider
+        namespace: idpbuilder-system
+    gateways:
+      - name: aws-alb
+        kind: AWSLoadBalancerProvider
+        namespace: idpbuilder-system
+
+---
+# CodeCommit provider waits for Platform owner reference
+# Host/domain configuration will be discovered from Platform
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: CodeCommitProvider
+metadata:
+  name: codecommit-primary
+  namespace: idpbuilder-system
+  # Owner reference will be added by Platform controller
+  ownerReferences:
+    - apiVersion: idpbuilder.cnoe.io/v1alpha2
+      kind: Platform
+      name: aws-production
+      uid: abcd1234-5678-90ef-ghij-klmnopqrstuv
+      controller: false
+spec:
+  # Cloud-specific configuration (required)
+  region: us-east-1
+  auth:
+    type: IRSA
+    serviceAccountName: codecommit-provider-sa
+    roleArn: arn:aws:iam::123456789012:role/CodeCommitProviderRole
+  
+  # Repository configuration
+  repositoryPrefix: idp-
+  
+  # Note: No host/domain specified - will use Platform.Spec.Domain
+  
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: ReconciliationSucceeded
+      message: "CodeCommit configured with domain discovered from Platform"
+  phase: Ready
+  
+  # Duck-typed fields
+  endpoint: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/idp
+  internalEndpoint: https://git-codecommit.us-east-1.amazonaws.com
+  credentialsSecretRef:
+    name: codecommit-git-credentials
+    namespace: idpbuilder-system
+    key: credentials
+  
+  # AWS-specific status
+  region: us-east-1
+  accountId: "123456789012"
+  authenticated: true
+  discoveredDomain: idp.example.com  # Discovered from Platform
+```
+
+#### Benefits for Hyperscaler Providers
+
+1. **Reduced Cloud-Specific Duplication**: Cloud endpoints constructed automatically using Platform domain
+2. **Cross-Cloud Consistency**: Same pattern works for AWS, Azure, and GCP
+3. **Simplified Migration**: Switching between clouds only requires changing provider type, not Platform config
+4. **Better Resource Lifecycle**: Owner references ensure cleanup when Platform is deleted
+5. **Configuration Validation**: Providers can validate that Platform config is compatible with cloud constraints
+
+#### Provider State Machine with Owner Reference
+
+```
+┌─────────────────┐
+│   Created       │
+│  (no owner ref) │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ WaitingForPlatf │◄───────┐
+│ (requeue 30s)   │        │
+└────────┬────────┘        │
+         │ Platform adds   │
+         │ owner ref       │
+         ▼                 │
+┌─────────────────┐        │
+│  Discovering    │        │
+│ (read Platform) │        │
+└────────┬────────┘        │
+         │                 │
+         ├─────────────────┘
+         │ Missing config
+         │
+         ▼ All config found
+┌─────────────────┐
+│   Installing    │
+│ (provision AWS/ │
+│  Azure/GCP)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│     Ready       │
+│  (operational)  │
+└─────────────────┘
+```
 
 ## AWS Provider Implementations
 

@@ -207,6 +207,7 @@ graph TB
 3. **Extensibility**: New provider types can be added without modifying Platform CR
 4. **Independence**: Each provider CR can exist and be managed independently
 5. **Flexibility**: Components choose providers dynamically at runtime
+6. **Owner Reference Pattern**: Providers wait for Platform to establish ownership before discovering configuration and beginning reconciliation
 
 ### Duck Typing: Provider Independence Through Standard Status Fields
 
@@ -339,6 +340,367 @@ gitClient.CreateRepository(name, org)
 ```
 
 This pattern allows GitRepository to work with any Git provider without knowing whether it's Gitea, GitHub, or GitLab. The same pattern applies to Gateway and GitOps providers, enabling true provider independence and flexibility.
+
+### Owner Reference Pattern: Platform-Driven Configuration Discovery
+
+The owner reference pattern is a crucial coordination mechanism that enables providers to discover their configuration dynamically from the Platform resource that references them. This pattern reduces configuration duplication and enables centralized platform-level configuration management.
+
+#### How the Owner Reference Pattern Works
+
+When a Platform CR is created and references provider CRs, the Platform controller establishes ownership by adding itself as an owner reference to each referenced provider. Providers then use this owner reference to:
+
+1. **Wait for Platform Assignment**: Providers remain in a "Waiting" phase until a Platform resource adds itself as an owner reference
+2. **Discover Platform Configuration**: Once the owner reference is present, providers read configuration from the Platform resource
+3. **Access Cross-Provider Configuration**: Providers can discover configuration from other providers referenced by the same Platform
+4. **Begin Full Reconciliation**: Only after all required configuration is discovered do providers proceed with installation
+
+**Owner Reference Configuration Discovery Flow:**
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Platform as PlatformReconciler
+    participant Provider as ProviderReconciler<br/>(e.g., GiteaProvider)
+    participant K8s as Kubernetes API
+
+    User->>K8s: Create Platform CR<br/>References GiteaProvider
+    User->>K8s: Create GiteaProvider CR<br/>(minimal config, no host)
+    
+    K8s->>Provider: Reconcile GiteaProvider
+    Provider->>Provider: Check for owner reference
+    Note over Provider: No owner reference found
+    Provider->>Provider: Set Phase: "WaitingForPlatform"
+    Provider->>K8s: Update status (not Ready)
+    
+    K8s->>Platform: Reconcile Platform
+    Platform->>K8s: Get GiteaProvider
+    Platform->>Platform: Add Platform as owner reference
+    Platform->>K8s: Update GiteaProvider with ownerRef
+    
+    K8s->>Provider: Reconcile GiteaProvider
+    Provider->>Provider: Check for owner reference
+    Note over Provider: Owner reference found!
+    Provider->>K8s: Get Platform CR
+    Provider->>Provider: Discover host from Platform.Spec.Domain
+    Provider->>Provider: Discover other config from Platform
+    Provider->>Provider: Check if all required config present
+    Note over Provider: All config discovered
+    Provider->>Provider: Set Phase: "Installing"
+    Provider->>Provider: Begin Gitea installation
+    Provider->>K8s: Update status with endpoint, etc.
+    Provider->>Provider: Set Phase: "Ready"
+```
+
+#### Configuration Discovery from Platform
+
+Providers can discover various configuration parameters from the Platform resource:
+
+**Example: Host Discovery Pattern**
+
+```go
+// GiteaProviderReconciler.Reconcile
+func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    provider := &v1alpha2.GiteaProvider{}
+    if err := r.Get(ctx, req.NamespacedName, provider); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+    
+    // Step 1: Check for Platform owner reference
+    platformRef := getPlatformOwnerReference(provider)
+    if platformRef == nil {
+        // No Platform owner yet - wait
+        meta.SetStatusCondition(&provider.Status.Conditions, metav1.Condition{
+            Type:    "Ready",
+            Status:  metav1.ConditionFalse,
+            Reason:  "WaitingForPlatform",
+            Message: "Waiting for Platform resource to add owner reference",
+        })
+        provider.Status.Phase = "WaitingForPlatform"
+        r.Status().Update(ctx, provider)
+        return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+    }
+    
+    // Step 2: Get Platform resource
+    platform := &v1alpha2.Platform{}
+    platformKey := types.NamespacedName{
+        Name:      platformRef.Name,
+        Namespace: provider.Namespace,
+    }
+    if err := r.Get(ctx, platformKey, platform); err != nil {
+        return ctrl.Result{}, err
+    }
+    
+    // Step 3: Discover configuration from Platform
+    // Host is derived from Platform.Spec.Domain if not explicitly set in provider
+    host := provider.Spec.Host
+    if host == "" {
+        // Discover host from Platform
+        host = platform.Spec.Domain
+    }
+    
+    protocol := provider.Spec.Protocol
+    if protocol == "" {
+        // Could discover from Platform ingress config
+        if platform.Spec.IngressConfig != nil && platform.Spec.IngressConfig.TLSSecretRef != nil {
+            protocol = "https"
+        } else {
+            protocol = "http"
+        }
+    }
+    
+    // Step 4: Check if all required configuration is present
+    if host == "" {
+        meta.SetStatusCondition(&provider.Status.Conditions, metav1.Condition{
+            Type:    "Ready",
+            Status:  metav1.ConditionFalse,
+            Reason:  "MissingConfiguration",
+            Message: "Required configuration field 'host' not found in provider or platform",
+        })
+        provider.Status.Phase = "ConfigurationError"
+        r.Status().Update(ctx, provider)
+        return ctrl.Result{}, fmt.Errorf("missing required configuration: host")
+    }
+    
+    // Step 5: All configuration discovered - proceed with reconciliation
+    provider.Status.Phase = "Installing"
+    r.Status().Update(ctx, provider)
+    
+    // Continue with Gitea installation using discovered configuration...
+    return r.reconcileGitea(ctx, provider, host, protocol)
+}
+
+// Helper function to extract Platform owner reference
+func getPlatformOwnerReference(provider *v1alpha2.GiteaProvider) *metav1.OwnerReference {
+    for i := range provider.OwnerReferences {
+        ref := &provider.OwnerReferences[i]
+        if ref.APIVersion == "idpbuilder.cnoe.io/v1alpha2" && ref.Kind == "Platform" {
+            return ref
+        }
+    }
+    return nil
+}
+```
+
+#### Configuration Discovery from Other Providers
+
+Providers can also discover configuration from other providers referenced by the same Platform:
+
+```go
+// Example: ArgoCDProvider discovering Gateway configuration
+func (r *ArgoCDProviderReconciler) discoverIngressConfig(ctx context.Context, platform *v1alpha2.Platform) (string, string, error) {
+    // Find Gateway provider from Platform
+    if len(platform.Spec.Components.Gateways) == 0 {
+        return "", "", fmt.Errorf("no gateway provider configured")
+    }
+    
+    // Get first gateway provider (could be enhanced to support selection)
+    gatewayRef := platform.Spec.Components.Gateways[0]
+    
+    // Fetch gateway provider as unstructured (duck-typing)
+    gateway := &unstructured.Unstructured{}
+    gateway.SetGroupVersionKind(schema.GroupVersionKind{
+        Group:   "idpbuilder.cnoe.io",
+        Version: "v1alpha2",
+        Kind:    gatewayRef.Kind,
+    })
+    
+    key := types.NamespacedName{
+        Name:      gatewayRef.Name,
+        Namespace: gatewayRef.Namespace,
+    }
+    if err := r.Get(ctx, key, gateway); err != nil {
+        return "", "", err
+    }
+    
+    // Extract ingress class name from gateway provider status (duck-typed field)
+    ingressClassName, found, err := unstructured.NestedString(gateway.Object, "status", "ingressClassName")
+    if err != nil || !found {
+        return "", "", fmt.Errorf("gateway provider does not have ingressClassName in status")
+    }
+    
+    loadBalancerEndpoint, _, _ := unstructured.NestedString(gateway.Object, "status", "loadBalancerEndpoint")
+    
+    return ingressClassName, loadBalancerEndpoint, nil
+}
+```
+
+#### Platform Controller Responsibilities
+
+The Platform controller is responsible for establishing owner references:
+
+```go
+// PlatformReconciler adds owner references to provider CRs
+func (r *PlatformReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    platform := &v1alpha2.Platform{}
+    if err := r.Get(ctx, req.NamespacedName, platform); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+    
+    // Process Git Providers
+    for _, providerRef := range platform.Spec.Components.GitProviders {
+        if err := r.ensureOwnerReference(ctx, platform, providerRef); err != nil {
+            return ctrl.Result{}, err
+        }
+    }
+    
+    // Process Gateway Providers
+    for _, providerRef := range platform.Spec.Components.Gateways {
+        if err := r.ensureOwnerReference(ctx, platform, providerRef); err != nil {
+            return ctrl.Result{}, err
+        }
+    }
+    
+    // Process GitOps Providers
+    for _, providerRef := range platform.Spec.Components.GitOpsProviders {
+        if err := r.ensureOwnerReference(ctx, platform, providerRef); err != nil {
+            return ctrl.Result{}, err
+        }
+    }
+    
+    return ctrl.Result{}, nil
+}
+
+func (r *PlatformReconciler) ensureOwnerReference(ctx context.Context, platform *v1alpha2.Platform, providerRef v1alpha2.ProviderReference) error {
+    // Fetch provider as unstructured (works for any provider type)
+    provider := &unstructured.Unstructured{}
+    provider.SetGroupVersionKind(schema.GroupVersionKind{
+        Group:   "idpbuilder.cnoe.io",
+        Version: "v1alpha2",
+        Kind:    providerRef.Kind,
+    })
+    
+    key := types.NamespacedName{
+        Name:      providerRef.Name,
+        Namespace: providerRef.Namespace,
+    }
+    
+    if err := r.Get(ctx, key, provider); err != nil {
+        return err
+    }
+    
+    // Check if Platform is already an owner
+    hasOwnerRef := false
+    for _, ref := range provider.GetOwnerReferences() {
+        if ref.UID == platform.UID {
+            hasOwnerRef = true
+            break
+        }
+    }
+    
+    if !hasOwnerRef {
+        // Add Platform as owner reference
+        ownerRef := metav1.OwnerReference{
+            APIVersion: platform.APIVersion,
+            Kind:       platform.Kind,
+            Name:       platform.Name,
+            UID:        platform.UID,
+            Controller: pointer.Bool(false), // Not a controller owner
+        }
+        
+        refs := provider.GetOwnerReferences()
+        refs = append(refs, ownerRef)
+        provider.SetOwnerReferences(refs)
+        
+        if err := r.Update(ctx, provider); err != nil {
+            return err
+        }
+    }
+    
+    return nil
+}
+```
+
+#### Benefits of the Owner Reference Pattern
+
+1. **Centralized Configuration**: Platform-level configuration (like domain) is defined once in the Platform CR
+2. **Reduced Duplication**: Providers don't need to repeat configuration that's common across the platform
+3. **Dynamic Discovery**: Providers can adapt to different Platform configurations automatically
+4. **Clear Ownership**: Owner references establish clear lifecycle management
+5. **Coordination**: Platform controller can orchestrate provider initialization order
+6. **Cross-Provider Integration**: Providers can discover and use configuration from other providers
+7. **Flexibility**: Providers can have sensible defaults but be overridden by Platform-level config
+
+#### Common Configuration Discovery Patterns
+
+| Configuration Field | Source Priority | Example |
+|-------------------|-----------------|---------|
+| **host** | 1. Provider.Spec.Host<br/>2. Platform.Spec.Domain | GiteaProvider discovers host from Platform domain |
+| **protocol** | 1. Provider.Spec.Protocol<br/>2. Platform.Spec.IngressConfig.TLSSecretRef (implies https) | HTTPS if Platform has TLS configured |
+| **ingressClassName** | 1. Provider.Spec.IngressClassName<br/>2. Gateway Provider Status | ArgoCD discovers ingress class from Gateway provider |
+| **port** | 1. Provider.Spec.Port<br/>2. Platform.Spec.IngressConfig.Port | Use Platform's configured port |
+
+#### Provider States with Owner Reference Pattern
+
+Providers now have additional states:
+
+1. **WaitingForPlatform**: Provider is waiting for Platform to add owner reference
+2. **ConfigurationError**: Owner reference present but required configuration missing
+3. **Discovering**: Provider is discovering configuration from Platform/other providers
+4. **Installing**: Provider has all required configuration and is installing
+5. **Ready**: Provider is fully operational
+6. **Failed**: Installation or operation failed
+
+#### Example: Complete GiteaProvider with Owner Reference Pattern
+
+```yaml
+# Platform CR with domain configuration
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: localdev
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me
+  ingressConfig:
+    usePathRouting: false
+    tlsSecretRef:
+      name: platform-tls
+      namespace: idpbuilder-system
+  components:
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+---
+# GiteaProvider CR - minimal config, host will be discovered
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: gitea-local
+  namespace: idpbuilder-system
+  ownerReferences:
+    # Added automatically by Platform controller
+    - apiVersion: idpbuilder.cnoe.io/v1alpha2
+      kind: Platform
+      name: localdev
+      uid: 12345678-90ab-cdef-1234-567890abcdef
+      controller: false
+spec:
+  namespace: gitea
+  version: 1.24.3
+  # host is NOT specified - will be discovered from Platform.Spec.Domain
+  # protocol is NOT specified - will be discovered from Platform.Spec.IngressConfig
+  adminUser:
+    autoGenerate: true
+  organizations:
+    - name: idpbuilder
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: ReconciliationSucceeded
+      message: "Gitea installed successfully with configuration discovered from Platform"
+  phase: Ready
+  # Duck-typed fields populated after successful installation
+  endpoint: https://gitea.cnoe.localtest.me  # Uses discovered host and protocol
+  internalEndpoint: http://my-gitea-http.gitea.svc.cluster.local:3000
+  credentialsSecretRef:
+    name: gitea-admin-secret
+    namespace: gitea
+    key: token
+  installed: true
+  version: 1.24.3
+```
 
 ### New Custom Resource Definitions
 
@@ -1584,12 +1946,15 @@ This allows each sub-phase to be:
 
    func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
        // 1. Fetch GiteaProvider CR
-       // 2. Install Gitea using existing embedded manifests (reuse from LocalbuildReconciler)
-       // 3. Wait for Gitea to be ready
-       // 4. Create admin user and organization using Gitea API
-       // 5. Generate and store credentials in secret
-       // 6. Update status with duck-typed fields (endpoint, internalEndpoint, credentialsSecretRef)
-       // 7. Set Ready condition
+       // 2. Check for Platform owner reference - WAIT if not present (owner reference pattern)
+       // 3. Discover configuration from Platform (host from domain, protocol from TLS config)
+       // 4. Validate all required configuration is present
+       // 5. Install Gitea using existing embedded manifests (reuse from LocalbuildReconciler)
+       // 6. Wait for Gitea to be ready
+       // 7. Create admin user and organization using Gitea API
+       // 8. Generate and store credentials in secret
+       // 9. Update status with duck-typed fields (endpoint, internalEndpoint, credentialsSecretRef)
+       // 10. Set Ready condition
    }
 
    func (r *GiteaProviderReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -1598,6 +1963,8 @@ This allows each sub-phase to be:
            Complete(r)
    }
    ```
+   - **IMPLEMENT** Owner reference pattern: Wait for Platform to add owner reference before reconciling
+   - **IMPLEMENT** Configuration discovery from Platform (host, protocol, etc.)
    - **MIGRATE** Gitea installation logic from `pkg/controllers/localbuild/gitea.go`
    - **MIGRATE** Gitea embedded manifests from `pkg/controllers/localbuild/resources/gitea/`
    - **MIGRATE** Gitea client integration and API calls from LocalbuildReconciler
@@ -1606,6 +1973,7 @@ This allows each sub-phase to be:
    - Create admin user and organization
    - Update duck-typed status fields
    - Add proper error handling and conditions
+   - Handle "WaitingForPlatform" phase when owner reference not present
 
 6. **Migration and Cleanup**
    - **REMOVE** Gitea-related code from `pkg/controllers/localbuild/controller.go`:
@@ -1630,17 +1998,20 @@ This allows each sub-phase to be:
        // 1. Fetch Platform CR
        // 2. For each gitProvider reference:
        //    a. Fetch provider CR (unstructured)
-       //    b. Extract status using GetGitProviderStatus()
-       //    c. Aggregate ready status
+       //    b. Ensure Platform is added as owner reference (owner reference pattern)
+       //    c. Extract status using GetGitProviderStatus()
+       //    d. Aggregate ready status
        // 3. Update Platform status with aggregated provider status
        // 4. Set Platform Ready condition based on all providers
    }
    ```
+   - **IMPLEMENT** Owner reference management: Add Platform as owner to all referenced providers
    - Implement basic Platform reconciliation
    - Support only gitProviders initially
    - Use duck-typing to access provider status
    - Aggregate provider status into Platform status
    - Update conditions
+   - Handle provider CRs that don't exist yet (graceful error handling)
 
 7. **Testing**
    - Unit tests for GiteaProviderReconciler
@@ -1664,7 +2035,10 @@ This allows each sub-phase to be:
 
 **Success Criteria**:
 - Can create a Platform CR that references a GiteaProvider
-- GiteaProvider installs Gitea successfully
+- **Platform controller adds owner reference to GiteaProvider**
+- **GiteaProvider waits in "WaitingForPlatform" state until owner reference is added**
+- **GiteaProvider discovers host from Platform.Spec.Domain**
+- GiteaProvider installs Gitea successfully using discovered configuration
 - Platform status correctly aggregates GiteaProvider status
 - Duck-typing access to GiteaProvider status works
 - All tests pass
@@ -1677,20 +2051,32 @@ This allows each sub-phase to be:
 # 1. Apply CRDs
 kubectl apply -f config/crd/
 
-# 2. Create GiteaProvider
+# 2. Create GiteaProvider (without owner reference initially)
 kubectl apply -f examples/giteaprovider.yaml
 
-# 3. Create Platform referencing GiteaProvider
+# 3. Verify GiteaProvider is waiting for Platform
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.status.phase}'
+# Expected: "WaitingForPlatform"
+
+# 4. Create Platform referencing GiteaProvider
 kubectl apply -f examples/platform-gitea-only.yaml
 
-# 4. Verify Gitea installation
+# 5. Verify owner reference was added by Platform controller
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.metadata.ownerReferences[0].kind}'
+# Expected: "Platform"
+
+# 6. Verify Gitea installation proceeds after owner reference added
 kubectl get pods -n gitea
 kubectl get giteaprovider gitea-local -n idpbuilder-system -o yaml
 
-# 5. Verify Platform status
+# 7. Verify Platform status
 kubectl get platform localdev -n idpbuilder-system -o yaml
 
-# 6. Access Gitea
+# 8. Verify discovered configuration is used in endpoint
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.status.endpoint}'
+# Expected: Should include Platform.Spec.Domain (cnoe.localtest.me)
+
+# 9. Access Gitea
 curl https://gitea.cnoe.localtest.me
 ```
 
@@ -2846,6 +3232,277 @@ The following changes will require user action:
 - **v0.12.0 (Phase 7, Month 9)**: Flux provider added
 - **v1.0.0 (Phase 8, Months 10-12)**: Production features, stabilization, and first stable release with full provider ecosystem
 
+### Owner Reference Pattern Migration Guide
+
+For existing provider implementations that don't use the owner reference pattern, this guide provides migration steps.
+
+#### Identifying Providers That Need Migration
+
+Providers that need migration to the owner reference pattern exhibit these characteristics:
+
+1. **Immediate reconciliation**: Start installing immediately when created, without waiting for Platform
+2. **Duplicated configuration**: Require host, domain, or other Platform-level config in their spec
+3. **No owner reference checking**: Don't check for Platform owner reference before reconciling
+4. **Static configuration**: Don't discover configuration from Platform or other providers
+
+#### Migration Steps for Provider Controllers
+
+**Step 1: Add Owner Reference Check**
+
+Add a check at the beginning of the Reconcile method:
+
+```go
+// Before migration
+func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    provider := &v1alpha2.GiteaProvider{}
+    if err := r.Get(ctx, req.NamespacedName, provider); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+    
+    // Immediately start installation
+    return r.reconcileGitea(ctx, provider)
+}
+
+// After migration
+func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    provider := &v1alpha2.GiteaProvider{}
+    if err := r.Get(ctx, req.NamespacedName, provider); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)
+    }
+    
+    // NEW: Check for Platform owner reference
+    platformRef := getPlatformOwnerReference(provider)
+    if platformRef == nil {
+        meta.SetStatusCondition(&provider.Status.Conditions, metav1.Condition{
+            Type:    "Ready",
+            Status:  metav1.ConditionFalse,
+            Reason:  "WaitingForPlatform",
+            Message: "Waiting for Platform resource to add owner reference",
+        })
+        provider.Status.Phase = "WaitingForPlatform"
+        r.Status().Update(ctx, provider)
+        return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+    }
+    
+    // Continue with installation
+    return r.reconcileGitea(ctx, provider)
+}
+
+// Helper function
+func getPlatformOwnerReference(obj client.Object) *metav1.OwnerReference {
+    for i := range obj.GetOwnerReferences() {
+        ref := &obj.GetOwnerReferences()[i]
+        if ref.APIVersion == "idpbuilder.cnoe.io/v1alpha2" && ref.Kind == "Platform" {
+            return ref
+        }
+    }
+    return nil
+}
+```
+
+**Step 2: Implement Configuration Discovery**
+
+Add logic to discover configuration from Platform:
+
+```go
+// NEW: After owner reference check, discover configuration
+platform := &v1alpha2.Platform{}
+platformKey := types.NamespacedName{
+    Name:      platformRef.Name,
+    Namespace: provider.Namespace,
+}
+if err := r.Get(ctx, platformKey, platform); err != nil {
+    return ctrl.Result{}, err
+}
+
+// Discover host from Platform if not explicitly set
+host := provider.Spec.Host
+if host == "" {
+    host = platform.Spec.Domain
+}
+
+// Discover protocol from Platform TLS config
+protocol := provider.Spec.Protocol
+if protocol == "" {
+    if platform.Spec.IngressConfig != nil && platform.Spec.IngressConfig.TLSSecretRef != nil {
+        protocol = "https"
+    } else {
+        protocol = "http"
+    }
+}
+
+// Validate discovered configuration
+if host == "" {
+    meta.SetStatusCondition(&provider.Status.Conditions, metav1.Condition{
+        Type:    "Ready",
+        Status:  metav1.ConditionFalse,
+        Reason:  "ConfigurationError",
+        Message: "Required configuration 'host' not found in provider spec or platform domain",
+    })
+    provider.Status.Phase = "ConfigurationError"
+    r.Status().Update(ctx, provider)
+    return ctrl.Result{}, fmt.Errorf("missing required configuration: host")
+}
+
+// Proceed with discovered configuration
+return r.reconcileGitea(ctx, provider, host, protocol)
+```
+
+**Step 3: Update Provider CRD**
+
+Make previously-required fields optional in the CRD:
+
+```go
+// Before migration
+type GiteaProviderSpec struct {
+    // Host is the hostname for Gitea endpoint
+    // +kubebuilder:validation:Required  // REMOVE THIS
+    Host string `json:"host"`
+}
+
+// After migration
+type GiteaProviderSpec struct {
+    // Host is the hostname for Gitea endpoint
+    // If not specified, will be discovered from Platform.Spec.Domain
+    // +optional  // ADD THIS
+    Host string `json:"host,omitempty"`
+}
+```
+
+**Step 4: Update Platform Controller**
+
+Ensure Platform controller adds owner references:
+
+```go
+func (r *PlatformReconciler) ensureOwnerReference(ctx context.Context, platform *v1alpha2.Platform, providerRef v1alpha2.ProviderReference) error {
+    // Fetch provider as unstructured
+    provider := &unstructured.Unstructured{}
+    provider.SetGroupVersionKind(schema.GroupVersionKind{
+        Group:   "idpbuilder.cnoe.io",
+        Version: "v1alpha2",
+        Kind:    providerRef.Kind,
+    })
+    
+    key := types.NamespacedName{
+        Name:      providerRef.Name,
+        Namespace: providerRef.Namespace,
+    }
+    
+    if err := r.Get(ctx, key, provider); err != nil {
+        return err
+    }
+    
+    // Check if owner reference already exists
+    hasOwnerRef := false
+    for _, ref := range provider.GetOwnerReferences() {
+        if ref.UID == platform.UID {
+            hasOwnerRef = true
+            break
+        }
+    }
+    
+    if !hasOwnerRef {
+        // Add Platform as owner reference
+        ownerRef := metav1.OwnerReference{
+            APIVersion: platform.APIVersion,
+            Kind:       platform.Kind,
+            Name:       platform.Name,
+            UID:        platform.UID,
+            Controller: pointer.Bool(false),
+        }
+        
+        refs := provider.GetOwnerReferences()
+        refs = append(refs, ownerRef)
+        provider.SetOwnerReferences(refs)
+        
+        if err := r.Update(ctx, provider); err != nil {
+            return err
+        }
+    }
+    
+    return nil
+}
+```
+
+**Step 5: Update Documentation and Examples**
+
+Update examples to show the new pattern:
+
+```yaml
+# Old example - host required
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: gitea-local
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  host: gitea.cnoe.localtest.me  # Had to specify explicitly
+  protocol: https
+  adminUser:
+    autoGenerate: true
+
+# New example - host discovered from Platform
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: gitea-local
+  namespace: idpbuilder-system
+spec:
+  namespace: gitea
+  # host and protocol will be discovered from Platform
+  adminUser:
+    autoGenerate: true
+---
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: localdev
+  namespace: idpbuilder-system
+spec:
+  domain: cnoe.localtest.me  # Providers will use this
+  ingressConfig:
+    tlsSecretRef:
+      name: platform-tls
+      namespace: idpbuilder-system
+  components:
+    gitProviders:
+      - name: gitea-local
+        kind: GiteaProvider
+        namespace: idpbuilder-system
+```
+
+#### Backward Compatibility Considerations
+
+To maintain backward compatibility during migration:
+
+1. **Keep explicit configuration working**: If provider spec has explicit values, use them (don't force discovery)
+2. **Gradual rollout**: Support both patterns during transition period
+3. **Clear documentation**: Document which fields can be discovered and which must be explicit
+4. **Validation**: Add validation to ensure either explicit config OR Platform owner reference is present
+
+#### Testing Migration
+
+After migrating a provider, test both scenarios:
+
+1. **With explicit configuration** (backward compatibility):
+   ```bash
+   # Create provider with explicit host
+   kubectl apply -f provider-with-host.yaml
+   # Should work immediately without Platform
+   ```
+
+2. **With discovery** (new pattern):
+   ```bash
+   # Create provider without host
+   kubectl apply -f provider-minimal.yaml
+   # Should wait for Platform
+   
+   # Create Platform
+   kubectl apply -f platform.yaml
+   # Provider should discover config and proceed
+   ```
+
 ## Benefits & Impact
 
 ### Benefits
@@ -2894,6 +3551,212 @@ The following changes will require user action:
 - **High impact**: Significant code restructuring
 - **Benefit**: Cleaner architecture, easier to contribute
 - **Action needed**: Understand new controller patterns
+
+## Troubleshooting Guide: Owner Reference Pattern
+
+This section provides troubleshooting guidance for common issues with the owner reference pattern.
+
+### Issue: Provider Stuck in "WaitingForPlatform" Phase
+
+**Symptoms:**
+```bash
+$ kubectl get giteaprovider -n idpbuilder-system
+NAME          READY   PHASE                AGE
+gitea-local   False   WaitingForPlatform   5m
+```
+
+**Diagnosis:**
+```bash
+# Check if Platform CR exists
+kubectl get platform -n idpbuilder-system
+
+# Check if Platform references the provider
+kubectl get platform localdev -n idpbuilder-system -o jsonpath='{.spec.components.gitProviders[*].name}'
+
+# Check owner references on provider
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.metadata.ownerReferences}'
+```
+
+**Possible Causes & Solutions:**
+
+1. **Platform CR not created yet**
+   - Solution: Create the Platform CR that references this provider
+
+2. **Provider not referenced in Platform.Spec.Components**
+   - Solution: Add the provider to the appropriate list in Platform CR:
+     ```yaml
+     spec:
+       components:
+         gitProviders:
+           - name: gitea-local  # Must match provider name
+             kind: GiteaProvider
+             namespace: idpbuilder-system  # Must match provider namespace
+     ```
+
+3. **Platform controller not running**
+   - Check Platform controller logs:
+     ```bash
+     kubectl logs -n idpbuilder-system deployment/idpbuilder-controller-manager -c manager | grep PlatformReconciler
+     ```
+   - Solution: Ensure controller manager is running and healthy
+
+4. **Namespace mismatch**
+   - Verify provider and Platform are in the same namespace (or provider namespace matches reference)
+   - Solution: Update Platform reference namespace or move provider to correct namespace
+
+### Issue: Provider in "ConfigurationError" Phase
+
+**Symptoms:**
+```bash
+$ kubectl get giteaprovider -n idpbuilder-system
+NAME          READY   PHASE                AGE
+gitea-local   False   ConfigurationError   2m
+```
+
+**Diagnosis:**
+```bash
+# Check provider status conditions
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'
+
+# Check Platform configuration
+kubectl get platform localdev -n idpbuilder-system -o yaml
+```
+
+**Possible Causes & Solutions:**
+
+1. **Required configuration missing from Platform**
+   - Example: Platform.Spec.Domain is empty
+   - Solution: Set required fields in Platform CR:
+     ```yaml
+     spec:
+       domain: cnoe.localtest.me  # Required for host discovery
+     ```
+
+2. **Invalid configuration values**
+   - Check provider logs for validation errors:
+     ```bash
+     kubectl logs -n idpbuilder-system deployment/idpbuilder-controller-manager -c manager | grep GiteaProvider
+     ```
+   - Solution: Fix configuration values in Platform CR
+
+3. **Cross-provider dependency not ready**
+   - If provider needs config from another provider (e.g., ArgoCD needs Gateway ingress class)
+   - Check dependency provider status:
+     ```bash
+     kubectl get nginxgateway,argocdprovider -n idpbuilder-system
+     ```
+   - Solution: Ensure dependency providers are Ready before dependent provider
+
+### Issue: Owner Reference Not Being Added
+
+**Symptoms:**
+- Provider stays in WaitingForPlatform even though Platform exists
+
+**Diagnosis:**
+```bash
+# Check Platform controller is reconciling
+kubectl get platform localdev -n idpbuilder-system -o jsonpath='{.status.observedGeneration}'
+
+# Check Platform status for errors
+kubectl describe platform localdev -n idpbuilder-system
+
+# Check controller logs
+kubectl logs -n idpbuilder-system deployment/idpbuilder-controller-manager -c manager | grep "ensureOwnerReference"
+```
+
+**Possible Causes & Solutions:**
+
+1. **Platform controller RBAC insufficient**
+   - Platform controller needs permission to update provider CRs
+   - Solution: Verify ClusterRole has patch/update permissions for all provider types
+
+2. **Provider CR in different namespace than expected**
+   - Solution: Ensure provider namespace in Platform spec matches actual provider namespace
+
+3. **Controller reconciliation failing**
+   - Check controller logs for errors
+   - Common issues: API server connectivity, RBAC, resource quotas
+   - Solution: Fix underlying issue preventing controller from updating resources
+
+### Issue: Configuration Not Being Discovered
+
+**Symptoms:**
+- Provider is Ready but uses default values instead of Platform configuration
+- Example: Gitea endpoint is `http://gitea.example.com` instead of `https://gitea.cnoe.localtest.me`
+
+**Diagnosis:**
+```bash
+# Check what was discovered
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.status.endpoint}'
+
+# Check Platform domain
+kubectl get platform localdev -n idpbuilder-system -o jsonpath='{.spec.domain}'
+
+# Check if provider has explicit configuration
+kubectl get giteaprovider gitea-local -n idpbuilder-system -o jsonpath='{.spec.host}'
+```
+
+**Possible Causes & Solutions:**
+
+1. **Provider spec has explicit value overriding discovery**
+   - If provider.spec.host is set, it takes precedence over Platform.spec.domain
+   - Solution: Remove explicit value from provider spec to enable discovery
+
+2. **Discovery logic not implemented in provider**
+   - Provider may not yet implement configuration discovery
+   - Solution: Check provider implementation and update if needed
+
+3. **Platform configuration empty**
+   - Solution: Set configuration in Platform CR
+
+### Issue: Provider Reconciles Before Platform is Ready
+
+**Symptoms:**
+- Provider tries to install but fails due to missing dependencies
+- Example: ArgoCD tries to create ingress but Gateway provider not ready
+
+**Diagnosis:**
+```bash
+# Check Platform readiness
+kubectl get platform localdev -n idpbuilder-system -o jsonpath='{.status.phase}'
+
+# Check all providers status
+kubectl get giteaprovider,nginxgateway,argocdprovider -n idpbuilder-system
+
+# Check provider events
+kubectl describe argocdprovider argocd -n idpbuilder-system
+```
+
+**Possible Causes & Solutions:**
+
+1. **Provider doesn't check dependency readiness**
+   - Solution: Update provider to check cross-provider dependencies before proceeding
+   - Example: ArgoCD should wait for Gateway to be Ready before creating ingress
+
+2. **Circular dependency**
+   - Multiple providers waiting for each other
+   - Solution: Identify and break the circular dependency
+
+### Best Practices for Owner Reference Pattern
+
+1. **Always use Platform-level configuration when possible**
+   - Reduces duplication and makes platform easier to manage
+
+2. **Set explicit values in provider spec only when needed**
+   - Use provider spec for provider-specific overrides
+   - Let Platform provide common configuration
+
+3. **Check owner references before debugging further**
+   - `kubectl get <provider> -o jsonpath='{.metadata.ownerReferences}'`
+   - Ensures Platform has established ownership
+
+4. **Monitor provider phases**
+   - WaitingForPlatform → Discovering → Installing → Ready
+   - Each phase transition should be quick (< 30 seconds)
+
+5. **Use kubectl events to track issues**
+   - `kubectl get events --field-selector involvedObject.name=<provider-name>`
+   - Events show why provider is waiting or failing
 
 ## Risks & Mitigation
 
