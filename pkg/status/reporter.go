@@ -76,6 +76,9 @@ func NewReporter(colored bool) *Reporter {
 
 // SetSimpleMode enables or disables simple mode (no inline updates)
 func (r *Reporter) SetSimpleMode(simple bool) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.simpleMode = simple
@@ -83,6 +86,9 @@ func (r *Reporter) SetSimpleMode(simple bool) {
 
 // GetSteps returns a copy of the current steps (for testing)
 func (r *Reporter) GetSteps() []Step {
+	if r == nil {
+		return nil
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	// Return a copy to prevent external modification
@@ -93,6 +99,9 @@ func (r *Reporter) GetSteps() []Step {
 
 // AddStep adds a new step to the workflow
 func (r *Reporter) AddStep(name, description string) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.steps = append(r.steps, Step{
@@ -104,6 +113,9 @@ func (r *Reporter) AddStep(name, description string) {
 
 // StartStep marks a step as running
 func (r *Reporter) StartStep(name string) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -120,6 +132,9 @@ func (r *Reporter) StartStep(name string) {
 
 // CompleteStep marks a step as complete
 func (r *Reporter) CompleteStep(name string) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -135,6 +150,9 @@ func (r *Reporter) CompleteStep(name string) {
 
 // FailStep marks a step as failed
 func (r *Reporter) FailStep(name string, err error) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -153,6 +171,9 @@ func (r *Reporter) FailStep(name string, err error) {
 
 // AddSubStep adds a sub-step to a parent step
 func (r *Reporter) AddSubStep(parentName, subStepName, description string) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -171,6 +192,9 @@ func (r *Reporter) AddSubStep(parentName, subStepName, description string) {
 
 // UpdateSubStep updates the state of a sub-step
 func (r *Reporter) UpdateSubStep(parentName, subStepName string, state int) {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -345,6 +369,9 @@ func (r *Reporter) isTerminal() bool {
 
 // Summary prints a final summary
 func (r *Reporter) Summary() {
+	if r == nil {
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
