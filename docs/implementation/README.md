@@ -37,6 +37,30 @@ Detailed analysis of individual test execution times with charts and breakdowns.
 - Monitoring test execution trends
 - Planning test infrastructure improvements
 
+### [Test Coverage Improvement Plan](./test-coverage-improvement-plan.md)
+
+Comprehensive plan for improving test coverage across the codebase, focusing on modules with low coverage.
+
+**Quick Facts:**
+- Current Overall Coverage: 27.3%
+- Target Coverage: 50-55%
+- 30+ modules identified with < 30% coverage
+- Organized into 5 priority groups
+
+**Key Topics:**
+- Modules with low coverage analysis
+- Fake Kubernetes client testing strategies
+- Specific test case recommendations by module
+- Code examples and patterns
+- Implementation priority guidance
+- Testing best practices
+
+**Use Cases:**
+- Planning test development work
+- Understanding which modules need tests
+- Learning testing patterns for controllers and utilities
+- Improving overall code quality and reliability
+
 ## Running Test Analysis
 
 To generate test timing analysis yourself:
