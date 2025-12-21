@@ -239,6 +239,10 @@ func (r *GiteaProviderReconciler) buildConfigFromSpec(provider *v1alpha2.GiteaPr
 	if config.Port == "" {
 		config.Port = "8080"
 	}
+	// Set IngressHost to Host if not explicitly set
+	if config.IngressHost == "" {
+		config.IngressHost = config.Host
+	}
 
 	return config
 }

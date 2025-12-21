@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package gitprovider
 
 import (
@@ -148,5 +145,85 @@ func TestGiteaProviderReconciler_DeletionHandling(t *testing.T) {
 	if err == nil {
 		// If object is still there, finalizer should be removed
 		assert.NotContains(t, updatedProvider.Finalizers, "giteaprovider.idpbuilder.cnoe.io/finalizer")
+	}
+}
+
+func TestBuildConfigFromSpec(t *testing.T) {
+	tests := []struct {
+		name     string
+		provider *v1alpha2.GiteaProvider
+		expected v1alpha1.BuildCustomizationSpec
+	}{
+		{
+			name: "all fields set in provider",
+			provider: &v1alpha2.GiteaProvider{
+				Spec: v1alpha2.GiteaProviderSpec{
+					Protocol:       "https",
+					Host:           "example.com",
+					Port:           "8443",
+					UsePathRouting: true,
+				},
+			},
+			expected: v1alpha1.BuildCustomizationSpec{
+				Protocol:       "https",
+				Host:           "example.com",
+				IngressHost:    "example.com",
+				Port:           "8443",
+				UsePathRouting: true,
+			},
+		},
+		{
+			name: "empty fields use defaults",
+			provider: &v1alpha2.GiteaProvider{
+				Spec: v1alpha2.GiteaProviderSpec{},
+			},
+			expected: v1alpha1.BuildCustomizationSpec{
+				Protocol:       "http",
+				Host:           "cnoe.localtest.me",
+				IngressHost:    "cnoe.localtest.me",
+				Port:           "8080",
+				UsePathRouting: false,
+			},
+		},
+		{
+			name: "partial fields with defaults",
+			provider: &v1alpha2.GiteaProvider{
+				Spec: v1alpha2.GiteaProviderSpec{
+					Host: "my-custom-host.com",
+				},
+			},
+			expected: v1alpha1.BuildCustomizationSpec{
+				Protocol:       "http",
+				Host:           "my-custom-host.com",
+				IngressHost:    "my-custom-host.com",
+				Port:           "8080",
+				UsePathRouting: false,
+			},
+		},
+		{
+			name: "IngressHost defaults to Host when empty",
+			provider: &v1alpha2.GiteaProvider{
+				Spec: v1alpha2.GiteaProviderSpec{
+					Protocol: "https",
+					Host:     "test.localtest.me",
+					Port:     "9443",
+				},
+			},
+			expected: v1alpha1.BuildCustomizationSpec{
+				Protocol:       "https",
+				Host:           "test.localtest.me",
+				IngressHost:    "test.localtest.me",
+				Port:           "9443",
+				UsePathRouting: false,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reconciler := &GiteaProviderReconciler{}
+			result := reconciler.buildConfigFromSpec(tt.provider)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 }
