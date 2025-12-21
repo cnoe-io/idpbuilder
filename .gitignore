@@ -2,6 +2,7 @@ idpbuilder
 bin/*
 .DS_Store
 cover.out
+coverage.out
 __debug*
 .vscode
 .idea
