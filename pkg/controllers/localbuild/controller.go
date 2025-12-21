@@ -130,23 +130,7 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			}
 		}
 
-		// Check if the Gitea credentials secret exists
-		giteaAdminPassword, err := r.extractGiteaAdminSecret(ctx)
-		if err != nil {
-			// Gitea admin secret is not yet available ...
-			return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
-		}
-		logger.V(1).Info("Gitea admin secret found ...")
-		// Secret containing the gitea password exists
-		// Lets try to update the password
-		if giteaAdminPassword != "" && giteaAdminPassword != util.StaticPassword {
-			err = r.updateGiteaPassword(ctx, giteaAdminPassword)
-			if err != nil {
-				return ctrl.Result{}, err
-			} else {
-				logger.V(1).Info(fmt.Sprintf("Gitea admin password change succeeded !"))
-			}
-		}
+		// NOTE: Gitea password management removed - now handled by GiteaProvider controller
 	}
 
 	logger.V(1).Info("done installing core packages. passing control to argocd")
@@ -165,7 +149,8 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 
 	installers := map[string]subReconciler{
 		v1alpha1.ArgoCDPackageName: r.ReconcileArgo,
-		v1alpha1.GiteaPackageName:  r.ReconcileGitea,
+		// NOTE: IngressNginx moved to NginxGateway controller (v2)
+		// NOTE: Gitea removed - now managed by GiteaProvider controller
 	}
 	logger.V(1).Info("installing core packages")
 	for k, v := range installers {
@@ -245,7 +230,9 @@ func (r *LocalbuildReconciler) ReconcileArgoAppsWithGitea(ctx context.Context, r
 
 	// push bootstrap app manifests to Gitea. let ArgoCD take over
 	// will need a way to filter them based on user input
-	bootStrapApps := []string{v1alpha1.ArgoCDPackageName, v1alpha1.GiteaPackageName}
+	// NOTE: Gitea removed - now managed by GiteaProvider controller, not as an ArgoCD app
+	// NOTE: IngressNginx removed - now managed by NginxGateway controller (v2)
+	bootStrapApps := []string{v1alpha1.ArgoCDPackageName}
 	for _, n := range bootStrapApps {
 		result, err := r.reconcileEmbeddedApp(ctx, n, resource)
 		if err != nil {
@@ -966,8 +953,8 @@ func GetEmbeddedRawInstallResources(name string, templateData any, config v1alph
 	switch name {
 	case v1alpha1.ArgoCDPackageName:
 		return RawArgocdInstallResources(templateData, config, scheme)
-	case v1alpha1.GiteaPackageName:
-		return RawGiteaInstallResources(templateData, config, scheme)
+	// NOTE: Gitea case removed - now managed by GiteaProvider controller
+	// NOTE: IngressNginx case removed - now managed by NginxGateway controller (v2)
 	default:
 		return nil, fmt.Errorf("unsupported embedded app name %s", name)
 	}

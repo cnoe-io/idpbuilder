@@ -52,10 +52,10 @@ const (
 
 var (
 	// CorePackages is a map of argocd app name to its namespace.
+	// NOTE: Gitea is no longer managed as an ArgoCD app - it's managed by the GiteaProvider controller
+	// NOTE: IngressNginx is no longer managed as an ArgoCD app - it's managed by NginxGateway controller (v2)
 	CorePackages = map[string]string{
 		"argocd": "argocd",
-		"nginx":  "argocd",
-		"gitea":  "argocd",
 	}
 )
 
@@ -163,10 +163,9 @@ func TestGiteaEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 	repos, err := GetGiteaRepos(ctx, baseUrl)
 	assert.Nil(t, err)
 
-	assert.Equal(t, 3, len(repos))
+	// NOTE: Only ArgoCD repo expected (Gitea moved to GiteaProvider, Nginx moved to NginxGateway)
+	assert.Equal(t, 1, len(repos))
 	expectedRepoNames := map[string]struct{}{
-		"idpbuilder-localdev-gitea":  {},
-		"idpbuilder-localdev-nginx":  {},
 		"idpbuilder-localdev-argocd": {},
 	}
 
@@ -258,7 +257,8 @@ func TestArgoCDEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 	err = SendAndParse(ctx, &appResp, httpClient, req)
 	assert.Nil(t, err, fmt.Sprintf("getting argocd applications: %s", err))
 
-	assert.Equal(t, 3, len(appResp.Items), fmt.Sprintf("number of apps do not match: %v", appResp.Items))
+	// NOTE: Only ArgoCD app expected (Gitea moved to GiteaProvider, Nginx moved to NginxGateway)
+	assert.Equal(t, 1, len(appResp.Items), fmt.Sprintf("number of apps do not match: %v", appResp.Items))
 }
 
 func GetBasicAuth(ctx context.Context, name string) (BasicAuth, error) {

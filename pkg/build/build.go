@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha2"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers"
+	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/cnoe-io/idpbuilder/pkg/kind"
+	"github.com/cnoe-io/idpbuilder/pkg/util"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -273,6 +276,18 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return fmt.Errorf("creating localbuild resource: %w", err)
 	}
 
+	// Create GiteaProvider CR for v2 architecture
+	setupLog.Info("Creating giteaprovider resource")
+	if err := b.createGiteaProvider(ctx, kubeClient); err != nil {
+		return fmt.Errorf("creating giteaprovider resource: %w", err)
+	}
+
+	// Create Platform CR that references GiteaProvider
+	setupLog.Info("Creating platform resource")
+	if err := b.createPlatform(ctx, kubeClient); err != nil {
+		return fmt.Errorf("creating platform resource: %w", err)
+	}
+
 	select {
 	case mgrErr := <-managerExit:
 		if mgrErr != nil {
@@ -293,4 +308,62 @@ func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool 
 		s1.UsePathRouting == s2.UsePathRouting &&
 		s1.SelfSignedCert == s2.SelfSignedCert &&
 		s1.StaticPassword == s2.StaticPassword
+}
+
+// createGiteaProvider creates a GiteaProvider CR
+func (b *Build) createGiteaProvider(ctx context.Context, kubeClient client.Client) error {
+	// Ensure gitea namespace exists
+	if err := k8s.EnsureNamespace(ctx, kubeClient, util.GiteaNamespace); err != nil {
+		return fmt.Errorf("ensuring gitea namespace: %w", err)
+	}
+
+	giteaProvider := &v1alpha2.GiteaProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      b.name + "-gitea",
+			Namespace: util.GiteaNamespace,
+		},
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, kubeClient, giteaProvider, func() error {
+		giteaProvider.Spec = v1alpha2.GiteaProviderSpec{
+			Namespace: util.GiteaNamespace,
+			Version:   "1.24.3",
+			AdminUser: v1alpha2.GiteaAdminUser{
+				Username:     "giteaAdmin",
+				Email:        "admin@" + b.cfg.Host,
+				AutoGenerate: true,
+			},
+		}
+		return nil
+	})
+
+	return err
+}
+
+// createPlatform creates a Platform CR that references the GiteaProvider
+func (b *Build) createPlatform(ctx context.Context, kubeClient client.Client) error {
+	platform := &v1alpha2.Platform{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      b.name + "-platform",
+			Namespace: "default",
+		},
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, kubeClient, platform, func() error {
+		platform.Spec = v1alpha2.PlatformSpec{
+			Domain: b.cfg.Host,
+			Components: v1alpha2.PlatformComponents{
+				GitProviders: []v1alpha2.ProviderReference{
+					{
+						Name:      b.name + "-gitea",
+						Kind:      "GiteaProvider",
+						Namespace: util.GiteaNamespace,
+					},
+				},
+			},
+		}
+		return nil
+	})
+
+	return err
 }
