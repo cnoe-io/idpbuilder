@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha2"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/controllers/localbuild"
@@ -101,9 +102,15 @@ func (r *ArgoCDProviderReconciler) installArgoCD(ctx context.Context, argocdProv
 		return fmt.Errorf("failed to ensure namespace: %w", err)
 	}
 
+	// Retrieve template data for ArgoCD manifests
+	templateData, err := r.getTemplateData(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get template data: %w", err)
+	}
+
 	// Load and apply embedded manifests from localbuild resources
 	// Reuse the same ArgoCD installation manifests from localbuild package
-	installObjs, err := k8s.BuildCustomizedObjects("", "resources/argo", localbuild.GetArgoFS(), r.Scheme, nil)
+	installObjs, err := k8s.BuildCustomizedObjects("", "resources/argo", localbuild.GetArgoFS(), r.Scheme, templateData)
 	if err != nil {
 		return fmt.Errorf("failed to build argocd manifests: %w", err)
 	}
@@ -117,6 +124,49 @@ func (r *ArgoCDProviderReconciler) installArgoCD(ctx context.Context, argocdProv
 
 	logger.Info("ArgoCD resources created successfully")
 	return nil
+}
+
+// getTemplateData retrieves the BuildCustomizationSpec data needed for ArgoCD template rendering
+func (r *ArgoCDProviderReconciler) getTemplateData(ctx context.Context) (v1alpha1.BuildCustomizationSpec, error) {
+	logger := log.FromContext(ctx)
+
+	// Retrieve the self-signed certificate from the Secret
+	secret := &corev1.Secret{}
+	err := r.Get(ctx, types.NamespacedName{
+		Name:      globals.SelfSignedCertCMName,
+		Namespace: corev1.NamespaceDefault,
+	}, secret)
+
+	var selfSignedCert string
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("Self-signed certificate Secret not found, ArgoCD will be installed without TLS certificates")
+			selfSignedCert = ""
+		} else {
+			return v1alpha1.BuildCustomizationSpec{}, fmt.Errorf("failed to get self-signed certificate: %w", err)
+		}
+	} else {
+		certData, ok := secret.Data[globals.SelfSignedCertCMKeyName]
+		if !ok {
+			logger.Info("Certificate data not found in Secret, ArgoCD will be installed without TLS certificates")
+			selfSignedCert = ""
+		} else {
+			selfSignedCert = string(certData)
+		}
+	}
+
+	// Create template data with all required fields for ArgoCD templates
+	templateData := v1alpha1.BuildCustomizationSpec{
+		Protocol:       "https",
+		Host:           globals.DefaultHostName,
+		IngressHost:    globals.DefaultHostName,
+		Port:           "8443",
+		UsePathRouting: false,
+		SelfSignedCert: selfSignedCert,
+		StaticPassword: false,
+	}
+
+	return templateData, nil
 }
 
 func (r *ArgoCDProviderReconciler) ensureAdminCredentials(ctx context.Context, argocdProvider *v1alpha2.ArgoCDProvider) error {
