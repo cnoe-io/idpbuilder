@@ -183,6 +183,12 @@ func (r *GiteaProviderReconciler) reconcileGitea(ctx context.Context, provider *
 		return ctrl.Result{}, fmt.Errorf("ensuring namespace: %w", err)
 	}
 
+	// Ensure admin secret exists BEFORE installing Gitea resources
+	// The deployment references this secret in environment variables
+	if err := r.ensureAdminSecretWithoutToken(ctx, provider); err != nil {
+		return ctrl.Result{}, fmt.Errorf("ensuring admin secret: %w", err)
+	}
+
 	// Check if nginx admission webhook is ready before creating Ingress resources
 	// This prevents race condition where Gitea tries to create Ingress before webhook is available
 	ready, err := r.isNginxAdmissionWebhookReady(ctx)
@@ -319,8 +325,8 @@ func (r *GiteaProviderReconciler) isGiteaReady(ctx context.Context, provider *v1
 	return true, nil
 }
 
-// ensureAdminSecret ensures the admin secret exists and has a token
-func (r *GiteaProviderReconciler) ensureAdminSecret(ctx context.Context, provider *v1alpha2.GiteaProvider) (*corev1.Secret, error) {
+// createAdminSecretIfNotExists creates the admin secret with username and password if it doesn't exist
+func (r *GiteaProviderReconciler) createAdminSecretIfNotExists(ctx context.Context, provider *v1alpha2.GiteaProvider) (*corev1.Secret, error) {
 	logger := log.FromContext(ctx)
 
 	secretName := util.GiteaAdminSecret
@@ -365,6 +371,17 @@ func (r *GiteaProviderReconciler) ensureAdminSecret(ctx context.Context, provide
 		}
 	}
 
+	return secret, nil
+}
+
+// ensureAdminSecret ensures the admin secret exists and has a token
+func (r *GiteaProviderReconciler) ensureAdminSecret(ctx context.Context, provider *v1alpha2.GiteaProvider) (*corev1.Secret, error) {
+	// First ensure the secret exists with username and password
+	secret, err := r.createAdminSecretIfNotExists(ctx, provider)
+	if err != nil {
+		return nil, err
+	}
+
 	// Ensure token exists
 	if _, ok := secret.Data[util.GiteaAdminTokenFieldName]; !ok {
 		// Get token from Gitea API
@@ -382,8 +399,8 @@ func (r *GiteaProviderReconciler) ensureAdminSecret(ctx context.Context, provide
 
 		// Update secret with token
 		u := &unstructured.Unstructured{}
-		u.SetName(secretName)
-		u.SetNamespace(secretNamespace)
+		u.SetName(secret.Name)
+		u.SetNamespace(secret.Namespace)
 		u.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Secret"))
 
 		if err := unstructured.SetNestedField(u.Object, encodedToken, "data", util.GiteaAdminTokenFieldName); err != nil {
@@ -395,12 +412,19 @@ func (r *GiteaProviderReconciler) ensureAdminSecret(ctx context.Context, provide
 		}
 
 		// Refetch secret
-		if err := r.Get(ctx, types.NamespacedName{Namespace: secretNamespace, Name: secretName}, secret); err != nil {
+		if err := r.Get(ctx, types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}, secret); err != nil {
 			return nil, err
 		}
 	}
 
 	return secret, nil
+}
+
+// ensureAdminSecretWithoutToken creates the admin secret with username and password only
+// This should be called BEFORE installing Gitea resources since the deployment references this secret
+func (r *GiteaProviderReconciler) ensureAdminSecretWithoutToken(ctx context.Context, provider *v1alpha2.GiteaProvider) error {
+	_, err := r.createAdminSecretIfNotExists(ctx, provider)
+	return err
 }
 
 // handleDeletion handles cleanup when GiteaProvider is deleted
