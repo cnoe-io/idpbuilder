@@ -19,6 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate docs are synced with navigation
+        run: python3 scripts/validate-docs-sync.py
+
       - name: Build site
         run: |
           chmod +x build-site.sh

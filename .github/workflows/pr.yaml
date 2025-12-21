@@ -25,6 +25,8 @@ jobs:
           cache: true
       - name: Check code formatting
         run: make fmt-check
+      - name: Validate documentation sync
+        run: make validate-docs
       - name: Run tests
         run: |
           make build

@@ -62,6 +62,10 @@ test-timing: manifests generate fmt vet ## Run tests and generate timing analysi
 	python3 scripts/analyze_test_times.py test-output.json docs/implementation/test-timing-analysis.md
 	@echo "Report saved to docs/implementation/test-timing-analysis.md"
 	@rm -f test-output.json
+
+.PHONY: validate-docs
+validate-docs: ## Validate that all docs are linked in site navigation.
+	@python3 scripts/validate-docs-sync.py
 	
 
 .PHONY: generate
