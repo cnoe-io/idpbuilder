@@ -326,7 +326,16 @@ func (b *Build) Run(ctx context.Context, recreateCluster bool) error {
 		return fmt.Errorf("creating giteaprovider resource: %w", err)
 	}
 
-	// Create Platform CR that references GiteaProvider
+	// Create ArgoCDProvider CR for v2 architecture
+	setupLog.V(1).Info("Creating argocdprovider resource")
+	if err := b.createArgoCDProvider(ctx, kubeClient); err != nil {
+		if b.statusReporter != nil {
+			b.statusReporter.FailStep("resources", err)
+		}
+		return fmt.Errorf("creating argocdprovider resource: %w", err)
+	}
+
+	// Create Platform CR that references GiteaProvider and ArgoCDProvider
 	setupLog.V(1).Info("Creating platform resource")
 	if err := b.createPlatform(ctx, kubeClient); err != nil {
 		if b.statusReporter != nil {
@@ -402,7 +411,35 @@ func (b *Build) createGiteaProvider(ctx context.Context, kubeClient client.Clien
 	return err
 }
 
-// createPlatform creates a Platform CR that references the GiteaProvider
+// createArgoCDProvider creates an ArgoCDProvider CR
+func (b *Build) createArgoCDProvider(ctx context.Context, kubeClient client.Client) error {
+	// Ensure argocd namespace exists
+	if err := k8s.EnsureNamespace(ctx, kubeClient, globals.ArgoCDNamespace); err != nil {
+		return fmt.Errorf("ensuring argocd namespace: %w", err)
+	}
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      b.name + "-argocd",
+			Namespace: globals.ArgoCDNamespace,
+		},
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, kubeClient, argocdProvider, func() error {
+		argocdProvider.Spec = v1alpha2.ArgoCDProviderSpec{
+			Namespace: globals.ArgoCDNamespace,
+			Version:   "v2.12.0",
+			AdminCredentials: v1alpha2.ArgoCDAdminCredentials{
+				AutoGenerate: true,
+			},
+		}
+		return nil
+	})
+
+	return err
+}
+
+// createPlatform creates a Platform CR that references the GiteaProvider and ArgoCDProvider
 func (b *Build) createPlatform(ctx context.Context, kubeClient client.Client) error {
 	platform := &v1alpha2.Platform{
 		ObjectMeta: metav1.ObjectMeta{
@@ -420,6 +457,13 @@ func (b *Build) createPlatform(ctx context.Context, kubeClient client.Client) er
 						Name:      b.name + "-gitea",
 						Kind:      "GiteaProvider",
 						Namespace: util.GiteaNamespace,
+					},
+				},
+				GitOpsProviders: []v1alpha2.ProviderReference{
+					{
+						Name:      b.name + "-argocd",
+						Kind:      "ArgoCDProvider",
+						Namespace: globals.ArgoCDNamespace,
 					},
 				},
 			},

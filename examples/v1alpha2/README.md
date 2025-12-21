@@ -9,6 +9,7 @@ The v1alpha2 architecture introduces a modular, provider-based system where plat
 - **Platform**: Orchestrates the overall IDP platform by referencing provider CRs
 - **GiteaProvider**: Manages Gitea Git server installation and configuration
 - **NginxGateway**: Manages Nginx Ingress Controller installation and configuration
+- **ArgoCDProvider**: Manages ArgoCD GitOps deployment tool installation and configuration
 
 ## Quick Start
 
@@ -22,6 +23,9 @@ kubectl apply -f giteaprovider.yaml
 
 # Create Nginx gateway provider
 kubectl apply -f nginxgateway.yaml
+
+# Create ArgoCD GitOps provider
+kubectl apply -f argocdprovider.yaml
 ```
 
 ### 2. Create Platform CR
@@ -38,14 +42,15 @@ Monitor the installation progress:
 
 ```bash
 # Check Platform status
-kubectl get platform -n idpbuilder-system
+kubectl get platform -n default
 
 # Check individual provider statuses
-kubectl get giteaprovider -n idpbuilder-system
-kubectl get nginxgateway -n idpbuilder-system
+kubectl get giteaprovider -n gitea
+kubectl get nginxgateway -n ingress-nginx
+kubectl get argocdprovider -n argocd
 
 # View detailed status
-kubectl describe platform localdev -n idpbuilder-system
+kubectl describe platform my-platform -n default
 ```
 
 ## Architecture
@@ -53,11 +58,13 @@ kubectl describe platform localdev -n idpbuilder-system
 The Platform CR aggregates status from all referenced providers using duck-typing:
 
 ```
-Platform CR (localdev)
+Platform CR (my-platform)
   ├── Git Providers
-  │   └── gitea-local (GiteaProvider)
-  └── Gateways
-      └── nginx-gateway (NginxGateway)
+  │   └── my-gitea (GiteaProvider)
+  ├── Gateways
+  │   └── my-nginx (NginxGateway)
+  └── GitOps Providers
+      └── my-argocd (ArgoCDProvider)
 ```
 
 Each provider controller:
@@ -83,13 +90,20 @@ The Platform controller:
 - `loadBalancerEndpoint`: External endpoint for accessing services
 - `internalEndpoint`: Cluster-internal API endpoint
 
+### GitOps Providers (e.g., ArgoCDProvider)
+- `endpoint`: External URL for ArgoCD web UI
+- `internalEndpoint`: Cluster-internal URL for API access
+- `credentialsSecretRef`: Secret containing admin credentials
+
 All providers expose a `Ready` condition in their status.
 
 ## Files
 
 - **giteaprovider.yaml**: Example GiteaProvider configuration
 - **nginxgateway.yaml**: Example NginxGateway configuration
-- **platform-with-gateway.yaml**: Example Platform CR referencing both providers
+- **argocdprovider.yaml**: Example ArgoCDProvider configuration
+- **platform-with-gateway.yaml**: Example Platform CR referencing git and gateway providers
+- **platform-complete.yaml**: Complete Platform CR example with all provider types (git, gateway, and gitops)
 
 ## Migration from V1Alpha1
 
@@ -106,5 +120,6 @@ The v1alpha2 architecture is designed to coexist with v1alpha1. The existing Loc
 After the platform is ready, you can:
 
 1. Access Gitea: Check the `endpoint` field in GiteaProvider status
-2. Deploy applications using the Nginx Ingress
-3. Add more providers to the Platform CR as they become available
+2. Access ArgoCD: Check the `endpoint` field in ArgoCDProvider status
+3. Deploy applications using ArgoCD and the Nginx Ingress
+4. Add more providers to the Platform CR as they become available

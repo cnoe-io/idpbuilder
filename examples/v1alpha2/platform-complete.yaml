@@ -1,0 +1,62 @@
+---
+# First create the GiteaProvider for Git operations
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: GiteaProvider
+metadata:
+  name: my-gitea
+  namespace: gitea
+spec:
+  namespace: gitea
+  version: "1.24.3"
+  adminUser:
+    username: giteaAdmin
+    email: admin@cnoe.localtest.me
+    autoGenerate: true
+---
+# Create the ArgoCDProvider for GitOps deployments
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: ArgoCDProvider
+metadata:
+  name: my-argocd
+  namespace: argocd
+spec:
+  namespace: argocd
+  version: "v2.12.0"
+  adminCredentials:
+    autoGenerate: true
+---
+# Create the NginxGateway for ingress
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: NginxGateway
+metadata:
+  name: my-nginx
+  namespace: ingress-nginx
+spec:
+  namespace: ingress-nginx
+---
+# Finally create the Platform that references all providers
+apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: Platform
+metadata:
+  name: my-platform
+  namespace: default
+spec:
+  domain: cnoe.localtest.me
+  components:
+    # Git providers for source code management
+    gitProviders:
+      - name: my-gitea
+        kind: GiteaProvider
+        namespace: gitea
+    
+    # Gateway providers for ingress management
+    gateways:
+      - name: my-nginx
+        kind: NginxGateway
+        namespace: ingress-nginx
+    
+    # GitOps providers for continuous deployment
+    gitOpsProviders:
+      - name: my-argocd
+        kind: ArgoCDProvider
+        namespace: argocd
