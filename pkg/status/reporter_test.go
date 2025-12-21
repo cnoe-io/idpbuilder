@@ -108,3 +108,45 @@ func TestReporter_ColoredOutput(t *testing.T) {
 		t.Errorf("color() should return empty string when colored is false")
 	}
 }
+
+func TestReporter_CancellationDuringPackages(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewReporter(false)
+	r.writer = &buf
+
+	// Simulate the idpbuilder workflow
+	r.AddStep("cluster", "Creating Kubernetes cluster")
+	r.AddStep("crds", "Installing Custom Resource Definitions")
+	r.AddStep("networking", "Configuring networking and certificates")
+	r.AddStep("resources", "Creating platform resources")
+	r.AddStep("packages", "Installing and syncing packages")
+
+	// Complete first 4 steps successfully
+	r.StartStep("cluster")
+	r.CompleteStep("cluster")
+
+	r.StartStep("crds")
+	r.CompleteStep("crds")
+
+	r.StartStep("networking")
+	r.CompleteStep("networking")
+
+	r.StartStep("resources")
+	r.CompleteStep("resources")
+
+	// Start packages step but fail it (simulating cancellation)
+	r.StartStep("packages")
+	r.FailStep("packages", nil)
+
+	r.Summary()
+
+	output := buf.String()
+
+	// Verify that the build is reported as failed, not successful
+	if strings.Contains(output, "Build completed successfully") {
+		t.Errorf("Output should not contain 'Build completed successfully' when a step fails, got: %s", output)
+	}
+	if !strings.Contains(output, "Build failed") {
+		t.Errorf("Output should contain 'Build failed' when a step fails, got: %s", output)
+	}
+}
