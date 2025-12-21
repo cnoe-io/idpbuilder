@@ -12,7 +12,8 @@ site/
 │   └── style.css      # Main stylesheet
 ├── js/               # JavaScript files (if needed)
 └── docs/
-    └── index.html     # Documentation page
+    ├── index.html     # Documentation page
+    └── examples.html  # Examples overview page
 
 docs/                  # Source documentation (copied during build)
 ├── README.md          # Main docs index
@@ -20,9 +21,20 @@ docs/                  # Source documentation (copied during build)
 ├── implementation/   # Implementation docs
 ├── user/            # User guides
 └── images/          # Shared images
+
+examples/              # Example configurations (copied during build)
+├── README.md          # Examples overview
+├── *.yaml            # Example YAML files
+└── v1alpha2/         # V1Alpha2 examples
+    ├── README.md
+    └── *.yaml
 ```
 
-During the build process, the organized documentation from `docs/` is automatically copied to `public/docs/`, making it available on the static site.
+During the build process:
+- The organized documentation from `docs/` is automatically copied to `public/docs/`
+- Example configurations from `examples/` are copied to `public/docs/examples/`
+- Markdown files are converted to HTML for web viewing
+
 
 ## Local Development
 
@@ -62,6 +74,8 @@ Run the build script to prepare the site for deployment:
 This will:
 - Copy all files from `site/` to `public/`
 - Copy organized documentation from `docs/` to `public/docs/`
+- Copy example configurations from `examples/` to `public/docs/examples/`
+- Convert markdown files to HTML for web viewing
 - Create `_headers` file with security headers
 - Create `_redirects` file for routing
 - Optimize for Cloudflare Pages deployment
@@ -145,6 +159,7 @@ The build script creates a `_headers` file with security headers:
 The `_redirects` file handles:
 - `/docs` → `/docs/index.html`
 - Direct access to organized documentation in `/docs/specs/`, `/docs/implementation/`, `/docs/user/`
+- Direct access to examples in `/docs/examples/`
 
 Cloudflare Pages automatically serves the `404.html` file for unmatched routes.
 
@@ -157,7 +172,20 @@ The build process automatically includes organized documentation from the `docs/
 - **User Documentation** (`docs/user/`) - End-user guides
 - **Images** (`docs/images/`) - Shared documentation assets
 
+## Examples Integration
+
+The build process also includes example configurations from the `examples/` directory:
+
+- **Platform Examples** (`examples/`) - Example Platform and GiteaProvider CRs
+- **V1Alpha2 Examples** (`examples/v1alpha2/`) - Modular provider-based examples
+
 During the build:
+1. Example YAML files are copied to `public/docs/examples/`
+2. README markdown files are converted to HTML with breadcrumb navigation
+3. YAML files remain accessible for direct download
+4. All examples are integrated into the site navigation
+
+During the documentation build:
 1. Markdown files are copied to `public/docs/`
 2. Converted to HTML using the `marked` library with GitHub-flavored markdown
 3. Wrapped in a styled template matching the site design
@@ -174,8 +202,9 @@ These are accessible at:
 - `https://your-site.com/docs/specs/` - Technical specifications
 - `https://your-site.com/docs/implementation/` - Developer/testing docs
 - `https://your-site.com/docs/user/` - User guides
+- `https://your-site.com/docs/examples/` - Example configurations and guides
 
-This allows the documentation to be versioned with the code and automatically deployed with the site as web-native HTML pages.
+This allows the documentation and examples to be versioned with the code and automatically deployed with the site as web-native HTML pages.
 
 ## Customization
 

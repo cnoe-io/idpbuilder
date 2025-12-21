@@ -78,6 +78,34 @@ else
     echo "Warning: Documentation source directory not found at $DOCS_SOURCE_DIR"
 fi
 
+# Copy examples from examples/ to public/docs/examples/
+echo "Copying examples..."
+EXAMPLES_SOURCE_DIR="${EXAMPLES_SOURCE_DIR:-./examples}"
+if [ -d "$EXAMPLES_SOURCE_DIR" ]; then
+    # Create examples directory in output
+    mkdir -p "$OUTPUT_DIR/docs/examples"
+    mkdir -p "$OUTPUT_DIR/docs/examples/v1alpha2"
+    
+    # Copy all example files and directories
+    cp -r "$EXAMPLES_SOURCE_DIR"/* "$OUTPUT_DIR/docs/examples/" 2>/dev/null || true
+    
+    echo "Examples copied successfully!"
+    
+    # Convert example README markdown files to HTML
+    if command -v node >/dev/null 2>&1; then
+        if [ -f "./scripts/convert-examples.js" ]; then
+            OUTPUT_DIR="$OUTPUT_DIR" node ./scripts/convert-examples.js
+            
+            # Remove the markdown source files after conversion
+            find "$OUTPUT_DIR/docs/examples" -name "README.md" -type f -delete 2>/dev/null || true
+            
+            echo "Examples markdown conversion completed!"
+        fi
+    fi
+else
+    echo "Warning: Examples source directory not found at $EXAMPLES_SOURCE_DIR"
+fi
+
 # Create _headers file for Cloudflare Pages (optional security headers)
 echo "Creating _headers file..."
 cat > "$OUTPUT_DIR/_headers" << 'EOF'
@@ -109,6 +137,7 @@ cat > "$OUTPUT_DIR/_redirects" << 'EOF'
 /docs/implementation/* /docs/implementation/:splat 200
 /docs/user/* /docs/user/:splat 200
 /docs/images/* /docs/images/:splat 200
+/docs/examples/* /docs/examples/:splat 200
 EOF
 
 echo "Build completed successfully!"

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IDP Builder Examples">
+    <title>Examples | IDP Builder</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .docs-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .docs-sidebar {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+        .docs-sidebar h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+        }
+        .docs-sidebar h3:first-child {
+            margin-top: 0;
+        }
+        .docs-sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .docs-sidebar li {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar a {
+            text-decoration: none;
+            color: var(--text-color);
+            padding: 0.5rem;
+            display: block;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            font-size: 0.95rem;
+        }
+        .docs-sidebar a:hover,
+        .docs-sidebar a.active {
+            background-color: var(--bg-alt);
+            color: var(--primary-color);
+        }
+        .docs-sidebar details {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar summary {
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            user-select: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .docs-sidebar summary:hover {
+            background-color: var(--bg-alt);
+        }
+        .docs-sidebar details[open] > summary {
+            background-color: var(--bg-alt);
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar details ul {
+            margin-left: 0;
+            padding-left: 1rem;
+        }
+        .docs-content {
+            max-width: 800px;
+            width: 100%;
+        }
+        .docs-content h1 {
+            margin-bottom: 1rem;
+        }
+        .docs-content h2 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .docs-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .docs-content p {
+            margin-bottom: 1rem;
+        }
+        .docs-content ul {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .docs-content pre {
+            background-color: var(--bg-alt);
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        .docs-content code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        .example-card {
+            background-color: var(--bg-alt);
+            padding: 1.5rem;
+            border-radius: 5px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        .example-card h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+        .example-card p {
+            margin-bottom: 0.75rem;
+        }
+        .example-card .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            margin-right: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .example-card .btn:hover {
+            background-color: var(--primary-hover);
+        }
+        .example-card .btn-secondary {
+            background-color: var(--secondary-color);
+        }
+        .example-card .btn-secondary:hover {
+            background-color: var(--secondary-hover);
+        }
+        @media (max-width: 768px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+            .docs-sidebar {
+                position: relative;
+                top: 0;
+                background-color: var(--bg-alt);
+                padding: 1rem;
+                border-radius: 5px;
+                margin-bottom: 1rem;
+            }
+            .docs-sidebar h3 {
+                margin-top: 0;
+            }
+            .docs-content {
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <h1>IDP Builder</h1>
+            </div>
+            <button class="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()">
+                ☰
+            </button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/">Home</a></li>
+                <li><a href="/docs">Docs</a></li>
+                <li><a href="/docs/examples.html">Examples</a></li>
+                <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="/docs">Overview</a></li>
+                </ul>
+                
+                <details open>
+                    <summary>Examples</summary>
+                    <ul>
+                        <li><a href="/docs/examples.html" class="active">Examples Overview</a></li>
+                        <li><a href="/docs/examples/platform-simple.html">Simple Platform</a></li>
+                        <li><a href="/docs/examples/platform-complete.html">Complete Platform</a></li>
+                        <li><a href="/docs/examples/giteaprovider-simple.html">Simple GiteaProvider</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>V1Alpha2 Examples</summary>
+                    <ul>
+                        <li><a href="/docs/examples/v1alpha2/platform-with-gateway.html">Platform with Gateway</a></li>
+                        <li><a href="/docs/examples/v1alpha2/giteaprovider.html">GiteaProvider</a></li>
+                        <li><a href="/docs/examples/v1alpha2/nginxgateway.html">NginxGateway</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>Technical Specs</summary>
+                    <ul>
+                        <li><a href="/docs/specs/controller-architecture-spec.html">V2 Controller Architecture</a></li>
+                        <li><a href="/docs/specs/hyperscaler-provider-spec.html">Hyperscaler Provider</a></li>
+                        <li><a href="/docs/specs/pluggable-packages.html">Pluggable Packages</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>User Guides</summary>
+                    <ul>
+                        <li><a href="/docs/user/minimum-requirements.html">Minimum Requirements</a></li>
+                        <li><a href="/docs/user/private-registries.html">Private Registries</a></li>
+                    </ul>
+                </details>
+            </aside>
+
+            <article class="docs-content">
+                <h1>IDP Builder Examples</h1>
+                <p>This page contains example configurations and manifests to help you get started with IDP Builder. These examples demonstrate various deployment scenarios and configurations.</p>
+
+                <div style="background-color: var(--bg-alt); padding: 1rem; border-radius: 5px; margin-bottom: 2rem;">
+                    <h3 style="margin-top: 0;">📋 About These Examples</h3>
+                    <p style="margin-bottom: 0.5rem;">These examples are organized into two main categories:</p>
+                    <ul style="margin-bottom: 0;">
+                        <li><strong>Platform Examples:</strong> Basic Platform and GiteaProvider CRs for the Phase 1.1 controller-based architecture</li>
+                        <li><strong>V1Alpha2 Examples:</strong> Modular provider-based configurations including Platform, GiteaProvider, and NginxGateway CRs</li>
+                    </ul>
+                </div>
+
+                <h2>Platform CR Examples</h2>
+                
+                <div class="example-card">
+                    <h3>Simple Platform</h3>
+                    <p>A basic Platform CR that references a GiteaProvider. This is the minimal configuration needed to get started.</p>
+                    <p><strong>Use this when:</strong> You want a simple setup with just Git provider support.</p>
+                    <p><strong>Complexity:</strong> Beginner</p>
+                    <a href="/docs/examples/platform-simple.html" class="btn">View Example →</a>
+                    <a href="/docs/examples/platform-simple.yaml" class="btn btn-secondary" download>Download YAML</a>
+                </div>
+
+                <div class="example-card">
+                    <h3>Complete Platform</h3>
+                    <p>A complete example with both Platform and GiteaProvider CRs in a single file. This shows the full configuration with all components together.</p>
+                    <p><strong>Use this when:</strong> You want to deploy everything in one go with a complete configuration.</p>
+                    <p><strong>Complexity:</strong> Intermediate</p>
+                    <a href="/docs/examples/platform-complete.html" class="btn">View Example →</a>
+                    <a href="/docs/examples/platform-complete.yaml" class="btn btn-secondary" download>Download YAML</a>
+                </div>
+
+                <h2>GiteaProvider Examples</h2>
+                
+                <div class="example-card">
+                    <h3>Simple GiteaProvider</h3>
+                    <p>A basic GiteaProvider CR with auto-generated credentials and organizations. This is the easiest way to get a Git server running.</p>
+                    <p><strong>Use this when:</strong> You want a quick Git provider setup with default configurations.</p>
+                    <p><strong>Complexity:</strong> Beginner</p>
+                    <a href="/docs/examples/giteaprovider-simple.html" class="btn">View Example →</a>
+                    <a href="/docs/examples/giteaprovider-simple.yaml" class="btn btn-secondary" download>Download YAML</a>
+                </div>
+
+                <h2>V1Alpha2 Examples</h2>
+                <p>The v1alpha2 architecture introduces a modular, provider-based system where platform components are managed through separate Custom Resources.</p>
+
+                <div class="example-card">
+                    <h3>Platform with Gateway</h3>
+                    <p>A complete v1alpha2 configuration including Platform, GiteaProvider, and NginxGateway CRs. This demonstrates the new modular architecture.</p>
+                    <p><strong>Complexity:</strong> Intermediate</p>
+                    <p><strong>Features:</strong></p>
+                    <ul>
+                        <li>Modular provider-based architecture</li>
+                        <li>Separate CRs for each component</li>
+                        <li>Duck-typed status fields for better integration</li>
+                        <li>Support for alternative providers</li>
+                    </ul>
+                    <a href="/docs/examples/v1alpha2/platform-with-gateway.html" class="btn">View Example →</a>
+                    <a href="/docs/examples/v1alpha2/platform-with-gateway.yaml" class="btn btn-secondary" download>Download YAML</a>
+                </div>
+
+                <div class="example-card">
+                    <h3>Individual Provider Examples</h3>
+                    <p>Individual provider configurations that can be mixed and matched:</p>
+                    <div style="margin-top: 1rem;">
+                        <p><strong>GiteaProvider:</strong> Git server provider configuration</p>
+                        <a href="/docs/examples/v1alpha2/giteaprovider.html" class="btn">View GiteaProvider →</a>
+                        <a href="/docs/examples/v1alpha2/giteaprovider.yaml" class="btn btn-secondary" download>Download YAML</a>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <p><strong>NginxGateway:</strong> Nginx Ingress Controller configuration</p>
+                        <a href="/docs/examples/v1alpha2/nginxgateway.html" class="btn">View NginxGateway →</a>
+                        <a href="/docs/examples/v1alpha2/nginxgateway.yaml" class="btn btn-secondary" download>Download YAML</a>
+                    </div>
+                </div>
+
+                <h2>Usage Instructions</h2>
+                
+                <h3>Prerequisites</h3>
+                <p>Before using these examples, ensure you have:</p>
+                <ul>
+                    <li>A Kubernetes cluster running (e.g., <code>kind create cluster</code>)</li>
+                    <li>kubectl configured to access your cluster</li>
+                    <li>IDP Builder CRDs installed in your cluster</li>
+                </ul>
+
+                <h3>Applying Examples</h3>
+                <p>To apply an example configuration:</p>
+                <pre><code># Download the example YAML file
+curl -O https://raw.githubusercontent.com/cnoe-io/idpbuilder/main/examples/platform-complete.yaml
+
+# Apply to your cluster
+kubectl apply -f platform-complete.yaml
+
+# Check the status
+kubectl get platform
+kubectl describe platform my-platform</code></pre>
+
+                <h3>Cleaning Up</h3>
+                <p>To remove the deployed resources:</p>
+                <pre><code>kubectl delete -f platform-complete.yaml</code></pre>
+
+                <h2>Additional Resources</h2>
+                <ul>
+                    <li><a href="/docs/examples/README.html">Platform Examples Documentation</a></li>
+                    <li><a href="/docs/examples/v1alpha2/README.html">V1Alpha2 Architecture Guide</a></li>
+                    <li><a href="/docs">Main Documentation</a></li>
+                    <li><a href="https://github.com/cnoe-io/idpbuilder/tree/main/examples" target="_blank" rel="noopener">Examples on GitHub</a></li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('nav');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (!nav.contains(event.target)) {
+                navLinks.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

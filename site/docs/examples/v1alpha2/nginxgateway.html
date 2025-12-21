@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="V1Alpha2 NginxGateway - IDP Builder Examples">
+    <title>V1Alpha2 NginxGateway | IDP Builder Examples</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
+    <style>
+        .docs-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .docs-sidebar {
+            position: sticky;
+            top: 80px;
+            height: fit-content;
+        }
+        .docs-sidebar h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+        }
+        .docs-sidebar h3:first-child {
+            margin-top: 0;
+        }
+        .docs-sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .docs-sidebar li {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar a {
+            text-decoration: none;
+            color: var(--text-color);
+            padding: 0.5rem;
+            display: block;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            font-size: 0.95rem;
+        }
+        .docs-sidebar a:hover,
+        .docs-sidebar a.active {
+            background-color: var(--bg-alt);
+            color: var(--primary-color);
+        }
+        .docs-sidebar details {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar summary {
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            user-select: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .docs-sidebar summary:hover {
+            background-color: var(--bg-alt);
+        }
+        .docs-sidebar details[open] > summary {
+            background-color: var(--bg-alt);
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar details ul {
+            margin-left: 0;
+            padding-left: 1rem;
+        }
+        .docs-content {
+            max-width: 900px;
+            width: 100%;
+        }
+        .docs-content h1 {
+            margin-bottom: 1rem;
+        }
+        .docs-content h2 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .docs-content h3 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .docs-content p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .docs-content ul, .docs-content ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+            line-height: 1.6;
+        }
+        .breadcrumb {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+        .breadcrumb a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+        .example-meta {
+            background-color: var(--bg-alt);
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 2rem;
+        }
+        .example-meta h3 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        .example-meta p {
+            margin-bottom: 0.5rem;
+        }
+        .download-btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            transition: background-color 0.3s;
+        }
+        .download-btn:hover {
+            background-color: var(--primary-hover);
+        }
+        pre[class*="language-"] {
+            margin: 1.5rem 0;
+            border-radius: 5px;
+        }
+        code[class*="language-"],
+        pre[class*="language-"] {
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        @media (max-width: 768px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+            .docs-sidebar {
+                position: relative;
+                top: 0;
+                background-color: var(--bg-alt);
+                padding: 1rem;
+                border-radius: 5px;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <h1>IDP Builder</h1>
+            </div>
+            <button class="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()">
+                ☰
+            </button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/">Home</a></li>
+                <li><a href="/docs">Docs</a></li>
+                <li><a href="/docs/examples.html">Examples</a></li>
+                <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="docs-container">
+            <aside class="docs-sidebar">
+                <h3>Documentation</h3>
+                <ul>
+                    <li><a href="/docs">Overview</a></li>
+                </ul>
+                
+                <details >
+                    <summary>Examples</summary>
+                    <ul>
+                        <li><a href="/docs/examples.html">Examples Overview</a></li>
+                        <li><a href="/docs/examples/platform-simple.html" >Simple Platform</a></li>
+                        <li><a href="/docs/examples/platform-complete.html" >Complete Platform</a></li>
+                        <li><a href="/docs/examples/giteaprovider-simple.html" >Simple GiteaProvider</a></li>
+                    </ul>
+                </details>
+                
+                <details open>
+                    <summary>V1Alpha2 Examples</summary>
+                    <ul>
+                        <li><a href="/docs/examples/v1alpha2/platform-with-gateway.html" >Platform with Gateway</a></li>
+                        <li><a href="/docs/examples/v1alpha2/giteaprovider.html" >GiteaProvider</a></li>
+                        <li><a href="/docs/examples/v1alpha2/nginxgateway.html" class="active">NginxGateway</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>Technical Specs</summary>
+                    <ul>
+                        <li><a href="/docs/specs/controller-architecture-spec.html">V2 Controller Architecture</a></li>
+                        <li><a href="/docs/specs/hyperscaler-provider-spec.html">Hyperscaler Provider</a></li>
+                        <li><a href="/docs/specs/pluggable-packages.html">Pluggable Packages</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>User Guides</summary>
+                    <ul>
+                        <li><a href="/docs/user/minimum-requirements.html">Minimum Requirements</a></li>
+                        <li><a href="/docs/user/private-registries.html">Private Registries</a></li>
+                    </ul>
+                </details>
+            </aside>
+
+            <article class="docs-content">
+                <div class="breadcrumb">
+                    <a href="/docs">Documentation</a> / <a href="/docs/examples.html">Examples</a> / <a href="/docs/examples/v1alpha2/README.html">V1Alpha2</a> / V1Alpha2 NginxGateway
+                </div>
+                
+                <h1>V1Alpha2 NginxGateway</h1>
+                
+                <div class="example-meta">
+                    <h3>📋 About This Example</h3>
+                    <p><strong>Use case:</strong> A v1alpha2 NginxGateway configuration for ingress controller management.</p>
+                    <p><strong>Complexity:</strong> Beginner</p>
+                    <p><strong>Components:</strong> NginxGateway CR</p>
+                    <a href="/docs/examples/v1alpha2/nginxgateway.yaml" class="download-btn" download>⬇ Download YAML</a>
+                </div>
+
+                <h2>Overview</h2>
+                <p>This v1alpha2 NginxGateway example shows how to configure an Nginx Ingress Controller as part of the platform.</p>
+                <p>This configuration is perfect for:</p>
+                <ul>
+                    <li>Ingress controller setup</li>
+                    <li>Gateway management</li>
+                    <li>Service exposure</li>
+                    <li>Platform networking</li>
+                </ul>
+
+                <h2>YAML Configuration</h2>
+                <pre class="line-numbers"><code class="language-yaml">apiVersion: idpbuilder.cnoe.io/v1alpha2
+kind: NginxGateway
+metadata:
+  name: nginx-gateway
+  namespace: idpbuilder-system
+spec:
+  namespace: ingress-nginx
+  version: "1.13.0"
+  ingressClass:
+    name: nginx
+    isDefault: true
+</code></pre>
+
+                <h2>Prerequisites</h2>
+                <p>Before applying this configuration, ensure you have:</p>
+                <ul>
+                    <li>Kubernetes cluster</li>
+                    <li>IDP Builder v1alpha2 CRDs installed</li>
+                </ul>
+
+                <h2>Usage</h2>
+                <h3>1. Apply the manifest</h3>
+                <pre><code class="language-bash">kubectl apply -f nginxgateway.yaml</code></pre>
+
+                <h3>2. Check the status</h3>
+                <pre><code class="language-bash"># View resources
+kubectl get nginxgateway
+
+# Get detailed information
+kubectl describe nginxgateway</code></pre>
+
+                <h2>Next Steps</h2>
+                <p>After deploying this example, you can:</p>
+                <ul>
+                    <li>Explore the <a href="/docs/examples/v1alpha2/platform-with-gateway.html">Platform with Gateway</a> to integrate this gateway</li>
+                    <li>Explore the <a href="/docs/examples/v1alpha2/giteaprovider.html">GiteaProvider</a> for Git provider setup</li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 CNOE IDP Builder. Licensed under <a href="https://github.com/cnoe-io/idpbuilder/blob/main/LICENSE" target="_blank" rel="noopener">Apache License 2.0</a></p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script>
+        function toggleMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const nav = document.querySelector('nav');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (!nav.contains(event.target)) {
+                navLinks.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>

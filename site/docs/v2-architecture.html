@@ -43,6 +43,41 @@
             background-color: var(--bg-alt);
             color: var(--primary-color);
         }
+        .docs-sidebar details {
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar summary {
+            cursor: pointer;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            user-select: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .docs-sidebar summary:hover {
+            background-color: var(--bg-alt);
+        }
+        .docs-sidebar details[open] > summary {
+            background-color: var(--bg-alt);
+            margin-bottom: 0.5rem;
+        }
+        .docs-sidebar details ul {
+            margin-left: 0;
+            padding-left: 1rem;
+        }
+        .docs-sidebar h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+        }
+        .docs-sidebar h3:first-child {
+            margin-top: 0;
+        }
         .docs-content {
             max-width: 900px;
             width: 100%;
@@ -130,6 +165,7 @@
             <ul class="nav-links" id="navLinks">
                 <li><a href="/">Home</a></li>
                 <li><a href="/docs">Docs</a></li>
+                <li><a href="/docs/examples.html">Examples</a></li>
                 <li><a href="https://github.com/cnoe-io/idpbuilder" target="_blank" rel="noopener">GitHub</a></li>
             </ul>
         </nav>
@@ -141,17 +177,47 @@
                 <h3>Documentation</h3>
                 <ul>
                     <li><a href="/docs">Overview</a></li>
-                    <li><a href="/docs#installation">Installation</a></li>
-                    <li><a href="/docs#getting-started">Getting Started</a></li>
-                    <li><a href="/docs#requirements">Requirements</a></li>
-                    <li><a href="/docs#configuration">Configuration</a></li>
                     <li><a href="/docs/v2-architecture.html" class="active">V2 Architecture</a></li>
-                    <li style="padding-left: 1rem;"><a href="#executive-summary">Executive Summary</a></li>
-                    <li style="padding-left: 1rem;"><a href="#high-level-design">High-Level Design</a></li>
-                    <li style="padding-left: 1rem;"><a href="#duck-typing">Duck Typing</a></li>
-                    <li style="padding-left: 1rem;"><a href="#custom-resources">Custom Resources</a></li>
-                    <li style="padding-left: 1rem;"><a href="#multi-provider">Multi-Provider Support</a></li>
-                    <li><a href="/docs#contributing">Contributing</a></li>
+                </ul>
+                
+                <details>
+                    <summary>Examples</summary>
+                    <ul>
+                        <li><a href="/docs/examples.html">Examples Overview</a></li>
+                        <li><a href="/docs/examples/platform-simple.html">Simple Platform</a></li>
+                        <li><a href="/docs/examples/platform-complete.html">Complete Platform</a></li>
+                        <li><a href="/docs/examples/giteaprovider-simple.html">Simple GiteaProvider</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>V1Alpha2 Examples</summary>
+                    <ul>
+                        <li><a href="/docs/examples/v1alpha2/platform-with-gateway.html">Platform with Gateway</a></li>
+                        <li><a href="/docs/examples/v1alpha2/giteaprovider.html">GiteaProvider</a></li>
+                        <li><a href="/docs/examples/v1alpha2/nginxgateway.html">NginxGateway</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>Technical Specs</summary>
+                    <ul>
+                        <li><a href="/docs/specs/controller-architecture-spec.html">V2 Controller Architecture</a></li>
+                        <li><a href="/docs/specs/hyperscaler-provider-spec.html">Hyperscaler Provider</a></li>
+                        <li><a href="/docs/specs/pluggable-packages.html">Pluggable Packages</a></li>
+                    </ul>
+                </details>
+                
+                <details>
+                    <summary>User Guides</summary>
+                    <ul>
+                        <li><a href="/docs/user/minimum-requirements.html">Minimum Requirements</a></li>
+                        <li><a href="/docs/user/private-registries.html">Private Registries</a></li>
+                    </ul>
+                </details>
+                
+                <h3>External Links</h3>
+                <ul>
                     <li><a href="https://cnoe.io/docs/idpbuilder" target="_blank" rel="noopener">Full Docs ↗</a></li>
                 </ul>
             </aside>
