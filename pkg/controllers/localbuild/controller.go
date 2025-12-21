@@ -48,11 +48,17 @@ const (
 	argoCDApplicationAnnotationValueRefreshNormal = "normal"
 	argoCDApplicationSetAnnotationKeyRefresh      = "argocd.argoproj.io/application-set-refresh"
 	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
+
+	// Gitea installation tracking constants
+	giteaStatusPollInterval = time.Second * 5
+	giteaInstallTimeout     = time.Minute * 5
 )
 
 var (
 	// errGiteaProviderNotReady is returned when the GiteaProvider is not yet ready
 	errGiteaProviderNotReady = errors.New("GiteaProvider is not ready yet")
+	// errGiteaInstallTimeout is returned when the GiteaProvider installation times out
+	errGiteaInstallTimeout = errors.New("Gitea installation timed out")
 )
 
 type ArgocdSession struct {
@@ -188,6 +194,9 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 		for name := range installers {
 			r.StatusReporter.AddSubStep("packages", name, name)
 		}
+		// Add gitea substep separately since it's managed by GiteaProvider controller
+		r.StatusReporter.AddSubStep("packages", v1alpha1.GiteaPackageName, v1alpha1.GiteaPackageName)
+
 		// Also add sub-steps for custom packages
 		for i := range resource.Spec.PackageConfigs.CustomPackageDirs {
 			name := fmt.Sprintf("custom-dir-%d", i)
@@ -202,6 +211,13 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 			r.StatusReporter.AddSubStep("packages", name, resource.Spec.PackageConfigs.CustomPackageUrls[i])
 		}
 	}
+
+	// Track gitea installation in parallel
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		r.trackGiteaInstallation(ctx, resource)
+	}()
 
 	for k, v := range installers {
 		wg.Add(1)
@@ -231,6 +247,77 @@ func (r *LocalbuildReconciler) installCorePackages(ctx context.Context, req ctrl
 		}()
 	}
 	wg.Wait()
+}
+
+// trackGiteaInstallation monitors GiteaProvider status and updates the gitea substep
+func (r *LocalbuildReconciler) trackGiteaInstallation(ctx context.Context, resource *v1alpha1.Localbuild) {
+	logger := log.FromContext(ctx)
+
+	// Mark gitea as running
+	if r.StatusReporter != nil {
+		r.StatusReporter.UpdateSubStep("packages", v1alpha1.GiteaPackageName, 1) // StateRunning = 1
+	}
+
+	// Poll for GiteaProvider readiness
+	ticker := time.NewTicker(giteaStatusPollInterval)
+	defer ticker.Stop()
+
+	timeout := time.After(giteaInstallTimeout)
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.V(1).Info("Context cancelled while tracking gitea installation")
+			return
+		case <-timeout:
+			logger.Error(errGiteaInstallTimeout, "Gitea installation timed out")
+			if r.StatusReporter != nil {
+				r.StatusReporter.UpdateSubStep("packages", v1alpha1.GiteaPackageName, 3) // StateFailed = 3
+			}
+			return
+		case <-ticker.C:
+			// Check GiteaProvider status
+			giteaProvider := &v1alpha2.GiteaProvider{}
+			err := r.Get(ctx, client.ObjectKey{
+				Name:      getGiteaProviderName(resource.Name),
+				Namespace: util.GiteaNamespace,
+			}, giteaProvider)
+
+			if err != nil {
+				if k8serrors.IsNotFound(err) {
+					logger.V(1).Info("GiteaProvider not found yet, waiting...")
+					continue
+				}
+				logger.V(1).Info("Error getting GiteaProvider", "error", err)
+				continue
+			}
+
+			// Convert to unstructured for duck-typing
+			unstructuredProvider := &unstructured.Unstructured{}
+			unstructuredProvider.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(giteaProvider)
+			if err != nil {
+				logger.V(1).Info("Error converting GiteaProvider to unstructured", "error", err)
+				continue
+			}
+
+			// Check if provider is ready
+			ready, err := provider.IsGitProviderReady(unstructuredProvider)
+			if err != nil {
+				logger.V(1).Info("Error checking if git provider is ready", "error", err)
+				continue
+			}
+
+			if ready {
+				logger.V(1).Info("Gitea installation complete")
+				if r.StatusReporter != nil {
+					r.StatusReporter.UpdateSubStep("packages", v1alpha1.GiteaPackageName, 2) // StateComplete = 2
+				}
+				return
+			}
+
+			logger.V(1).Info("Gitea not ready yet, continuing to wait...")
+		}
+	}
 }
 
 // Responsible to updating ObservedGeneration in status
@@ -769,7 +856,7 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 	// The GiteaProvider is created by the v2 architecture in build.go with name "{buildname}-gitea" in gitea namespace
 	giteaProvider := &v1alpha2.GiteaProvider{}
 	err := r.Get(ctx, client.ObjectKey{
-		Name:      resource.Name + "-gitea",
+		Name:      getGiteaProviderName(resource.Name),
 		Namespace: util.GiteaNamespace,
 	}, giteaProvider)
 	if err != nil {
@@ -1105,6 +1192,11 @@ func (r *LocalbuildReconciler) applyArgoCDAnnotation(ctx context.Context, obj cl
 func getCustomPackageName(fileName, appName string) string {
 	s := strings.Split(fileName, ".")
 	return fmt.Sprintf("%s-%s", strings.ToLower(s[0]), appName)
+}
+
+// getGiteaProviderName returns the name of the GiteaProvider CR for the given build name
+func getGiteaProviderName(buildName string) string {
+	return buildName + "-gitea"
 }
 
 func isSupportedArgoCDTypes(gvk *schema.GroupVersionKind) bool {
