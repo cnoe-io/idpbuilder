@@ -16,6 +16,26 @@ type GiteaProviderSpec struct {
 	// +kubebuilder:default="1.24.3"
 	Version string `json:"version,omitempty"`
 
+	// Protocol is the protocol to use for Gitea endpoint (http or https)
+	// +optional
+	// +kubebuilder:default="http"
+	Protocol string `json:"protocol,omitempty"`
+
+	// Host is the hostname for Gitea endpoint
+	// +optional
+	// +kubebuilder:default="cnoe.localtest.me"
+	Host string `json:"host,omitempty"`
+
+	// Port is the port for Gitea endpoint
+	// +optional
+	// +kubebuilder:default="8080"
+	Port string `json:"port,omitempty"`
+
+	// UsePathRouting indicates whether to use path-based routing
+	// +optional
+	// +kubebuilder:default=false
+	UsePathRouting bool `json:"usePathRouting,omitempty"`
+
 	// AdminUser defines the Gitea admin user configuration
 	// +optional
 	AdminUser GiteaAdminUser `json:"adminUser,omitempty"`

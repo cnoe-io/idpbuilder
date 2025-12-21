@@ -18,9 +18,11 @@ import (
 	argocdapp "github.com/cnoe-io/argocd-api/api/argo/application"
 	argov1alpha1 "github.com/cnoe-io/argocd-api/api/argo/application/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
+	"github.com/cnoe-io/idpbuilder/api/v1alpha2"
 	"github.com/cnoe-io/idpbuilder/globals"
 	"github.com/cnoe-io/idpbuilder/pkg/resources/localbuild"
 	"github.com/cnoe-io/idpbuilder/pkg/util"
+	"github.com/cnoe-io/idpbuilder/pkg/util/provider"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -82,6 +84,12 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	_, err := r.ReconcileProjectNamespace(ctx, req, &localBuild)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// Create provider CRs early in reconciliation
+	if err := r.ensureGiteaProviderExists(ctx, &localBuild); err != nil {
+		logger.Error(err, "Failed to ensure GiteaProvider exists")
+		return ctrl.Result{RequeueAfter: errRequeueTime}, nil
 	}
 
 	// Create NginxGateway CR early in reconciliation
@@ -653,6 +661,48 @@ func (r *LocalbuildReconciler) reconcileCustomPkgFile(ctx context.Context, resou
 }
 
 func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v1alpha1.Localbuild, repoType, repoName, embeddedName, absPath string) (*v1alpha1.GitRepository, error) {
+	logger := log.FromContext(ctx)
+
+	// Get GiteaProvider using duck-typing to retrieve status
+	giteaProvider := &v1alpha2.GiteaProvider{}
+	err := r.Get(ctx, client.ObjectKey{
+		Name:      giteaProviderName,
+		Namespace: globals.GetProjectNamespace(resource.Name),
+	}, giteaProvider)
+	if err != nil {
+		return nil, fmt.Errorf("getting GiteaProvider: %w", err)
+	}
+
+	// Convert to unstructured for duck-typing
+	unstructuredProvider := &unstructured.Unstructured{}
+	unstructuredProvider.Object, err = runtime.DefaultUnstructuredConverter.ToUnstructured(giteaProvider)
+	if err != nil {
+		return nil, fmt.Errorf("converting GiteaProvider to unstructured: %w", err)
+	}
+
+	// Use duck-typing to get provider status
+	gitProviderStatus, err := provider.GetGitProviderStatus(unstructuredProvider)
+	if err != nil {
+		return nil, fmt.Errorf("getting git provider status: %w", err)
+	}
+
+	// Check if provider is ready
+	ready, err := provider.IsGitProviderReady(unstructuredProvider)
+	if err != nil {
+		return nil, fmt.Errorf("checking if git provider is ready: %w", err)
+	}
+	if !ready {
+		return nil, fmt.Errorf("GiteaProvider is not ready yet")
+	}
+
+	// Validate that we have the required URLs
+	if gitProviderStatus.Endpoint == "" {
+		return nil, fmt.Errorf("GiteaProvider endpoint is not set")
+	}
+	if gitProviderStatus.InternalEndpoint == "" {
+		return nil, fmt.Errorf("GiteaProvider internal endpoint is not set")
+	}
+
 	repo := &v1alpha1.GitRepository{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      repoName,
@@ -675,19 +725,31 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 		}
 		util.SetCLIStartTimeAnnotationValue(repo.ObjectMeta.Annotations, cliStartTime)
 
+		// Get credentials secret ref from provider status
+		var secretName, secretNamespace string
+		if gitProviderStatus.CredentialsSecretRef.Name != "" {
+			secretName = gitProviderStatus.CredentialsSecretRef.Name
+			secretNamespace = gitProviderStatus.CredentialsSecretRef.Namespace
+		} else {
+			logger.V(1).Info("Warning: GiteaProvider credentials secret ref is not set")
+			// Fallback to defaults
+			secretName = util.GiteaAdminSecret
+			secretNamespace = util.GiteaNamespace
+		}
+
 		repo.Spec = v1alpha1.GitRepositorySpec{
 			Source: v1alpha1.GitRepositorySource{
 				Type: repoType,
 			},
 			Provider: v1alpha1.Provider{
 				Name:             v1alpha1.GitProviderGitea,
-				GitURL:           resource.Status.Gitea.ExternalURL,
-				InternalGitURL:   resource.Status.Gitea.InternalURL,
+				GitURL:           gitProviderStatus.Endpoint,
+				InternalGitURL:   gitProviderStatus.InternalEndpoint,
 				OrganizationName: v1alpha1.GiteaAdminUserName,
 			},
 			SecretRef: v1alpha1.SecretReference{
-				Name:      resource.Status.Gitea.AdminUserSecretName,
-				Namespace: resource.Status.Gitea.AdminUserSecretNamespace,
+				Name:      secretName,
+				Namespace: secretNamespace,
 			},
 		}
 

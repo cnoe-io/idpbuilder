@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.20.0
-  name: giteaproviders.idpbuilder.cnoe.io
+  name: argocdproviders.idpbuilder.cnoe.io
 spec:
   group: idpbuilder.cnoe.io
   names:
-    kind: GiteaProvider
-    listKind: GiteaProviderList
-    plural: giteaproviders
-    singular: giteaprovider
+    kind: ArgoCDProvider
+    listKind: ArgoCDProviderList
+    plural: argocdproviders
+    singular: argocdprovider
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -30,7 +30,7 @@ spec:
     name: v1alpha2
     schema:
       openAPIV3Schema:
-        description: GiteaProvider is the Schema for the giteaproviders API
+        description: ArgoCDProvider is the Schema for the argocdproviders API
         properties:
           apiVersion:
             description: |-
@@ -50,94 +50,19 @@ spec:
           metadata:
             type: object
           spec:
-            description: GiteaProviderSpec defines the desired state of GiteaProvider
+            description: ArgoCDProviderSpec defines the desired state of ArgoCDProvider
             properties:
-              adminUser:
-                description: AdminUser defines the Gitea admin user configuration
+              adminCredentials:
+                description: AdminCredentials defines the ArgoCD admin credentials
+                  configuration
                 properties:
                   autoGenerate:
                     default: true
                     description: AutoGenerate indicates whether to auto-generate credentials
                       if not provided
                     type: boolean
-                  email:
-                    default: admin@cnoe.localtest.me
-                    description: Email is the admin user email
-                    type: string
-                  passwordSecretRef:
-                    description: PasswordSecretRef references a secret containing
-                      the admin password
-                    properties:
-                      key:
-                        description: Key is the key within the secret
-                        type: string
-                      name:
-                        description: Name is the name of the secret
-                        type: string
-                      namespace:
-                        description: Namespace is the namespace of the secret
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
-                    type: object
-                  username:
-                    default: giteaAdmin
-                    description: Username is the admin username
-                    type: string
-                type: object
-              host:
-                default: cnoe.localtest.me
-                description: Host is the hostname for Gitea endpoint
-                type: string
-              namespace:
-                default: gitea
-                description: Namespace is the namespace where Gitea will be deployed
-                type: string
-              organizations:
-                description: Organizations is a list of Gitea organizations to create
-                items:
-                  description: GiteaOrganization defines a Gitea organization to create
-                  properties:
-                    description:
-                      description: Description is the organization description
-                      type: string
-                    name:
-                      description: Name is the organization name
-                      type: string
-                  required:
-                  - name
-                  type: object
-                type: array
-              port:
-                default: "8080"
-                description: Port is the port for Gitea endpoint
-                type: string
-              protocol:
-                default: http
-                description: Protocol is the protocol to use for Gitea endpoint (http
-                  or https)
-                type: string
-              usePathRouting:
-                default: false
-                description: UsePathRouting indicates whether to use path-based routing
-                type: boolean
-              version:
-                default: 1.24.3
-                description: Version is the version of Gitea to install
-                type: string
-            required:
-            - namespace
-            type: object
-          status:
-            description: GiteaProviderStatus defines the observed state of GiteaProvider
-            properties:
-              adminUser:
-                description: AdminUser contains information about the admin user
-                properties:
                   secretRef:
-                    description: SecretRef references the secret containing admin
+                    description: SecretRef references a secret containing the admin
                       credentials
                     properties:
                       key:
@@ -154,13 +79,39 @@ spec:
                     - name
                     - namespace
                     type: object
-                  username:
-                    description: Username is the admin username
-                    type: string
                 type: object
+              namespace:
+                default: argocd
+                description: Namespace is the namespace where ArgoCD will be deployed
+                type: string
+              projects:
+                description: Projects is a list of ArgoCD projects to create
+                items:
+                  description: ArgoCDProject defines an ArgoCD project to create
+                  properties:
+                    description:
+                      description: Description is the project description
+                      type: string
+                    name:
+                      description: Name is the project name
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              version:
+                default: v2.12.0
+                description: Version is the version of ArgoCD to install
+                type: string
+            required:
+            - namespace
+            type: object
+          status:
+            description: ArgoCDProviderStatus defines the observed state of ArgoCDProvider
+            properties:
               conditions:
                 description: Conditions represent the latest available observations
-                  of the GiteaProvider's state
+                  of the ArgoCDProvider's state
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -218,8 +169,8 @@ spec:
                 type: array
               credentialsSecretRef:
                 description: |-
-                  CredentialsSecretRef references the secret containing Gitea credentials
-                  This is a duck-typed field that all Git providers must expose
+                  CredentialsSecretRef references the secret containing ArgoCD admin credentials
+                  This is a duck-typed field that all GitOps providers must expose
                 properties:
                   key:
                     description: Key is the key within the secret
@@ -237,23 +188,23 @@ spec:
                 type: object
               endpoint:
                 description: |-
-                  Endpoint is the external URL for Gitea web UI and cloning
-                  This is a duck-typed field that all Git providers must expose
+                  Endpoint is the external URL for ArgoCD web UI
+                  This is a duck-typed field that all GitOps providers must expose
                 type: string
               installed:
-                description: Installed indicates whether Gitea has been installed
+                description: Installed indicates whether ArgoCD has been installed
                 type: boolean
               internalEndpoint:
                 description: |-
-                  InternalEndpoint is the cluster-internal URL for Gitea API access
-                  This is a duck-typed field that all Git providers must expose
+                  InternalEndpoint is the cluster-internal URL for ArgoCD API access
+                  This is a duck-typed field that all GitOps providers must expose
                 type: string
               phase:
-                description: Phase represents the current phase of the Gitea provider
+                description: Phase represents the current phase of the ArgoCD provider
                   (e.g., Pending, Installing, Ready, Failed)
                 type: string
               version:
-                description: Version is the currently installed version of Gitea
+                description: Version is the currently installed version of ArgoCD
                 type: string
             type: object
         type: object

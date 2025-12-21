@@ -14,6 +14,11 @@ import (
 //go:embed resources/argo/*
 var installArgoFS embed.FS
 
+// GetArgoFS returns the embedded ArgoCD filesystem for reuse by other controllers
+func GetArgoFS() embed.FS {
+	return installArgoFS
+}
+
 func RawArgocdInstallResources(templateData any, config v1alpha1.PackageCustomization, scheme *runtime.Scheme) ([][]byte, error) {
 	return k8s.BuildCustomizedManifests(config.FilePath, "resources/argo", installArgoFS, scheme, templateData)
 }
