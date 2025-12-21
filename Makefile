@@ -32,6 +32,16 @@ KUSTOMIZE_VERSION ?= v5.5.0
 fmt: ## Run go fmt against code.
 	go fmt ./...
 
+.PHONY: fmt-check
+fmt-check: ## Check if code is formatted. Fails if formatting is needed.
+	@output=$$(go fmt ./...); \
+	if [ -n "$$output" ]; then \
+		echo "The following files are not formatted:"; \
+		echo "$$output"; \
+		echo "Please run 'make fmt' or 'go fmt ./...' to format your code"; \
+		exit 1; \
+	fi
+
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
