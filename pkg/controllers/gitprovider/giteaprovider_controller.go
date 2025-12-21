@@ -70,6 +70,11 @@ func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !controllerutil.ContainsFinalizer(provider, giteaProviderFinalizer) {
 		controllerutil.AddFinalizer(provider, giteaProviderFinalizer)
 		if err := r.Update(ctx, provider); err != nil {
+			// Conflict errors are expected when the resource is updated by another process
+			// Return the error to trigger a retry without logging it as a failure
+			if errors.IsConflict(err) {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, err
 		}
 	}
@@ -83,6 +88,11 @@ func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if provider.Status.Phase == "" {
 		provider.Status.Phase = "Installing"
 		if err := r.Status().Update(ctx, provider); err != nil {
+			// Conflict errors are expected when the resource is updated by another process
+			// Return the error to trigger a retry without logging it as a failure
+			if errors.IsConflict(err) {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, err
 		}
 	}
@@ -99,7 +109,10 @@ func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		})
 		provider.Status.Phase = "Failed"
 		if statusErr := r.Status().Update(ctx, provider); statusErr != nil {
-			logger.Error(statusErr, "Failed to update status")
+			// Don't log conflict errors as failures - they will be retried automatically
+			if !errors.IsConflict(statusErr) {
+				logger.Error(statusErr, "Failed to update status")
+			}
 		}
 		return result, err
 	}
@@ -121,6 +134,11 @@ func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		})
 		provider.Status.Phase = "Installing"
 		if err := r.Status().Update(ctx, provider); err != nil {
+			// Conflict errors are expected when the resource is updated by another process
+			// Return the error to trigger a retry without logging it as a failure
+			if errors.IsConflict(err) {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
@@ -167,6 +185,11 @@ func (r *GiteaProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	})
 
 	if err := r.Status().Update(ctx, provider); err != nil {
+		// Conflict errors are expected when the resource is updated by another process
+		// Return the error to trigger a retry without logging it as a failure
+		if errors.IsConflict(err) {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -435,6 +458,11 @@ func (r *GiteaProviderReconciler) handleDeletion(ctx context.Context, provider *
 	// Remove finalizer
 	controllerutil.RemoveFinalizer(provider, giteaProviderFinalizer)
 	if err := r.Update(ctx, provider); err != nil {
+		// Conflict errors are expected when the resource is updated by another process
+		// Return the error to trigger a retry without logging it as a failure
+		if errors.IsConflict(err) {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 
