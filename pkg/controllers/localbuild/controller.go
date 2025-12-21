@@ -86,11 +86,8 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	// Create provider CRs early in reconciliation
-	if err := r.ensureGiteaProviderExists(ctx, &localBuild); err != nil {
-		logger.Error(err, "Failed to ensure GiteaProvider exists")
-		return ctrl.Result{RequeueAfter: errRequeueTime}, nil
-	}
+	// NOTE: GiteaProvider creation removed - now handled by v2 architecture in build.go
+	// The GiteaProvider CR is created by the CLI in build.go and managed by GiteaProviderReconciler
 
 	// Create NginxGateway CR early in reconciliation
 	if err := r.ensureNginxGatewayExists(ctx, &localBuild); err != nil {
@@ -664,10 +661,11 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 	logger := log.FromContext(ctx)
 
 	// Get GiteaProvider using duck-typing to retrieve status
+	// The GiteaProvider is created by the v2 architecture in build.go with name "{buildname}-gitea" in gitea namespace
 	giteaProvider := &v1alpha2.GiteaProvider{}
 	err := r.Get(ctx, client.ObjectKey{
-		Name:      giteaProviderName,
-		Namespace: globals.GetProjectNamespace(resource.Name),
+		Name:      resource.Name + "-gitea",
+		Namespace: util.GiteaNamespace,
 	}, giteaProvider)
 	if err != nil {
 		return nil, fmt.Errorf("getting GiteaProvider: %w", err)
