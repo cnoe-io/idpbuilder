@@ -9,6 +9,7 @@ import (
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -226,4 +227,116 @@ func TestBuildConfigFromSpec(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestIsNginxAdmissionWebhookReady(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	t.Run("webhook service not found", func(t *testing.T) {
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			Build()
+
+		reconciler := &GiteaProviderReconciler{
+			Client: fakeClient,
+			Scheme: scheme,
+		}
+
+		ready, err := reconciler.isNginxAdmissionWebhookReady(context.Background())
+		require.NoError(t, err)
+		assert.False(t, ready)
+	})
+
+	t.Run("webhook service exists but no endpoints", func(t *testing.T) {
+		service := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nginxAdmissionWebhookServiceName,
+				Namespace: nginxNamespace,
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithRuntimeObjects(service).
+			Build()
+
+		reconciler := &GiteaProviderReconciler{
+			Client: fakeClient,
+			Scheme: scheme,
+		}
+
+		ready, err := reconciler.isNginxAdmissionWebhookReady(context.Background())
+		require.NoError(t, err)
+		assert.False(t, ready)
+	})
+
+	t.Run("webhook service and endpoints exist with ready addresses", func(t *testing.T) {
+		service := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nginxAdmissionWebhookServiceName,
+				Namespace: nginxNamespace,
+			},
+		}
+
+		endpoints := &corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nginxAdmissionWebhookServiceName,
+				Namespace: nginxNamespace,
+			},
+			Subsets: []corev1.EndpointSubset{
+				{
+					Addresses: []corev1.EndpointAddress{
+						{
+							IP: "10.0.0.1",
+						},
+					},
+				},
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithRuntimeObjects(service, endpoints).
+			Build()
+
+		reconciler := &GiteaProviderReconciler{
+			Client: fakeClient,
+			Scheme: scheme,
+		}
+
+		ready, err := reconciler.isNginxAdmissionWebhookReady(context.Background())
+		require.NoError(t, err)
+		assert.True(t, ready)
+	})
+
+	t.Run("webhook service and endpoints exist but no ready addresses", func(t *testing.T) {
+		service := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nginxAdmissionWebhookServiceName,
+				Namespace: nginxNamespace,
+			},
+		}
+
+		endpoints := &corev1.Endpoints{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      nginxAdmissionWebhookServiceName,
+				Namespace: nginxNamespace,
+			},
+			Subsets: []corev1.EndpointSubset{},
+		}
+
+		fakeClient := fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithRuntimeObjects(service, endpoints).
+			Build()
+
+		reconciler := &GiteaProviderReconciler{
+			Client: fakeClient,
+			Scheme: scheme,
+		}
+
+		ready, err := reconciler.isNginxAdmissionWebhookReady(context.Background())
+		require.NoError(t, err)
+		assert.False(t, ready)
+	})
 }

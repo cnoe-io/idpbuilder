@@ -27,9 +27,11 @@ import (
 )
 
 const (
-	giteaProviderFinalizer = "giteaprovider.idpbuilder.cnoe.io/finalizer"
-	defaultRequeueTime     = time.Second * 30
-	giteaDeploymentName    = "my-gitea"
+	giteaProviderFinalizer           = "giteaprovider.idpbuilder.cnoe.io/finalizer"
+	defaultRequeueTime               = time.Second * 30
+	giteaDeploymentName              = "my-gitea"
+	nginxAdmissionWebhookServiceName = "ingress-nginx-controller-admission"
+	nginxNamespace                   = "ingress-nginx"
 )
 
 // GiteaProviderReconciler reconciles a GiteaProvider object
@@ -44,6 +46,8 @@ type GiteaProviderReconciler struct {
 //+kubebuilder:rbac:groups=idpbuilder.cnoe.io,resources=giteaproviders/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
+//+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=endpoints,verbs=get;list;watch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop
@@ -177,6 +181,17 @@ func (r *GiteaProviderReconciler) reconcileGitea(ctx context.Context, provider *
 	// Ensure namespace exists
 	if err := k8s.EnsureNamespace(ctx, r.Client, provider.Spec.Namespace); err != nil {
 		return ctrl.Result{}, fmt.Errorf("ensuring namespace: %w", err)
+	}
+
+	// Check if nginx admission webhook is ready before creating Ingress resources
+	// This prevents race condition where Gitea tries to create Ingress before webhook is available
+	ready, err := r.isNginxAdmissionWebhookReady(ctx)
+	if err != nil {
+		logger.V(1).Info("Failed to check nginx admission webhook readiness", "error", err)
+		// Continue anyway - webhook might not be installed, or this might be a different setup
+	} else if !ready {
+		logger.Info("Nginx admission webhook not ready yet, requeuing to prevent race condition")
+		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
 	}
 
 	// Install Gitea resources using embedded manifests
@@ -400,6 +415,59 @@ func (r *GiteaProviderReconciler) handleDeletion(ctx context.Context, provider *
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// isNginxAdmissionWebhookReady checks if the nginx admission webhook service is ready
+// This prevents race conditions when creating Ingress resources before the webhook is available
+func (r *GiteaProviderReconciler) isNginxAdmissionWebhookReady(ctx context.Context) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	// Check if the nginx admission webhook service exists
+	service := &corev1.Service{}
+	err := r.Get(ctx, types.NamespacedName{
+		Namespace: nginxNamespace,
+		Name:      nginxAdmissionWebhookServiceName,
+	}, service)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.V(1).Info("Nginx admission webhook service not found")
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Check if the service has endpoints (meaning the webhook pod is ready)
+	endpoints := &corev1.Endpoints{}
+	err = r.Get(ctx, types.NamespacedName{
+		Namespace: nginxNamespace,
+		Name:      nginxAdmissionWebhookServiceName,
+	}, endpoints)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.V(1).Info("Nginx admission webhook endpoints not found")
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Check if endpoints has at least one ready address
+	if len(endpoints.Subsets) == 0 {
+		logger.V(1).Info("Nginx admission webhook has no endpoint subsets")
+		return false, nil
+	}
+
+	// Check each subset for ready addresses
+	for _, subset := range endpoints.Subsets {
+		if len(subset.Addresses) > 0 {
+			logger.V(1).Info("Nginx admission webhook is ready", "readyAddresses", len(subset.Addresses))
+			return true, nil
+		}
+	}
+
+	logger.V(1).Info("Nginx admission webhook has no ready addresses")
+	return false, nil
 }
 
 // SetupWithManager sets up the controller with the Manager
