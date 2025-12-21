@@ -12,3 +12,7 @@ node_modules/
 package-lock.json
 .wrangler/
 .dev.vars
+
+# Generated example HTML pages (generated from YAML by scripts/generate-example-pages.js)
+site/docs/examples/*.html
+site/docs/examples/v1alpha2/*.html

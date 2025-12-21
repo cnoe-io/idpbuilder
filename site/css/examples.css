@@ -1,0 +1,189 @@
+/* Example documentation pages styles */
+
+.docs-container {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.docs-sidebar {
+    position: sticky;
+    top: 80px;
+    height: fit-content;
+}
+
+.docs-sidebar h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+}
+
+.docs-sidebar h3:first-child {
+    margin-top: 0;
+}
+
+.docs-sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.docs-sidebar li {
+    margin-bottom: 0.5rem;
+}
+
+.docs-sidebar a {
+    text-decoration: none;
+    color: var(--text-color);
+    padding: 0.5rem;
+    display: block;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+    font-size: 0.95rem;
+}
+
+.docs-sidebar a:hover,
+.docs-sidebar a.active {
+    background-color: var(--bg-alt);
+    color: var(--primary-color);
+}
+
+.docs-sidebar details {
+    margin-bottom: 0.5rem;
+}
+
+.docs-sidebar summary {
+    cursor: pointer;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    user-select: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.docs-sidebar summary:hover {
+    background-color: var(--bg-alt);
+}
+
+.docs-sidebar details[open] > summary {
+    background-color: var(--bg-alt);
+    margin-bottom: 0.5rem;
+}
+
+.docs-sidebar details ul {
+    margin-left: 0;
+    padding-left: 1rem;
+}
+
+.docs-content {
+    max-width: 900px;
+    width: 100%;
+}
+
+.docs-content h1 {
+    margin-bottom: 1rem;
+}
+
+.docs-content h2 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.docs-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.docs-content p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.docs-content ul, .docs-content ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+    line-height: 1.6;
+}
+
+.breadcrumb {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.breadcrumb a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.example-meta {
+    background-color: var(--bg-alt);
+    padding: 1rem;
+    border-radius: 5px;
+    margin-bottom: 2rem;
+}
+
+.example-meta h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.example-meta p {
+    margin-bottom: 0.5rem;
+}
+
+.download-btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    transition: background-color 0.3s;
+}
+
+.download-btn:hover {
+    background-color: var(--primary-hover);
+}
+
+pre[class*="language-"] {
+    margin: 1.5rem 0;
+    border-radius: 5px;
+}
+
+code[class*="language-"],
+pre[class*="language-"] {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .docs-container {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+    .docs-sidebar {
+        position: relative;
+        top: 0;
+        background-color: var(--bg-alt);
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+        width: 100%;
+        min-width: 0;
+        overflow-x: auto;
+    }
+}
