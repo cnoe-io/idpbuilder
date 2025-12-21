@@ -9,14 +9,40 @@ const fs = require('fs');
 const path = require('path');
 const { marked } = require('marked');
 
-// Custom renderer for mermaid diagrams
+// Custom renderer for mermaid diagrams and prism.js syntax highlighting
 const renderer = new marked.Renderer();
 const originalCodeRenderer = renderer.code.bind(renderer);
 
+// Helper function to sanitize language identifier
+const sanitizeLanguage = (lang) => {
+  if (!lang) return '';
+  // Only allow alphanumeric, dash, and underscore characters
+  return lang.replace(/[^a-zA-Z0-9_-]/g, '');
+};
+
+// Helper function to escape HTML entities
+const escapeHtml = (text) => {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m]);
+};
+
 renderer.code = function(code, language) {
   if (language === 'mermaid') {
-    // Return mermaid code block with the class that mermaid.js will process
+    // Mermaid diagrams need unescaped code to be rendered by mermaid.js
+    // Note: This is safe because mermaid.js will parse and render the content
     return `<pre class="mermaid">${code}</pre>`;
+  }
+  // Add line-numbers class for Prism.js
+  if (language) {
+    const safeLang = sanitizeLanguage(language);
+    const escapedCode = escapeHtml(code);
+    return `<pre class="line-numbers"><code class="language-${safeLang}">${escapedCode}</code></pre>`;
   }
   return originalCodeRenderer(code, language);
 };
@@ -42,6 +68,9 @@ const createHtmlPage = (title, content, category, relativePath = '') => {
     <meta name="description" content="${title} - IDP Builder Documentation">
     <title>${title} | IDP Builder</title>
     <link rel="stylesheet" href="${relativePath}../../css/style.css">
+    <!-- Prism.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css">
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
         mermaid.initialize({ 
@@ -192,6 +221,10 @@ const createHtmlPage = (title, content, category, relativePath = '') => {
         </div>
     </footer>
 
+    <!-- Prism.js for syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
     <script>
         function toggleMenu() {
             const navLinks = document.getElementById('navLinks');
