@@ -5,6 +5,7 @@ import (
 	"code.gitea.io/sdk/gitea"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"k8s.io/apimachinery/pkg/types"
@@ -47,6 +48,11 @@ const (
 	argoCDApplicationAnnotationValueRefreshNormal = "normal"
 	argoCDApplicationSetAnnotationKeyRefresh      = "argocd.argoproj.io/application-set-refresh"
 	argoCDApplicationSetAnnotationKeyRefreshTrue  = "true"
+)
+
+var (
+	// errGiteaProviderNotReady is returned when the GiteaProvider is not yet ready
+	errGiteaProviderNotReady = errors.New("GiteaProvider is not ready yet")
 )
 
 type ArgocdSession struct {
@@ -147,6 +153,11 @@ func (r *LocalbuildReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	logger.V(1).Info("done installing core packages. passing control to argocd")
 	_, err = r.ReconcileArgoAppsWithGitea(ctx, req, &localBuild)
 	if err != nil {
+		// If GiteaProvider is not ready yet, requeue with a delay instead of returning an error
+		if errors.Is(err, errGiteaProviderNotReady) {
+			logger.V(1).Info("GiteaProvider is not ready yet, requeueing")
+			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -784,7 +795,7 @@ func (r *LocalbuildReconciler) reconcileGitRepo(ctx context.Context, resource *v
 		return nil, fmt.Errorf("checking if git provider is ready: %w", err)
 	}
 	if !ready {
-		return nil, fmt.Errorf("GiteaProvider is not ready yet")
+		return nil, errGiteaProviderNotReady
 	}
 
 	// Validate that we have the required URLs and they match the expected pattern
