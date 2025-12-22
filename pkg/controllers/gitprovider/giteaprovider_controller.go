@@ -345,13 +345,13 @@ func (r *GiteaProviderReconciler) buildConfigFromSpec(provider *v1alpha2.GiteaPr
 
 	// Apply defaults if values are empty
 	if config.Protocol == "" {
-		config.Protocol = "http"
+		config.Protocol = "https"
 	}
 	if config.Host == "" {
 		config.Host = "cnoe.localtest.me"
 	}
 	if config.Port == "" {
-		config.Port = "8080"
+		config.Port = "8443"
 	}
 	// Set IngressHost to Host if not explicitly set
 	if config.IngressHost == "" {

@@ -397,8 +397,12 @@ func (b *Build) createGiteaProvider(ctx context.Context, kubeClient client.Clien
 
 	_, err := controllerutil.CreateOrUpdate(ctx, kubeClient, giteaProvider, func() error {
 		giteaProvider.Spec = v1alpha2.GiteaProviderSpec{
-			Namespace: util.GiteaNamespace,
-			Version:   "1.24.3",
+			Namespace:      util.GiteaNamespace,
+			Version:        "1.24.3",
+			Protocol:       b.cfg.Protocol,
+			Host:           b.cfg.Host,
+			Port:           b.cfg.Port,
+			UsePathRouting: b.cfg.UsePathRouting,
 			AdminUser: v1alpha2.GiteaAdminUser{
 				Username:     "giteaAdmin",
 				Email:        "admin@" + b.cfg.Host,
