@@ -18,14 +18,20 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
+    - jsonPath: .status.conditions[?(@.type=="NamespaceReady")].status
+      name: Namespace
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="ResourcesInstalled")].status
+      name: Resources
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="DeploymentReady")].status
+      name: Deployment
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="ServiceReady")].status
+      name: Service
+      type: string
     - jsonPath: .status.phase
       name: Phase
-      type: string
-    - jsonPath: .status.ingressClassName
-      name: IngressClass
-      type: string
-    - jsonPath: .status.loadBalancerEndpoint
-      name: LoadBalancer
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age

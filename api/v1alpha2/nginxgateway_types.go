@@ -88,9 +88,11 @@ type NginxControllerStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Namespace",type=string,JSONPath=`.status.conditions[?(@.type=="NamespaceReady")].status`
+// +kubebuilder:printcolumn:name="Resources",type=string,JSONPath=`.status.conditions[?(@.type=="ResourcesInstalled")].status`
+// +kubebuilder:printcolumn:name="Deployment",type=string,JSONPath=`.status.conditions[?(@.type=="DeploymentReady")].status`
+// +kubebuilder:printcolumn:name="Service",type=string,JSONPath=`.status.conditions[?(@.type=="ServiceReady")].status`
 // +kubebuilder:printcolumn:name="Phase",type=string,JSONPath=`.status.phase`
-// +kubebuilder:printcolumn:name="IngressClass",type=string,JSONPath=`.status.ingressClassName`
-// +kubebuilder:printcolumn:name="LoadBalancer",type=string,JSONPath=`.status.loadBalancerEndpoint`
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type NginxGateway struct {
 	metav1.TypeMeta   `json:",inline"`

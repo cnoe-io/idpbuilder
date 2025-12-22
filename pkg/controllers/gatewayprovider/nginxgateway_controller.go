@@ -88,7 +88,7 @@ func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	result, err := r.reconcileNginx(ctx, gateway)
 	if err != nil {
 		// Set condition to False
-		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{
+		r.setCondition(gateway, metav1.Condition{
 			Type:    "Ready",
 			Status:  metav1.ConditionFalse,
 			Reason:  "InstallationFailed",
@@ -101,16 +101,25 @@ func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return result, err
 	}
 
-	// Check if Nginx is ready
-	ready, err := r.isNginxReady(ctx, gateway)
+	// Check if Nginx deployment is ready
+	deploymentReady, err := r.isNginxReady(ctx, gateway)
 	if err != nil {
-		logger.Error(err, "Failed to check Nginx readiness")
-		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
-	}
-
-	if !ready {
-		logger.Info("Nginx not ready yet, requeuing")
-		meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{
+		logger.Error(err, "Failed to check Nginx deployment readiness")
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "DeploymentReady",
+			Status:  metav1.ConditionUnknown,
+			Reason:  "DeploymentCheckFailed",
+			Message: fmt.Sprintf("Failed to check deployment status: %v", err),
+		})
+	} else if !deploymentReady {
+		logger.Info("Nginx deployment not ready yet, requeuing")
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "DeploymentReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "DeploymentNotReady",
+			Message: "Nginx controller deployment is not ready yet",
+		})
+		r.setCondition(gateway, metav1.Condition{
 			Type:    "Ready",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Installing",
@@ -121,6 +130,51 @@ func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+	} else {
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "DeploymentReady",
+			Status:  metav1.ConditionTrue,
+			Reason:  "DeploymentReady",
+			Message: "Nginx controller deployment is ready",
+		})
+	}
+
+	// Check if service is ready
+	serviceReady, serviceErr := r.isServiceReady(ctx, gateway)
+	if serviceErr != nil {
+		logger.Error(serviceErr, "Failed to check service readiness")
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "ServiceReady",
+			Status:  metav1.ConditionUnknown,
+			Reason:  "ServiceCheckFailed",
+			Message: fmt.Sprintf("Failed to check service status: %v", serviceErr),
+		})
+	} else if !serviceReady {
+		logger.Info("Service not ready yet, requeuing")
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "ServiceReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "ServiceNotReady",
+			Message: "Nginx controller service is not ready yet",
+		})
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionFalse,
+			Reason:  "Installing",
+			Message: "Nginx installation in progress",
+		})
+		gateway.Status.Phase = "Installing"
+		if err := r.Status().Update(ctx, gateway); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: defaultRequeueTime}, nil
+	} else {
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "ServiceReady",
+			Status:  metav1.ConditionTrue,
+			Reason:  "ServiceReady",
+			Message: "Nginx controller service is ready",
+		})
 	}
 
 	// Nginx is ready, update status with duck-typed fields
@@ -156,7 +210,7 @@ func (r *NginxGatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	gateway.Status.Controller.ReadyReplicas = readyReplicas
 
 	// Set Ready condition
-	meta.SetStatusCondition(&gateway.Status.Conditions, metav1.Condition{
+	r.setCondition(gateway, metav1.Condition{
 		Type:    "Ready",
 		Status:  metav1.ConditionTrue,
 		Reason:  "NginxReady",
@@ -177,13 +231,41 @@ func (r *NginxGatewayReconciler) reconcileNginx(ctx context.Context, gateway *v1
 
 	// Ensure namespace exists
 	if err := k8s.EnsureNamespace(ctx, r.Client, gateway.Spec.Namespace); err != nil {
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "NamespaceReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "NamespaceCreationFailed",
+			Message: fmt.Sprintf("Failed to create namespace: %v", err),
+		})
 		return ctrl.Result{}, fmt.Errorf("ensuring namespace: %w", err)
 	}
 
+	// Set NamespaceReady condition
+	r.setCondition(gateway, metav1.Condition{
+		Type:    "NamespaceReady",
+		Status:  metav1.ConditionTrue,
+		Reason:  "NamespaceCreated",
+		Message: fmt.Sprintf("Namespace %s is ready", gateway.Spec.Namespace),
+	})
+
 	// Install Nginx resources using embedded manifests
 	if err := r.installNginxResources(ctx, gateway); err != nil {
+		r.setCondition(gateway, metav1.Condition{
+			Type:    "ResourcesInstalled",
+			Status:  metav1.ConditionFalse,
+			Reason:  "ResourceInstallationFailed",
+			Message: fmt.Sprintf("Failed to install Nginx resources: %v", err),
+		})
 		return ctrl.Result{}, fmt.Errorf("installing Nginx resources: %w", err)
 	}
+
+	// Set ResourcesInstalled condition
+	r.setCondition(gateway, metav1.Condition{
+		Type:    "ResourcesInstalled",
+		Status:  metav1.ConditionTrue,
+		Reason:  "ResourcesInstalled",
+		Message: "Nginx resources have been installed successfully",
+	})
 
 	logger.V(1).Info("Nginx resources installed", "namespace", gateway.Spec.Namespace)
 	return ctrl.Result{}, nil
@@ -331,6 +413,37 @@ func (r *NginxGatewayReconciler) getControllerStatus(ctx context.Context, gatewa
 	return int32(replicas), int32(readyReplicas), nil
 }
 
+// isServiceReady checks if the Nginx service exists and is ready
+func (r *NginxGatewayReconciler) isServiceReady(ctx context.Context, gateway *v1alpha2.NginxGateway) (bool, error) {
+	serviceGVK := schema.GroupVersionKind{
+		Group:   "",
+		Version: "v1",
+		Kind:    "Service",
+	}
+
+	service := &unstructured.Unstructured{}
+	service.SetGroupVersionKind(serviceGVK)
+
+	err := r.Get(ctx, types.NamespacedName{
+		Namespace: gateway.Spec.Namespace,
+		Name:      nginxControllerServiceName,
+	}, service)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	// Service exists, consider it ready
+	// Note: We check only for service existence rather than endpoints because:
+	// 1. The deployment readiness check already validates that pods are running
+	// 2. Service endpoints will be automatically populated once pods are ready
+	// 3. This simplifies the check while still providing meaningful status
+	return true, nil
+}
+
 // handleDeletion handles the deletion of NginxGateway
 func (r *NginxGatewayReconciler) handleDeletion(ctx context.Context, gateway *v1alpha2.NginxGateway) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
@@ -347,6 +460,12 @@ func (r *NginxGatewayReconciler) handleDeletion(ctx context.Context, gateway *v1
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// setCondition sets a condition on the NginxGateway status with the current timestamp
+func (r *NginxGatewayReconciler) setCondition(gateway *v1alpha2.NginxGateway, condition metav1.Condition) {
+	condition.LastTransitionTime = metav1.Now()
+	meta.SetStatusCondition(&gateway.Status.Conditions, condition)
 }
 
 // SetupWithManager sets up the controller with the Manager.

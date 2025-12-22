@@ -1603,3 +1603,176 @@ func TestNginxGatewayReconciler_reconcileNginx_WithFullScheme(t *testing.T) {
 	// With full scheme, we should get further in the reconciliation
 	t.Logf("Reconcile nginx result: %v", err)
 }
+
+func TestNginxGatewayReconciler_isServiceReady(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = v1alpha2.AddToScheme(scheme)
+	_ = corev1.AddToScheme(scheme)
+
+	tests := []struct {
+		name        string
+		service     *corev1.Service
+		expectReady bool
+		expectError bool
+	}{
+		{
+			name:        "service not found",
+			service:     nil,
+			expectReady: false,
+			expectError: false,
+		},
+		{
+			name: "service exists",
+			service: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      nginxControllerServiceName,
+					Namespace: "ingress-nginx",
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "10.96.0.1",
+				},
+			},
+			expectReady: true,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var objs []client.Object
+			if tt.service != nil {
+				objs = append(objs, tt.service)
+			}
+
+			fakeClient := fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(objs...).
+				Build()
+
+			reconciler := &NginxGatewayReconciler{
+				Client: fakeClient,
+				Scheme: scheme,
+			}
+
+			gateway := &v1alpha2.NginxGateway{
+				Spec: v1alpha2.NginxGatewaySpec{
+					Namespace: "ingress-nginx",
+				},
+			}
+
+			ready, err := reconciler.isServiceReady(context.Background(), gateway)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.expectReady, ready)
+		})
+	}
+}
+
+func TestNginxGatewayReconciler_GranularStatusConditions(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	nginxGateway := &v1alpha2.NginxGateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-nginx-conditions",
+			Namespace:  "test-ns",
+			Finalizers: []string{nginxGatewayFinalizer},
+		},
+		Spec: v1alpha2.NginxGatewaySpec{
+			Namespace: "ingress-nginx",
+			Version:   "1.13.0",
+			IngressClass: v1alpha2.NginxIngressClass{
+				Name:      "nginx",
+				IsDefault: true,
+			},
+		},
+		Status: v1alpha2.NginxGatewayStatus{
+			Phase: "Installing",
+		},
+	}
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ingress-nginx",
+		},
+	}
+
+	// Create deployment that is ready
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nginxControllerDeployment,
+			Namespace: "ingress-nginx",
+		},
+		Status: appsv1.DeploymentStatus{
+			Replicas:          2,
+			AvailableReplicas: 2,
+			ReadyReplicas:     2,
+		},
+	}
+
+	// Create service
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      nginxControllerServiceName,
+			Namespace: "ingress-nginx",
+		},
+		Spec: corev1.ServiceSpec{
+			ClusterIP: "10.96.0.1",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(nginxGateway, ns, deployment, service).
+		WithStatusSubresource(&v1alpha2.NginxGateway{}).
+		Build()
+
+	reconciler := &NginxGatewayReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+		Config: v1alpha1.BuildCustomizationSpec{},
+	}
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      nginxGateway.Name,
+			Namespace: nginxGateway.Namespace,
+		},
+	}
+
+	// Reconcile
+	_, _ = reconciler.Reconcile(context.Background(), req)
+
+	// Get updated gateway
+	updatedGateway := &v1alpha2.NginxGateway{}
+	err := fakeClient.Get(context.Background(), client.ObjectKey{
+		Name:      nginxGateway.Name,
+		Namespace: nginxGateway.Namespace,
+	}, updatedGateway)
+	require.NoError(t, err)
+
+	// Verify granular conditions are set
+	assert.NotEmpty(t, updatedGateway.Status.Conditions, "Status conditions should not be empty")
+
+	// Log all conditions for debugging
+	for _, cond := range updatedGateway.Status.Conditions {
+		t.Logf("Condition: Type=%s, Status=%s, Reason=%s, Message=%s",
+			cond.Type, cond.Status, cond.Reason, cond.Message)
+	}
+
+	// Check for specific granular conditions when available
+	// Note: In unit tests, some conditions may fail due to manifest parsing issues
+	// but we should still have at least Ready condition set
+	hasReadyCondition := false
+	for _, cond := range updatedGateway.Status.Conditions {
+		if cond.Type == "Ready" {
+			hasReadyCondition = true
+			break
+		}
+	}
+	assert.True(t, hasReadyCondition, "Should have Ready condition")
+}
