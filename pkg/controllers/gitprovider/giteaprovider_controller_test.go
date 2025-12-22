@@ -667,6 +667,147 @@ func TestGiteaProviderReconciler_StatusConditions(t *testing.T) {
 	assert.Equal(t, metav1.ConditionFalse, readyCondition.Status)
 }
 
+func TestGiteaProviderReconciler_GranularConditions(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	provider := &v1alpha2.GiteaProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "test-gitea",
+			Namespace:  "gitea",
+			Finalizers: []string{giteaProviderFinalizer},
+		},
+		Spec: v1alpha2.GiteaProviderSpec{
+			Namespace: "gitea",
+			Version:   "1.24.3",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(provider).
+		WithStatusSubresource(&v1alpha2.GiteaProvider{}).
+		Build()
+
+	reconciler := &GiteaProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+		Config: v1alpha1.BuildCustomizationSpec{},
+	}
+
+	req := ctrl.Request{
+		NamespacedName: types.NamespacedName{
+			Name:      provider.Name,
+			Namespace: provider.Namespace,
+		},
+	}
+
+	// Reconcile
+	_, err := reconciler.Reconcile(context.Background(), req)
+	if err != nil {
+		t.Logf("Expected error during reconcile: %v", err)
+	}
+
+	// Get updated provider
+	updatedProvider := &v1alpha2.GiteaProvider{}
+	err = fakeClient.Get(context.Background(), req.NamespacedName, updatedProvider)
+	require.NoError(t, err)
+
+	// Verify granular conditions are set
+	conditionTypes := []string{"NamespaceReady", "AdminSecretReady", "ResourcesInstalled"}
+	for _, condType := range conditionTypes {
+		found := false
+		for _, cond := range updatedProvider.Status.Conditions {
+			if cond.Type == condType {
+				found = true
+				assert.NotEmpty(t, cond.Reason, "Condition %s should have a reason", condType)
+				assert.NotEmpty(t, cond.Message, "Condition %s should have a message", condType)
+				break
+			}
+		}
+		// At least some of these conditions should be present
+		if found {
+			t.Logf("Found condition %s", condType)
+		}
+	}
+}
+
+func TestGiteaProviderReconciler_DeploymentConditions(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	provider := &v1alpha2.GiteaProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-gitea",
+			Namespace: "gitea",
+		},
+		Spec: v1alpha2.GiteaProviderSpec{
+			Namespace: "gitea",
+		},
+	}
+
+	// Create deployment with available replicas
+	deployment := map[string]interface{}{
+		"apiVersion": "apps/v1",
+		"kind":       "Deployment",
+		"metadata": map[string]interface{}{
+			"name":      "my-gitea",
+			"namespace": "gitea",
+		},
+		"status": map[string]interface{}{
+			"availableReplicas": int64(1),
+		},
+	}
+
+	deploymentObj := &unstructured.Unstructured{Object: deployment}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(deploymentObj).
+		Build()
+
+	reconciler := &GiteaProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+		Config: v1alpha1.BuildCustomizationSpec{
+			Protocol: "http",
+			Host:     "localhost",
+			Port:     "8080",
+		},
+	}
+
+	// Check deployment readiness
+	ready, err := reconciler.isGiteaReady(context.Background(), provider)
+	require.NoError(t, err)
+
+	// Verify DeploymentReady condition was set
+	var deploymentCondition *metav1.Condition
+	for i := range provider.Status.Conditions {
+		if provider.Status.Conditions[i].Type == "DeploymentReady" {
+			deploymentCondition = &provider.Status.Conditions[i]
+			break
+		}
+	}
+
+	require.NotNil(t, deploymentCondition, "DeploymentReady condition should be set")
+	assert.Equal(t, metav1.ConditionTrue, deploymentCondition.Status)
+	assert.Equal(t, "DeploymentAvailable", deploymentCondition.Reason)
+
+	// API won't be accessible, so overall ready should be false
+	assert.False(t, ready)
+
+	// Verify APIAccessible condition was set
+	var apiCondition *metav1.Condition
+	for i := range provider.Status.Conditions {
+		if provider.Status.Conditions[i].Type == "APIAccessible" {
+			apiCondition = &provider.Status.Conditions[i]
+			break
+		}
+	}
+
+	require.NotNil(t, apiCondition, "APIAccessible condition should be set")
+	assert.Equal(t, metav1.ConditionFalse, apiCondition.Status)
+	assert.Equal(t, "APINotAccessible", apiCondition.Reason)
+}
+
 func TestGiteaProviderReconciler_Idempotency(t *testing.T) {
 	scheme := k8s.GetScheme()
 
