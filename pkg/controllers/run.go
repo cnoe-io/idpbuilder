@@ -28,6 +28,7 @@ func RunControllers(
 	statusReporter interface {
 		AddSubStep(parentName, subStepName, description string)
 		UpdateSubStep(parentName, subStepName string, state int)
+		UpdateSubStepWithPhase(parentName, subStepName string, state int, phase string)
 	},
 ) error {
 	logger := log.FromContext(ctx)
