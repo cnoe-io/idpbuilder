@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/api/v1alpha2"
@@ -15,7 +16,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -64,11 +67,12 @@ func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Install ArgoCD
 	if err := r.installArgoCD(ctx, argocdProvider); err != nil {
 		logger.Error(err, "Failed to install ArgoCD")
-		r.setCondition(argocdProvider, metav1.Condition{
-			Type:    "Ready",
-			Status:  metav1.ConditionFalse,
-			Reason:  "InstallationFailed",
-			Message: fmt.Sprintf("Failed to install ArgoCD: %v", err),
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "InstallationFailed",
+			Message:            fmt.Sprintf("Failed to install ArgoCD: %v", err),
+			LastTransitionTime: metav1.Now(),
 		})
 		argocdProvider.Status.Phase = "Failed"
 		if statusErr := r.Status().Update(ctx, argocdProvider); statusErr != nil {
@@ -77,10 +81,53 @@ func (r *ArgoCDProviderReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	// Update status after installation to persist condition changes
+	if err := r.Status().Update(ctx, argocdProvider); err != nil {
+		logger.Error(err, "Failed to update status after installation")
+		return ctrl.Result{}, err
+	}
+
 	// Create admin credentials if needed
 	if err := r.ensureAdminCredentials(ctx, argocdProvider); err != nil {
 		logger.Error(err, "Failed to ensure admin credentials")
+		// Update status to persist condition changes
+		if statusErr := r.Status().Update(ctx, argocdProvider); statusErr != nil {
+			logger.Error(statusErr, "Failed to update status after credentials failure")
+		}
 		return ctrl.Result{}, err
+	}
+
+	// Update status after credentials to persist condition changes
+	if err := r.Status().Update(ctx, argocdProvider); err != nil {
+		logger.Error(err, "Failed to update status after credentials")
+		return ctrl.Result{}, err
+	}
+
+	// Check if ArgoCD is ready
+	ready, err := r.isArgoCDReady(ctx, argocdProvider)
+	if err != nil {
+		logger.Error(err, "Failed to check ArgoCD readiness")
+		// Update status to persist condition changes from isArgoCDReady
+		if statusErr := r.Status().Update(ctx, argocdProvider); statusErr != nil {
+			logger.Error(statusErr, "Failed to update status after readiness check")
+		}
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
+	if !ready {
+		logger.Info("ArgoCD not ready yet, requeuing")
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "Installing",
+			Message:            "ArgoCD installation in progress",
+			LastTransitionTime: metav1.Now(),
+		})
+		argocdProvider.Status.Phase = "Installing"
+		if err := r.Status().Update(ctx, argocdProvider); err != nil {
+			logger.Error(err, "Failed to update status")
+		}
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
 	// Update status with duck-typed fields
@@ -99,8 +146,20 @@ func (r *ArgoCDProviderReconciler) installArgoCD(ctx context.Context, argocdProv
 
 	// Ensure namespace exists
 	if err := k8s.EnsureNamespace(ctx, r.Client, argocdProvider.Spec.Namespace); err != nil {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "NamespaceReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "NamespaceCreationFailed",
+			Message: fmt.Sprintf("Failed to ensure namespace: %v", err),
+		})
 		return fmt.Errorf("failed to ensure namespace: %w", err)
 	}
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+		Type:    "NamespaceReady",
+		Status:  metav1.ConditionTrue,
+		Reason:  "NamespaceExists",
+		Message: "Namespace is ready",
+	})
 
 	// Retrieve template data for ArgoCD manifests
 	templateData, err := r.getTemplateData(ctx)
@@ -112,15 +171,34 @@ func (r *ArgoCDProviderReconciler) installArgoCD(ctx context.Context, argocdProv
 	// Reuse the same ArgoCD installation manifests from localbuild package
 	installObjs, err := k8s.BuildCustomizedObjects("", "resources/argo", localbuild.GetArgoFS(), r.Scheme, templateData)
 	if err != nil {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "ResourcesInstalled",
+			Status:  metav1.ConditionFalse,
+			Reason:  "ManifestBuildFailed",
+			Message: fmt.Sprintf("Failed to build ArgoCD manifests: %v", err),
+		})
 		return fmt.Errorf("failed to build argocd manifests: %w", err)
 	}
 
 	nsClient := client.NewNamespacedClient(r.Client, argocdProvider.Spec.Namespace)
 	for _, obj := range installObjs {
 		if err := k8s.EnsureObject(ctx, nsClient, obj, argocdProvider.Spec.Namespace); err != nil {
+			meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+				Type:    "ResourcesInstalled",
+				Status:  metav1.ConditionFalse,
+				Reason:  "ResourceCreationFailed",
+				Message: fmt.Sprintf("Failed to create ArgoCD resource %s: %v", obj.GetName(), err),
+			})
 			return fmt.Errorf("failed to create argocd resource %s: %w", obj.GetName(), err)
 		}
 	}
+
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+		Type:    "ResourcesInstalled",
+		Status:  metav1.ConditionTrue,
+		Reason:  "ResourcesApplied",
+		Message: "ArgoCD resources have been installed",
+	})
 
 	logger.Info("ArgoCD resources created successfully")
 	return nil
@@ -169,6 +247,112 @@ func (r *ArgoCDProviderReconciler) getTemplateData(ctx context.Context) (v1alpha
 	return templateData, nil
 }
 
+func (r *ArgoCDProviderReconciler) isArgoCDReady(ctx context.Context, argocdProvider *v1alpha2.ArgoCDProvider) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	// Check if the ArgoCD server deployment exists and is ready
+	deploymentGVK := schema.GroupVersionKind{
+		Group:   "apps",
+		Version: "v1",
+		Kind:    "Deployment",
+	}
+
+	deployment := &unstructured.Unstructured{}
+	deployment.SetGroupVersionKind(deploymentGVK)
+
+	err := r.Get(ctx, types.NamespacedName{
+		Namespace: argocdProvider.Spec.Namespace,
+		Name:      "argocd-server",
+	}, deployment)
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+				Type:    "DeploymentReady",
+				Status:  metav1.ConditionFalse,
+				Reason:  "DeploymentNotFound",
+				Message: "ArgoCD server deployment not found",
+			})
+			return false, nil
+		}
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "DeploymentReady",
+			Status:  metav1.ConditionUnknown,
+			Reason:  "DeploymentCheckFailed",
+			Message: fmt.Sprintf("Failed to check deployment status: %v", err),
+		})
+		return false, err
+	}
+
+	// Check deployment status
+	availableReplicas, found, err := unstructured.NestedInt64(deployment.Object, "status", "availableReplicas")
+	if err != nil || !found {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "DeploymentReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "NoAvailableReplicas",
+			Message: "Deployment has no available replicas",
+		})
+		return false, nil
+	}
+
+	if availableReplicas < 1 {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "DeploymentReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "NoAvailableReplicas",
+			Message: fmt.Sprintf("Deployment has %d available replicas, need at least 1", availableReplicas),
+		})
+		return false, nil
+	}
+
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+		Type:    "DeploymentReady",
+		Status:  metav1.ConditionTrue,
+		Reason:  "DeploymentAvailable",
+		Message: fmt.Sprintf("Deployment has %d available replicas", availableReplicas),
+	})
+
+	// Check if ArgoCD API endpoint is accessible via the service
+	svc := &corev1.Service{}
+	err = r.Get(ctx, types.NamespacedName{
+		Name:      "argocd-server",
+		Namespace: argocdProvider.Spec.Namespace,
+	}, svc)
+
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("ArgoCD server service not found yet")
+			meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+				Type:    "APIAccessible",
+				Status:  metav1.ConditionFalse,
+				Reason:  "ServiceNotFound",
+				Message: "ArgoCD server service not found",
+			})
+			return false, nil
+		}
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "APIAccessible",
+			Status:  metav1.ConditionUnknown,
+			Reason:  "ServiceCheckFailed",
+			Message: fmt.Sprintf("Failed to check service: %v", err),
+		})
+		return false, err
+	}
+
+	// If service exists and deployment is ready, consider API accessible
+	// In a real cluster, we could make an HTTP call to verify, but for now
+	// we'll rely on the deployment being ready
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+		Type:    "APIAccessible",
+		Status:  metav1.ConditionTrue,
+		Reason:  "ServiceReady",
+		Message: "ArgoCD server service is ready",
+	})
+
+	return true, nil
+}
+
 func (r *ArgoCDProviderReconciler) ensureAdminCredentials(ctx context.Context, argocdProvider *v1alpha2.ArgoCDProvider) error {
 	logger := log.FromContext(ctx)
 
@@ -176,8 +360,20 @@ func (r *ArgoCDProviderReconciler) ensureAdminCredentials(ctx context.Context, a
 	if !argocdProvider.Spec.AdminCredentials.AutoGenerate {
 		// User should provide credentials via secretRef
 		if argocdProvider.Spec.AdminCredentials.SecretRef == nil {
+			meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+				Type:    "AdminSecretReady",
+				Status:  metav1.ConditionFalse,
+				Reason:  "AdminSecretNotConfigured",
+				Message: "Admin credentials not configured: autoGenerate is false and secretRef is nil",
+			})
 			return fmt.Errorf("admin credentials not configured: autoGenerate is false and secretRef is nil")
 		}
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "AdminSecretReady",
+			Status:  metav1.ConditionTrue,
+			Reason:  "AdminSecretConfigured",
+			Message: "Admin secret reference is configured",
+		})
 		return nil
 	}
 
@@ -196,16 +392,34 @@ func (r *ArgoCDProviderReconciler) ensureAdminCredentials(ctx context.Context, a
 	if err == nil {
 		// Secret already exists
 		logger.Info("Admin credentials secret already exists", "secret", secretName)
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "AdminSecretReady",
+			Status:  metav1.ConditionTrue,
+			Reason:  "AdminSecretExists",
+			Message: "Admin secret is ready",
+		})
 		return nil
 	}
 
 	if !apierrors.IsNotFound(err) {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "AdminSecretReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "AdminSecretCheckFailed",
+			Message: fmt.Sprintf("Failed to check for admin secret: %v", err),
+		})
 		return fmt.Errorf("failed to check for admin secret: %w", err)
 	}
 
 	// Generate a random password
 	password, err := generateRandomPassword(16)
 	if err != nil {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "AdminSecretReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "PasswordGenerationFailed",
+			Message: fmt.Sprintf("Failed to generate password: %v", err),
+		})
 		return fmt.Errorf("failed to generate password: %w", err)
 	}
 
@@ -223,8 +437,21 @@ func (r *ArgoCDProviderReconciler) ensureAdminCredentials(ctx context.Context, a
 	}
 
 	if err := r.Create(ctx, secret); err != nil {
+		meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+			Type:    "AdminSecretReady",
+			Status:  metav1.ConditionFalse,
+			Reason:  "AdminSecretCreationFailed",
+			Message: fmt.Sprintf("Failed to create admin secret: %v", err),
+		})
 		return fmt.Errorf("failed to create admin secret: %w", err)
 	}
+
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+		Type:    "AdminSecretReady",
+		Status:  metav1.ConditionTrue,
+		Reason:  "AdminSecretCreated",
+		Message: "Admin secret is ready",
+	})
 
 	logger.Info("Created admin credentials secret", "secret", secretName)
 	return nil
@@ -273,11 +500,12 @@ func (r *ArgoCDProviderReconciler) updateStatus(ctx context.Context, argocdProvi
 	}
 
 	// Set Ready condition
-	r.setCondition(argocdProvider, metav1.Condition{
-		Type:    "Ready",
-		Status:  metav1.ConditionTrue,
-		Reason:  "ArgoCDInstalled",
-		Message: "ArgoCD is installed and ready",
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "ArgoCDInstalled",
+		Message:            "ArgoCD is installed and ready",
+		LastTransitionTime: metav1.Now(),
 	})
 
 	if err := r.Status().Update(ctx, argocdProvider); err != nil {
@@ -286,11 +514,6 @@ func (r *ArgoCDProviderReconciler) updateStatus(ctx context.Context, argocdProvi
 
 	logger.Info("Updated ArgoCDProvider status", "phase", argocdProvider.Status.Phase)
 	return nil
-}
-
-func (r *ArgoCDProviderReconciler) setCondition(argocdProvider *v1alpha2.ArgoCDProvider, condition metav1.Condition) {
-	condition.LastTransitionTime = metav1.Now()
-	meta.SetStatusCondition(&argocdProvider.Status.Conditions, condition)
 }
 
 // generateRandomPassword generates a random password of the specified length

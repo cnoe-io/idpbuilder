@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -472,17 +474,16 @@ func TestArgoCDProviderReconciler_SetCondition(t *testing.T) {
 		},
 	}
 
-	reconciler := &ArgoCDProviderReconciler{}
-
 	// Set a condition
 	condition := metav1.Condition{
-		Type:    "Ready",
-		Status:  metav1.ConditionTrue,
-		Reason:  "InstallationComplete",
-		Message: "ArgoCD is ready",
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "InstallationComplete",
+		Message:            "ArgoCD is ready",
+		LastTransitionTime: metav1.Now(),
 	}
 
-	reconciler.setCondition(argocdProvider, condition)
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, condition)
 
 	// Verify condition was added
 	require.Len(t, argocdProvider.Status.Conditions, 1, "Should have one condition")
@@ -502,26 +503,26 @@ func TestArgoCDProviderReconciler_SetCondition_Update(t *testing.T) {
 		Status: v1alpha2.ArgoCDProviderStatus{
 			Conditions: []metav1.Condition{
 				{
-					Type:    "Ready",
-					Status:  metav1.ConditionFalse,
-					Reason:  "Installing",
-					Message: "Installing ArgoCD",
+					Type:               "Ready",
+					Status:             metav1.ConditionFalse,
+					Reason:             "Installing",
+					Message:            "Installing ArgoCD",
+					LastTransitionTime: metav1.Now(),
 				},
 			},
 		},
 	}
 
-	reconciler := &ArgoCDProviderReconciler{}
-
 	// Update the condition
 	condition := metav1.Condition{
-		Type:    "Ready",
-		Status:  metav1.ConditionTrue,
-		Reason:  "InstallationComplete",
-		Message: "ArgoCD is ready",
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             "InstallationComplete",
+		Message:            "ArgoCD is ready",
+		LastTransitionTime: metav1.Now(),
 	}
 
-	reconciler.setCondition(argocdProvider, condition)
+	meta.SetStatusCondition(&argocdProvider.Status.Conditions, condition)
 
 	// Verify condition was updated
 	require.Len(t, argocdProvider.Status.Conditions, 1, "Should still have one condition")
@@ -900,4 +901,312 @@ func TestArgoCDProviderReconciler_UpdateStatus_WithCustomSecretRef(t *testing.T)
 	assert.NotNil(t, argocdProvider.Status.CredentialsSecretRef)
 	assert.Equal(t, "my-custom-secret", argocdProvider.Status.CredentialsSecretRef.Name,
 		"Should use custom secret name from spec")
+}
+
+// TestArgoCDProviderReconciler_GranularConditions_NamespaceReady tests NamespaceReady condition
+func TestArgoCDProviderReconciler_GranularConditions_NamespaceReady(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-argocd",
+			Namespace: "argocd",
+		},
+		Spec: v1alpha2.ArgoCDProviderSpec{
+			Namespace: "argocd",
+			Version:   "v2.9.0",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(argocdProvider).
+		WithStatusSubresource(&v1alpha2.ArgoCDProvider{}).
+		Build()
+
+	reconciler := &ArgoCDProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	ctx := context.Background()
+
+	// Call installArgoCD which sets NamespaceReady condition
+	err := reconciler.installArgoCD(ctx, argocdProvider)
+	// Will error on manifest parsing, but namespace condition should be set
+	t.Log("Installation error (expected):", err)
+
+	// Verify NamespaceReady condition exists
+	var namespaceCondition *metav1.Condition
+	for i := range argocdProvider.Status.Conditions {
+		if argocdProvider.Status.Conditions[i].Type == "NamespaceReady" {
+			namespaceCondition = &argocdProvider.Status.Conditions[i]
+			break
+		}
+	}
+	require.NotNil(t, namespaceCondition, "NamespaceReady condition should be set")
+	assert.Equal(t, metav1.ConditionTrue, namespaceCondition.Status, "NamespaceReady should be True after namespace creation")
+	assert.Equal(t, "NamespaceExists", namespaceCondition.Reason)
+}
+
+// TestArgoCDProviderReconciler_GranularConditions_AdminSecretReady tests AdminSecretReady condition
+func TestArgoCDProviderReconciler_GranularConditions_AdminSecretReady(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-argocd",
+			Namespace: "argocd",
+		},
+		Spec: v1alpha2.ArgoCDProviderSpec{
+			Namespace: "argocd",
+			Version:   "v2.9.0",
+			AdminCredentials: v1alpha2.ArgoCDAdminCredentials{
+				AutoGenerate: true,
+			},
+		},
+	}
+
+	// Create namespace
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "argocd",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(argocdProvider, ns).
+		WithStatusSubresource(&v1alpha2.ArgoCDProvider{}).
+		Build()
+
+	reconciler := &ArgoCDProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	ctx := context.Background()
+
+	// Call ensureAdminCredentials which sets AdminSecretReady condition
+	err := reconciler.ensureAdminCredentials(ctx, argocdProvider)
+	require.NoError(t, err)
+
+	// Verify AdminSecretReady condition exists
+	var adminSecretCondition *metav1.Condition
+	for i := range argocdProvider.Status.Conditions {
+		if argocdProvider.Status.Conditions[i].Type == "AdminSecretReady" {
+			adminSecretCondition = &argocdProvider.Status.Conditions[i]
+			break
+		}
+	}
+	require.NotNil(t, adminSecretCondition, "AdminSecretReady condition should be set")
+	assert.Equal(t, metav1.ConditionTrue, adminSecretCondition.Status, "AdminSecretReady should be True after secret creation")
+	assert.Contains(t, []string{"AdminSecretCreated", "AdminSecretExists"}, adminSecretCondition.Reason)
+}
+
+// TestArgoCDProviderReconciler_GranularConditions_ResourcesInstalled tests ResourcesInstalled condition
+func TestArgoCDProviderReconciler_GranularConditions_ResourcesInstalled(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-argocd",
+			Namespace: "argocd",
+		},
+		Spec: v1alpha2.ArgoCDProviderSpec{
+			Namespace: "argocd",
+			Version:   "v2.9.0",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(argocdProvider).
+		WithStatusSubresource(&v1alpha2.ArgoCDProvider{}).
+		Build()
+
+	reconciler := &ArgoCDProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	ctx := context.Background()
+
+	// Call installArgoCD which sets ResourcesInstalled condition
+	err := reconciler.installArgoCD(ctx, argocdProvider)
+	// Will error on resource creation in fake client
+	t.Log("Installation error (expected):", err)
+
+	// Verify ResourcesInstalled condition exists
+	var resourcesCondition *metav1.Condition
+	for i := range argocdProvider.Status.Conditions {
+		if argocdProvider.Status.Conditions[i].Type == "ResourcesInstalled" {
+			resourcesCondition = &argocdProvider.Status.Conditions[i]
+			break
+		}
+	}
+	require.NotNil(t, resourcesCondition, "ResourcesInstalled condition should be set")
+	// In unit tests, this will fail due to fake client limitations
+	assert.Equal(t, metav1.ConditionFalse, resourcesCondition.Status, "ResourcesInstalled should be False in unit tests")
+	assert.Equal(t, "ResourceCreationFailed", resourcesCondition.Reason)
+}
+
+// TestArgoCDProviderReconciler_GranularConditions_DeploymentReady tests DeploymentReady condition
+func TestArgoCDProviderReconciler_GranularConditions_DeploymentReady(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-argocd",
+			Namespace: "argocd",
+		},
+		Spec: v1alpha2.ArgoCDProviderSpec{
+			Namespace: "argocd",
+			Version:   "v2.9.0",
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(argocdProvider).
+		WithStatusSubresource(&v1alpha2.ArgoCDProvider{}).
+		Build()
+
+	reconciler := &ArgoCDProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	ctx := context.Background()
+
+	// Call isArgoCDReady which sets DeploymentReady condition
+	ready, err := reconciler.isArgoCDReady(ctx, argocdProvider)
+	require.NoError(t, err)
+	assert.False(t, ready, "Should not be ready without deployment")
+
+	// Verify DeploymentReady condition exists
+	var deploymentCondition *metav1.Condition
+	for i := range argocdProvider.Status.Conditions {
+		if argocdProvider.Status.Conditions[i].Type == "DeploymentReady" {
+			deploymentCondition = &argocdProvider.Status.Conditions[i]
+			break
+		}
+	}
+	require.NotNil(t, deploymentCondition, "DeploymentReady condition should be set")
+	assert.Equal(t, metav1.ConditionFalse, deploymentCondition.Status, "DeploymentReady should be False without deployment")
+	assert.Equal(t, "DeploymentNotFound", deploymentCondition.Reason)
+}
+
+// TestArgoCDProviderReconciler_GranularConditions_APIAccessible tests APIAccessible condition
+func TestArgoCDProviderReconciler_GranularConditions_APIAccessible(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-argocd",
+			Namespace: "argocd",
+		},
+		Spec: v1alpha2.ArgoCDProviderSpec{
+			Namespace: "argocd",
+			Version:   "v2.9.0",
+		},
+	}
+
+	// Create a deployment with available replicas
+	deployment := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"metadata": map[string]interface{}{
+				"name":      "argocd-server",
+				"namespace": "argocd",
+			},
+			"status": map[string]interface{}{
+				"availableReplicas": int64(1),
+			},
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(argocdProvider, deployment).
+		WithStatusSubresource(&v1alpha2.ArgoCDProvider{}).
+		Build()
+
+	reconciler := &ArgoCDProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	ctx := context.Background()
+
+	// Call isArgoCDReady which sets APIAccessible condition
+	ready, err := reconciler.isArgoCDReady(ctx, argocdProvider)
+	require.NoError(t, err)
+	assert.False(t, ready, "Should not be ready without service")
+
+	// Verify APIAccessible condition exists
+	var apiCondition *metav1.Condition
+	for i := range argocdProvider.Status.Conditions {
+		if argocdProvider.Status.Conditions[i].Type == "APIAccessible" {
+			apiCondition = &argocdProvider.Status.Conditions[i]
+			break
+		}
+	}
+	require.NotNil(t, apiCondition, "APIAccessible condition should be set")
+	assert.Equal(t, metav1.ConditionFalse, apiCondition.Status, "APIAccessible should be False without service")
+	assert.Equal(t, "ServiceNotFound", apiCondition.Reason)
+}
+
+// TestArgoCDProviderReconciler_GranularConditions_AdminSecretConfigured tests AdminSecretReady with SecretRef
+func TestArgoCDProviderReconciler_GranularConditions_AdminSecretConfigured(t *testing.T) {
+	scheme := k8s.GetScheme()
+
+	argocdProvider := &v1alpha2.ArgoCDProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-argocd",
+			Namespace: "argocd",
+		},
+		Spec: v1alpha2.ArgoCDProviderSpec{
+			Namespace: "argocd",
+			Version:   "v2.9.0",
+			AdminCredentials: v1alpha2.ArgoCDAdminCredentials{
+				AutoGenerate: false,
+				SecretRef: &v1alpha2.SecretReference{
+					Name:      "custom-secret",
+					Namespace: "argocd",
+					Key:       "password",
+				},
+			},
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(argocdProvider).
+		WithStatusSubresource(&v1alpha2.ArgoCDProvider{}).
+		Build()
+
+	reconciler := &ArgoCDProviderReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	ctx := context.Background()
+
+	// Call ensureAdminCredentials with secretRef configured
+	err := reconciler.ensureAdminCredentials(ctx, argocdProvider)
+	require.NoError(t, err)
+
+	// Verify AdminSecretReady condition exists
+	var adminSecretCondition *metav1.Condition
+	for i := range argocdProvider.Status.Conditions {
+		if argocdProvider.Status.Conditions[i].Type == "AdminSecretReady" {
+			adminSecretCondition = &argocdProvider.Status.Conditions[i]
+			break
+		}
+	}
+	require.NotNil(t, adminSecretCondition, "AdminSecretReady condition should be set")
+	assert.Equal(t, metav1.ConditionTrue, adminSecretCondition.Status, "AdminSecretReady should be True when secretRef is configured")
+	assert.Equal(t, "AdminSecretConfigured", adminSecretCondition.Reason)
 }
