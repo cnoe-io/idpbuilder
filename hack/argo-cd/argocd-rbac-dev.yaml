@@ -5,7 +5,6 @@ metadata:
     app.kubernetes.io/name: argocd-rbac-cm
     app.kubernetes.io/part-of: argocd
   name: argocd-rbac-cm
-  namespace: argocd
 data:
   policy.csv: |
     p, role:developer, applications, *, *, allow
