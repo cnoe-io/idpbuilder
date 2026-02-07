@@ -20,7 +20,7 @@ jobs:
       - run: ls -al
       - name: Scan current project
         id: scan
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v7
         with:
           fail-build: false
           path: "."

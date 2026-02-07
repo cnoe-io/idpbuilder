@@ -32,14 +32,14 @@ jobs:
           OUT_FILE=/tmp/idpbuilder make build
       - name: Generate a homebrew tap update token
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.CNOE_HOMEBREW_APP_ID }}
           private-key: ${{ secrets.CNOE_HOMEBREW_PRIVATE_KEY }}
           repositories: |
             homebrew-tap
       - name: GoReleaser
-        uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a  # v6.4.0
         id: run-goreleaser
         with:
           version: latest

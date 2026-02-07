@@ -10,12 +10,12 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.CNOE_GH_WORKFLOW_TOKEN_APP_ID }}
           private-key: ${{ secrets.CNOE_GH_WORKFLOW_TOKEN_PRIVATE_KEY }}
       - name: Slash Command Dispatch
-        uses: peter-evans/slash-command-dispatch@v4
+        uses: peter-evans/slash-command-dispatch@v5
         with:
           token: ${{ steps.generate-token.outputs.token }}
           commands: |
