@@ -16,7 +16,7 @@ jobs:
   code-analysis:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: ls -al
       - name: Scan current project
         id: scan
