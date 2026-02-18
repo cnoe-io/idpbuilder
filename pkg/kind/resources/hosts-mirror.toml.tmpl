@@ -1,0 +1,5 @@
+server = "{{ .RegistryAddress }}"
+
+[host."{{ .RegistryAddress }}"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true

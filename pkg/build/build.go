@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
@@ -292,5 +293,6 @@ func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool 
 		s1.Port == s2.Port &&
 		s1.UsePathRouting == s2.UsePathRouting &&
 		s1.SelfSignedCert == s2.SelfSignedCert &&
-		s1.StaticPassword == s2.StaticPassword
+		s1.StaticPassword == s2.StaticPassword &&
+		slices.Equal(s1.RegistryMirrors, s2.RegistryMirrors)
 }

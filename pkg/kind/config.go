@@ -88,18 +88,7 @@ func findRegistryConfig(registryConfigPaths []string) string {
 }
 
 func renderRegistryCertsDir(cfg v1alpha1.BuildCustomizationSpec) (string, error) {
-	// Render out the template
-	rawConfigTempl, err := fs.ReadFile(configFS, "resources/hosts.toml.tmpl")
-	if err != nil {
-		return "", fmt.Errorf("reading insecure registry config %w", err)
-	}
-
-	var retBuff []byte
-	if retBuff, err = files.ApplyTemplate(rawConfigTempl, cfg); err != nil {
-		return "", fmt.Errorf("templating insecure registry config %w", err)
-	}
-
-	// Generate the directory structure and write the file to hosts.toml
+	// Generate the directory structure
 	dir, err := os.MkdirTemp("", "idpbuilder-registry-certs.d-*")
 	if err != nil {
 		return "", fmt.Errorf("creating temp dir %w", err)
@@ -116,11 +105,56 @@ func renderRegistryCertsDir(cfg v1alpha1.BuildCustomizationSpec) (string, error)
 	if err != nil {
 		return "", fmt.Errorf("creating temp dir for host %w", err)
 	}
+
+	// Render out the template
+	rawConfigTempl, err := fs.ReadFile(configFS, "resources/hosts.toml.tmpl")
+	if err != nil {
+		return "", fmt.Errorf("reading insecure registry config %w", err)
+	}
+
+	var retBuff []byte
+	if retBuff, err = files.ApplyTemplate(rawConfigTempl, cfg); err != nil {
+		return "", fmt.Errorf("templating insecure registry config %w", err)
+	}
+
 	hostsFile := filepath.Join(hostCertsDir, "hosts.toml")
 
 	err = os.WriteFile(hostsFile, retBuff, 0700)
 	if err != nil {
 		return "", fmt.Errorf("writing insecure registry config %w", err)
+	}
+
+	// Render and write hosts.toml for each registry mirror
+	for _, mirror := range cfg.RegistryMirrors {
+		mirrorCertsDir := filepath.Join(dir, mirror.TargetRegistry)
+		err = os.Mkdir(mirrorCertsDir, 0700)
+		if err != nil {
+			return "", fmt.Errorf("creating temp dir for mirror %w", err)
+		}
+
+		// Render out the mirror template
+		rawMirrorTempl, err := fs.ReadFile(configFS, "resources/hosts-mirror.toml.tmpl")
+		if err != nil {
+			return "", fmt.Errorf("reading registry mirror config %w", err)
+		}
+
+		// The mirror template only needs the registry address
+		mirrorData := struct {
+			RegistryAddress string
+		}{
+			RegistryAddress: mirror.RegistryAddress,
+		}
+
+		var retBuff []byte
+		if retBuff, err = files.ApplyTemplate(rawMirrorTempl, mirrorData); err != nil {
+			return "", fmt.Errorf("templating registry mirror config %w", err)
+		}
+
+		hostsFile := filepath.Join(mirrorCertsDir, "hosts.toml")
+		err = os.WriteFile(hostsFile, retBuff, 0700)
+		if err != nil {
+			return "", fmt.Errorf("writing registry mirror config %w", err)
+		}
 	}
 
 	return dir, nil

@@ -5,9 +5,13 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 )
 
 type MockHttpClient struct{}
@@ -182,5 +186,99 @@ func TestFindRegistryConfig(t *testing.T) {
 		if !reflect.DeepEqual(tc.expected, out) {
 			t.Errorf("expected:\n%v\ngot:\n%v", tc.expected, out)
 		}
+	}
+}
+
+func TestRenderRegistryCertsDirWithMirrors(t *testing.T) {
+	type test struct {
+		name              string
+		cfg               v1alpha1.BuildCustomizationSpec
+		expectedDirs      []string
+		expectedFileCount int
+	}
+
+	tests := []test{
+		{
+			name: "no mirrors",
+			cfg: v1alpha1.BuildCustomizationSpec{
+				Host: "cnoe.localtest.me",
+				Port: "8443",
+			},
+			expectedDirs:      []string{"gitea.cnoe.localtest.me:8443"},
+			expectedFileCount: 1,
+		},
+		{
+			name: "with single mirror",
+			cfg: v1alpha1.BuildCustomizationSpec{
+				Host: "cnoe.localtest.me",
+				Port: "8443",
+				RegistryMirrors: []v1alpha1.RegistryMirror{
+					{
+						TargetRegistry:  "docker.io",
+						RegistryAddress: "http://kind-registry:5000",
+					},
+				},
+			},
+			expectedDirs:      []string{"gitea.cnoe.localtest.me:8443", "docker.io"},
+			expectedFileCount: 2,
+		},
+		{
+			name: "with multiple mirrors",
+			cfg: v1alpha1.BuildCustomizationSpec{
+				Host: "cnoe.localtest.me",
+				Port: "8443",
+				RegistryMirrors: []v1alpha1.RegistryMirror{
+					{
+						TargetRegistry:  "docker.io",
+						RegistryAddress: "http://kind-registry:5000",
+					},
+					{
+						TargetRegistry:  "ghcr.io",
+						RegistryAddress: "http://kind-registry:5000",
+					},
+				},
+			},
+			expectedDirs:      []string{"gitea.cnoe.localtest.me:8443", "docker.io", "ghcr.io"},
+			expectedFileCount: 3,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, err := renderRegistryCertsDir(tc.cfg)
+			if err != nil {
+				t.Fatalf("failed to render registry certs dir: %v", err)
+			}
+			defer os.RemoveAll(dir)
+
+			// Check all expected directories exist
+			for _, expectedDir := range tc.expectedDirs {
+				fullPath := filepath.Join(dir, expectedDir)
+				if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+					t.Errorf("expected directory %s does not exist", fullPath)
+				}
+
+				// Check hosts.toml exists in each directory
+				hostsFile := filepath.Join(fullPath, "hosts.toml")
+				if _, err := os.Stat(hostsFile); os.IsNotExist(err) {
+					t.Errorf("expected hosts.toml file %s does not exist", hostsFile)
+				}
+
+				// For mirrors, check the content
+				if expectedDir != "gitea.cnoe.localtest.me:8443" {
+					content, err := os.ReadFile(hostsFile)
+					if err != nil {
+						t.Fatalf("failed to read hosts.toml: %v", err)
+					}
+					contentStr := string(content)
+					if !strings.Contains(contentStr, "skip_verify = true") {
+						t.Errorf("hosts.toml for mirror %s should contain skip_verify = true", expectedDir)
+					}
+					if !strings.Contains(contentStr, "[host.") {
+						t.Errorf("hosts.toml for mirror %s should contain host configuration", expectedDir)
+					}
+				}
+			}
+		})
 	}
 }

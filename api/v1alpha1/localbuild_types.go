@@ -53,15 +53,24 @@ type PackageConfigsSpec struct {
 	CorePackageCustomization map[string]PackageCustomization `json:"packageCustomization,omitempty"`
 }
 
+// RegistryMirror defines an external registry mirror configuration
+type RegistryMirror struct {
+	// TargetRegistry is the registry that should be mirrored (e.g., "docker.io", "ghcr.io")
+	TargetRegistry string `json:"targetRegistry,omitempty"`
+	// RegistryAddress is the address of the mirror registry (e.g., "http://kind-registry:5000")
+	RegistryAddress string `json:"registryAddress,omitempty"`
+}
+
 // BuildCustomizationSpec fields cannot change once a cluster is created
 type BuildCustomizationSpec struct {
-	Protocol       string `json:"protocol,omitempty"`
-	Host           string `json:"host,omitempty"`
-	IngressHost    string `json:"ingressHost,omitempty"`
-	Port           string `json:"port,omitempty"`
-	UsePathRouting bool   `json:"usePathRouting,omitempty"`
-	SelfSignedCert string `json:"selfSignedCert,omitempty"`
-	StaticPassword bool   `json:"staticPassword,omitempty"`
+	Protocol        string           `json:"protocol,omitempty"`
+	Host            string           `json:"host,omitempty"`
+	IngressHost     string           `json:"ingressHost,omitempty"`
+	Port            string           `json:"port,omitempty"`
+	UsePathRouting  bool             `json:"usePathRouting,omitempty"`
+	SelfSignedCert  string           `json:"selfSignedCert,omitempty"`
+	StaticPassword  bool             `json:"staticPassword,omitempty"`
+	RegistryMirrors []RegistryMirror `json:"registryMirrors,omitempty"`
 }
 
 type LocalbuildSpec struct {
