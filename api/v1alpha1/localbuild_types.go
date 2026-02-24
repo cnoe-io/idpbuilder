@@ -25,9 +25,9 @@ const (
 	PackageTypeLabelCore   = "core"
 	PackageTypeLabelCustom = "custom"
 
-	ArgoCDPackageName       = "argocd"
-	GiteaPackageName        = "gitea"
-	IngressNginxPackageName = "nginx"
+	ArgoCDPackageName  = "argocd"
+	GiteaPackageName   = "gitea"
+	TraefikPackageName = "traefik"
 )
 
 // ArgoPackageConfigSpec Allows for configuration of the ArgoCD Installation.
@@ -90,10 +90,10 @@ type PackageCustomization struct {
 type LocalbuildStatus struct {
 	// ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.
 	// +optional
-	ObservedGeneration int64        `json:"observedGeneration,omitempty"`
-	ArgoCD             ArgoCDStatus `json:"ArgoCD,omitempty"`
-	Nginx              NginxStatus  `json:"nginx,omitempty"`
-	Gitea              GiteaStatus  `json:"gitea,omitempty"`
+	ObservedGeneration int64         `json:"observedGeneration,omitempty"`
+	ArgoCD             ArgoCDStatus  `json:"ArgoCD,omitempty"`
+	Gitea              GiteaStatus   `json:"gitea,omitempty"`
+	Traefik            TraefikStatus `json:"traefik,omitempty"`
 }
 
 type GiteaStatus struct {
@@ -109,7 +109,7 @@ type ArgoCDStatus struct {
 	AppsCreated bool `json:"appsCreated,omitempty"`
 }
 
-type NginxStatus struct {
+type TraefikStatus struct {
 	Available bool `json:"available,omitempty"`
 }
 

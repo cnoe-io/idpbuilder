@@ -183,7 +183,7 @@ func createSelfSignedCertificate(sans []string) ([]byte, []byte, error) {
 }
 
 func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubeclient client.Client, config v1alpha1.BuildCustomizationSpec) ([]byte, error) {
-	if err := k8s.EnsureNamespace(ctx, kubeclient, globals.NginxNamespace); err != nil {
+	if err := k8s.EnsureNamespace(ctx, kubeclient, globals.TraefikNamespace); err != nil {
 		return nil, err
 	}
 
@@ -206,7 +206,7 @@ func setupSelfSignedCertificate(ctx context.Context, logger logr.Logger, kubecli
 	}
 
 	logger.V(1).Info("Creating/getting certificate", "host", config.Host, "sans", sans)
-	cert, privateKey, err := getOrCreateIngressCertificateAndKey(ctx, kubeclient, globals.SelfSignedCertSecretName, globals.NginxNamespace, sans)
+	cert, privateKey, err := getOrCreateIngressCertificateAndKey(ctx, kubeclient, globals.SelfSignedCertSecretName, globals.TraefikNamespace, sans)
 	if err != nil {
 		return nil, err
 	}

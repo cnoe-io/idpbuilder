@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+helmCharts:
+  - name: traefik
+    repo: https://helm.traefik.io/traefik
+    version: "39.0.2"
+    releaseName: traefik
+    namespace: traefik
+    valuesFile: values.yaml
+
+patches:
+  - path: tlsstore.yaml
+    target:
+      group: traefik.io
+      version: v1alpha1
+      kind: TLSStore
+      name: default

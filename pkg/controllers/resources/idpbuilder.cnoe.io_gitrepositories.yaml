@@ -93,7 +93,7 @@ spec:
                     enum:
                     - argocd
                     - gitea
-                    - nginx
+                    - traefik
                     type: string
                   path:
                     description: |-

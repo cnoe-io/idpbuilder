@@ -145,16 +145,16 @@ spec:
                   internalURL:
                     type: string
                 type: object
-              nginx:
-                properties:
-                  available:
-                    type: boolean
-                type: object
               observedGeneration:
                 description: ObservedGeneration is the 'Generation' of the Service
                   that was last processed by the controller.
                 format: int64
                 type: integer
+              traefik:
+                properties:
+                  available:
+                    type: boolean
+                type: object
             type: object
         type: object
     served: true

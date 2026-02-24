@@ -1,22 +1,30 @@
 {{- if .UsePathRouting -}}
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prefix
+  namespace: argocd
+spec:
+  stripPrefix:
+    prefixes:
+      - /argocd
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: argocd-server-ingress-http
   namespace: argocd
   annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    traefik.ingress.kubernetes.io/router.middlewares: argocd-strip-prefix@kubernetescrd
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: {{ .IngressHost }}
       http:
         paths:
-          - path: /argocd(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /argocd
+            pathType: Prefix
             backend:
               service:
                 name: argocd-server
@@ -26,8 +34,8 @@ spec:
     - host: {{ .Host }}
       http:
         paths:
-          - path: /argocd(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /argocd
+            pathType: Prefix
             backend:
               service:
                 name: argocd-server
@@ -41,11 +49,8 @@ kind: Ingress
 metadata:
   name: argocd-server-ingress
   namespace: argocd
-  annotations:
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
 spec:
-  ingressClassName: "nginx"
+  ingressClassName: traefik
   rules:
     - host: argocd.{{ .IngressHost }}
       http:
@@ -56,7 +61,7 @@ spec:
               service:
                 name: argocd-server
                 port:
-                  name: https
+                  name: http
 {{- if ne .IngressHost .Host }}
     - host: argocd.{{ .Host }}
       http:
@@ -67,6 +72,6 @@ spec:
               service:
                 name: argocd-server
                 port:
-                  name: https
+                  name: http
 {{ end }}
 {{ end }}

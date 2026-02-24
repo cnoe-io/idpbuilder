@@ -24,16 +24,6 @@ func TestBuildCustomizedManifests(t *testing.T) {
 			filePath:         "test-resources/input/argocd-cm.yaml",
 			expectedFilepath: "test-resources/output/argocd/install.yaml",
 		},
-		"nginx": {
-			fsPath:           "test-resources/input/nginx",
-			filePath:         "test-resources/input/extra.yaml",
-			expectedFilepath: "test-resources/output/nginx/install.yaml",
-		},
-		"nginx-template": {
-			fsPath:           "test-resources/input/nginx",
-			filePath:         "test-resources/input/extra.yaml.tmpl",
-			expectedFilepath: "test-resources/output/nginx/install-tmpl.yaml",
-		},
 	}
 
 	for key := range cases {

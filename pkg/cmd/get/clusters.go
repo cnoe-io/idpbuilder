@@ -3,6 +3,8 @@ package get
 import (
 	"context"
 	"fmt"
+	"strconv"
+
 	"github.com/cnoe-io/idpbuilder/api/v1alpha1"
 	"github.com/cnoe-io/idpbuilder/pkg/cmd/helpers"
 	"github.com/cnoe-io/idpbuilder/pkg/k8s"
@@ -212,35 +214,21 @@ func printAllocatedResources(ctx context.Context, k8sClient client.Client, nodeN
 }
 
 func findExternalHTTPSPort(cli client.Client, clusterName string) (int32, error) {
-	service := corev1.Service{}
-	namespacedName := types.NamespacedName{
-		Name:      "ingress-nginx-controller",
-		Namespace: "ingress-nginx",
-	}
-	err := cli.Get(context.TODO(), namespacedName, &service)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get the ingress service on the cluster. %w", err)
-	}
-
 	localBuild := v1alpha1.Localbuild{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterName,
 		},
 	}
-	err = cli.Get(context.TODO(), client.ObjectKeyFromObject(&localBuild), &localBuild)
+	err := cli.Get(context.TODO(), client.ObjectKeyFromObject(&localBuild), &localBuild)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get the localbuild on the cluster. %w", err)
 	}
 
-	var targetPort corev1.ServicePort
-	protocol := localBuild.Spec.BuildCustomization.Protocol + "-"
-	for _, port := range service.Spec.Ports {
-		if port.Name != "" && strings.HasPrefix(port.Name, protocol) {
-			targetPort = port
-			break
-		}
+	port, err := strconv.ParseInt(localBuild.Spec.BuildCustomization.Port, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("parsing port %s: %w", localBuild.Spec.BuildCustomization.Port, err)
 	}
-	return targetPort.Port, nil
+	return int32(port), nil
 }
 
 func findInternalKubeApiPort(cli client.Client) (int32, error) {

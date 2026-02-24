@@ -24,7 +24,7 @@ type GitRepositorySpec struct {
 }
 
 type GitRepositorySource struct {
-	// +kubebuilder:validation:Enum:=argocd;gitea;nginx
+	// +kubebuilder:validation:Enum:=argocd;gitea;traefik
 	// +kubebuilder:validation:Optional
 	EmbeddedAppName string `json:"embeddedAppName,omitempty"`
 	// Path is the absolute path to directory that contains Kustomize structure or raw manifests.
