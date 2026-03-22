@@ -25,7 +25,7 @@ HELM_TGZ ?= $(LOCALBIN)/helm.tar.gz
 HELM ?= $(LOCALBIN)/helm
 
 ## Tool Versions
-CONTROLLER_TOOLS_VERSION ?= v0.15.0
+CONTROLLER_TOOLS_VERSION ?= v0.20.0
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
