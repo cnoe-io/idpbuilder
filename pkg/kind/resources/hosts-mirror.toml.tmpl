@@ -2,4 +2,6 @@ server = "{{ .RegistryAddress }}"
 
 [host."{{ .RegistryAddress }}"]
   capabilities = ["pull", "resolve"]
+{{- if .InsecureRegistryMirrors }}
   skip_verify = true
+{{- end }}

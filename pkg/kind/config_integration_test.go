@@ -12,8 +12,9 @@ import (
 func TestRegistryMirrorHostsTomlContent(t *testing.T) {
 	// Test that the generated hosts.toml for mirrors has the correct content
 	cfg := v1alpha1.BuildCustomizationSpec{
-		Host: "cnoe.localtest.me",
-		Port: "8443",
+		Host:                    "cnoe.localtest.me",
+		Port:                    "8443",
+		InsecureRegistryMirrors: true,
 		RegistryMirrors: []v1alpha1.RegistryMirror{
 			{
 				TargetRegistry:  "docker.io",
@@ -237,7 +238,38 @@ func TestMirrorWithHTTP(t *testing.T) {
 		t.Errorf("hosts.toml should contain http host configuration\nActual content:\n%s", contentStr)
 	}
 
+	if strings.Contains(contentStr, `skip_verify = true`) {
+		t.Errorf("hosts.toml should not contain skip_verify unless insecure-registry-mirrors is set\nActual content:\n%s", contentStr)
+	}
+}
+
+func TestMirrorWithHTTPInsecure(t *testing.T) {
+	cfg := v1alpha1.BuildCustomizationSpec{
+		Host:                    "cnoe.localtest.me",
+		Port:                    "8443",
+		InsecureRegistryMirrors: true,
+		RegistryMirrors: []v1alpha1.RegistryMirror{
+			{
+				TargetRegistry:  "docker.io",
+				RegistryAddress: "http://insecure-registry:5000",
+			},
+		},
+	}
+
+	dir, err := renderRegistryCertsDir(cfg)
+	if err != nil {
+		t.Fatalf("failed to render registry certs dir: %v", err)
+	}
+	defer os.RemoveAll(dir)
+
+	dockerHostsFile := filepath.Join(dir, "docker.io", "hosts.toml")
+	content, err := os.ReadFile(dockerHostsFile)
+	if err != nil {
+		t.Fatalf("failed to read hosts.toml: %v", err)
+	}
+
+	contentStr := string(content)
 	if !strings.Contains(contentStr, `skip_verify = true`) {
-		t.Errorf("hosts.toml should contain skip_verify for http mirror\nActual content:\n%s", contentStr)
+		t.Errorf("hosts.toml should contain skip_verify when insecure-registry-mirrors is set\nActual content:\n%s", contentStr)
 	}
 }

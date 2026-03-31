@@ -35,8 +35,9 @@ const (
 	extraPackagesUsage             = "Paths to locations containing custom packages"
 	packageCustomizationFilesUsage = "Name of the package and the path to file to customize the core packages with. " +
 		"valid package names are: argocd, nginx, and gitea. e.g. argocd:/tmp/argocd.yaml"
-	registryMirrorsUsage = "List of registry mirrors in format target=address (e.g. \"docker.io=http://kind-registry:5000,ghcr.io=http://kind-registry:5000\")"
-	noExitUsage          = "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories."
+	registryMirrorsUsage         = "List of registry mirrors in format target=address (e.g. \"docker.io=http://kind-registry:5000,ghcr.io=http://kind-registry:5000\")"
+	insecureRegistryMirrorsUsage = "When set, configure registry mirrors with insecure TLS verification (skip_verify = true)."
+	noExitUsage                  = "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories."
 )
 
 var (
@@ -50,6 +51,7 @@ var (
 	extraPackages             []string
 	registryConfig            []string
 	registryMirrors           []string
+	insecureRegistryMirrors   bool
 	packageCustomizationFiles []string
 	noExit                    bool
 	protocol                  string
@@ -81,6 +83,7 @@ func init() {
 	CreateCmd.PersistentFlags().StringSliceVar(&registryConfig, "registry-config", []string{}, registryConfigUsage)
 	CreateCmd.PersistentFlags().Lookup("registry-config").NoOptDefVal = "$XDG_RUNTIME_DIR/containers/auth.json,$HOME/.docker/config.json"
 	CreateCmd.PersistentFlags().StringSliceVar(&registryMirrors, "registry-mirrors", []string{}, registryMirrorsUsage)
+	CreateCmd.PersistentFlags().BoolVar(&insecureRegistryMirrors, "insecure-registry-mirrors", false, insecureRegistryMirrorsUsage)
 
 	// in-cluster resources related flags
 	CreateCmd.PersistentFlags().StringVar(&host, "host", globals.DefaultHostName, hostUsage)
@@ -166,13 +169,14 @@ func create(cmd *cobra.Command, args []string) error {
 		RegistryConfig:    maybeRegistryConfig,
 
 		TemplateData: v1alpha1.BuildCustomizationSpec{
-			Protocol:        protocol,
-			Host:            host,
-			IngressHost:     ingressHost,
-			Port:            port,
-			UsePathRouting:  pathRouting,
-			StaticPassword:  devPassword,
-			RegistryMirrors: parsedMirrors,
+			Protocol:                protocol,
+			Host:                    host,
+			IngressHost:             ingressHost,
+			Port:                    port,
+			UsePathRouting:          pathRouting,
+			StaticPassword:          devPassword,
+			RegistryMirrors:         parsedMirrors,
+			InsecureRegistryMirrors: insecureRegistryMirrors,
 		},
 
 		CustomPackageFiles:   localFiles,

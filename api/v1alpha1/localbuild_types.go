@@ -63,14 +63,15 @@ type RegistryMirror struct {
 
 // BuildCustomizationSpec fields cannot change once a cluster is created
 type BuildCustomizationSpec struct {
-	Protocol        string           `json:"protocol,omitempty"`
-	Host            string           `json:"host,omitempty"`
-	IngressHost     string           `json:"ingressHost,omitempty"`
-	Port            string           `json:"port,omitempty"`
-	UsePathRouting  bool             `json:"usePathRouting,omitempty"`
-	SelfSignedCert  string           `json:"selfSignedCert,omitempty"`
-	StaticPassword  bool             `json:"staticPassword,omitempty"`
-	RegistryMirrors []RegistryMirror `json:"registryMirrors,omitempty"`
+	Protocol                string           `json:"protocol,omitempty"`
+	Host                    string           `json:"host,omitempty"`
+	IngressHost             string           `json:"ingressHost,omitempty"`
+	Port                    string           `json:"port,omitempty"`
+	UsePathRouting          bool             `json:"usePathRouting,omitempty"`
+	SelfSignedCert          string           `json:"selfSignedCert,omitempty"`
+	StaticPassword          bool             `json:"staticPassword,omitempty"`
+	RegistryMirrors         []RegistryMirror `json:"registryMirrors,omitempty"`
+	InsecureRegistryMirrors bool             `json:"insecureRegistryMirrors,omitempty"`
 }
 
 type LocalbuildSpec struct {

@@ -294,5 +294,6 @@ func isBuildCustomizationSpecEqual(s1, s2 v1alpha1.BuildCustomizationSpec) bool 
 		s1.UsePathRouting == s2.UsePathRouting &&
 		s1.SelfSignedCert == s2.SelfSignedCert &&
 		s1.StaticPassword == s2.StaticPassword &&
+		s1.InsecureRegistryMirrors == s2.InsecureRegistryMirrors &&
 		slices.Equal(s1.RegistryMirrors, s2.RegistryMirrors)
 }

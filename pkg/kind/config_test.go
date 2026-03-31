@@ -195,6 +195,7 @@ func TestRenderRegistryCertsDirWithMirrors(t *testing.T) {
 		cfg               v1alpha1.BuildCustomizationSpec
 		expectedDirs      []string
 		expectedFileCount int
+		expectSkipVerify  bool
 	}
 
 	tests := []test{
@@ -221,6 +222,23 @@ func TestRenderRegistryCertsDirWithMirrors(t *testing.T) {
 			},
 			expectedDirs:      []string{"gitea.cnoe.localtest.me:8443", "docker.io"},
 			expectedFileCount: 2,
+		},
+		{
+			name: "with mirrors and insecure skip verify",
+			cfg: v1alpha1.BuildCustomizationSpec{
+				Host:                    "cnoe.localtest.me",
+				Port:                    "8443",
+				InsecureRegistryMirrors: true,
+				RegistryMirrors: []v1alpha1.RegistryMirror{
+					{
+						TargetRegistry:  "docker.io",
+						RegistryAddress: "http://kind-registry:5000",
+					},
+				},
+			},
+			expectedDirs:      []string{"gitea.cnoe.localtest.me:8443", "docker.io"},
+			expectedFileCount: 2,
+			expectSkipVerify:  true,
 		},
 		{
 			name: "with multiple mirrors",
@@ -271,8 +289,12 @@ func TestRenderRegistryCertsDirWithMirrors(t *testing.T) {
 						t.Fatalf("failed to read hosts.toml: %v", err)
 					}
 					contentStr := string(content)
-					if !strings.Contains(contentStr, "skip_verify = true") {
-						t.Errorf("hosts.toml for mirror %s should contain skip_verify = true", expectedDir)
+					if tc.expectSkipVerify {
+						if !strings.Contains(contentStr, "skip_verify = true") {
+							t.Errorf("hosts.toml for mirror %s should contain skip_verify = true", expectedDir)
+						}
+					} else if strings.Contains(contentStr, "skip_verify = true") {
+						t.Errorf("hosts.toml for mirror %s should not contain skip_verify = true", expectedDir)
 					}
 					if !strings.Contains(contentStr, "[host.") {
 						t.Errorf("hosts.toml for mirror %s should contain host configuration", expectedDir)

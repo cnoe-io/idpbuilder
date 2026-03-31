@@ -138,11 +138,12 @@ func renderRegistryCertsDir(cfg v1alpha1.BuildCustomizationSpec) (string, error)
 			return "", fmt.Errorf("reading registry mirror config %w", err)
 		}
 
-		// The mirror template only needs the registry address
 		mirrorData := struct {
-			RegistryAddress string
+			RegistryAddress         string
+			InsecureRegistryMirrors bool
 		}{
-			RegistryAddress: mirror.RegistryAddress,
+			RegistryAddress:         mirror.RegistryAddress,
+			InsecureRegistryMirrors: cfg.InsecureRegistryMirrors,
 		}
 
 		var retBuff []byte
