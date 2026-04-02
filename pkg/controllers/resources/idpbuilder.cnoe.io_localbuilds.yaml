@@ -45,10 +45,27 @@ spec:
                     type: string
                   ingressHost:
                     type: string
+                  insecureRegistryMirrors:
+                    type: boolean
                   port:
                     type: string
                   protocol:
                     type: string
+                  registryMirrors:
+                    items:
+                      description: RegistryMirror defines an external registry mirror
+                        configuration
+                      properties:
+                        registryAddress:
+                          description: RegistryAddress is the address of the mirror
+                            registry (e.g., "http://kind-registry:5000")
+                          type: string
+                        targetRegistry:
+                          description: TargetRegistry is the registry that should
+                            be mirrored (e.g., "docker.io", "ghcr.io")
+                          type: string
+                      type: object
+                    type: array
                   selfSignedCert:
                     type: string
                   staticPassword:
