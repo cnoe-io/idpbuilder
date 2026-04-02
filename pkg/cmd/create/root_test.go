@@ -77,6 +77,21 @@ func TestParseRegistryMirrors(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "target with path",
+			input:   []string{"docker.io/library=http://my-registry:5000"},
+			wantErr: true,
+		},
+		{
+			name:    "target with scheme",
+			input:   []string{"https://docker.io=http://my-registry:5000"},
+			wantErr: true,
+		},
+		{
+			name:    "malformed address URL",
+			input:   []string{"docker.io=not-a-url"},
+			wantErr: true,
+		},
+		{
 			name:  "mirror with https",
 			input: []string{"docker.io=https://my-registry:5000"},
 			expect: []v1alpha1.RegistryMirror{

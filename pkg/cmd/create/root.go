@@ -227,11 +227,7 @@ func validate() error {
 
 	// Validate registry mirrors
 	_, err = parseRegistryMirrors(registryMirrors)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
@@ -280,6 +276,18 @@ func parseRegistryMirrors(mirrors []string) ([]v1alpha1.RegistryMirror, error) {
 		}
 		if address == "" {
 			return nil, fmt.Errorf("registry address cannot be empty in mirror: %s", mirror)
+		}
+
+		// target must be [hostname|ip][:port] (https://github.com/containerd/containerd/blob/main/docs/hosts.md#registry-host-namespace)
+		parsedTarget, err := url.Parse("https://" + target)
+		if err != nil || parsedTarget.Host == "" || parsedTarget.Path != "" {
+			return nil, fmt.Errorf("invalid target registry %q: expected format [hostname|ip][:port] (e.g. docker.io, 192.168.1.1:5000)", target)
+		}
+
+		// address must be a valid URL
+		parsedURL, err := url.Parse(address)
+		if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+			return nil, fmt.Errorf("invalid registry address URL: %s, expected format: http(s)://host:port", address)
 		}
 
 		result = append(result, v1alpha1.RegistryMirror{
