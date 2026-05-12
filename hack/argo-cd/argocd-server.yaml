@@ -18,8 +18,8 @@ spec:
       containers:
         - args:
           - /usr/local/bin/argocd-server
-          - "{{if .UsePathRouting}}"
           - --insecure
+          - "{{if .UsePathRouting}}"
           - --basehref
           - /argocd
           - "{{end}}"

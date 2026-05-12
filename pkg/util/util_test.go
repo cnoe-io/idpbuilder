@@ -108,15 +108,6 @@ func TestSetPackageLabels(t *testing.T) {
 				v1alpha1.PackageTypeLabelKey: v1alpha1.PackageTypeLabelCore,
 			},
 		},
-		{
-			name:          "IngressNginx package",
-			objectName:    v1alpha1.IngressNginxPackageName,
-			initialLabels: nil,
-			expectedLabels: map[string]string{
-				v1alpha1.PackageNameLabelKey: v1alpha1.IngressNginxPackageName,
-				v1alpha1.PackageTypeLabelKey: v1alpha1.PackageTypeLabelCore,
-			},
-		},
 	}
 
 	for _, tc := range testCases {

@@ -63,7 +63,7 @@ func TestCreateSelfSignedCertificate(t *testing.T) {
 func TestGetOrCreateIngressCertificateAndKey(t *testing.T) {
 	ctx := context.Background()
 	fClient := new(fakeKubeClient)
-	fClient.On("Get", ctx, client.ObjectKey{Name: globals.SelfSignedCertSecretName, Namespace: globals.NginxNamespace}, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+	fClient.On("Get", ctx, client.ObjectKey{Name: globals.SelfSignedCertSecretName, Namespace: globals.TraefikNamespace}, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		arg := args.Get(2).(*corev1.Secret)
 		d := map[string][]byte{
 			corev1.TLSPrivateKeyKey: []byte("abc"),
@@ -72,16 +72,16 @@ func TestGetOrCreateIngressCertificateAndKey(t *testing.T) {
 		arg.Data = d
 	}).Return(nil)
 
-	_, _, err := getOrCreateIngressCertificateAndKey(ctx, fClient, globals.SelfSignedCertSecretName, globals.NginxNamespace, []string{globals.DefaultHostName, globals.DefaultSANWildcard})
+	_, _, err := getOrCreateIngressCertificateAndKey(ctx, fClient, globals.SelfSignedCertSecretName, globals.TraefikNamespace, []string{globals.DefaultHostName, globals.DefaultSANWildcard})
 	assert.NoError(t, err)
 	fClient.AssertExpectations(t)
 
 	fClient = new(fakeKubeClient)
-	fClient.On("Get", ctx, client.ObjectKey{Name: globals.SelfSignedCertSecretName, Namespace: globals.NginxNamespace}, mock.Anything, mock.Anything).
+	fClient.On("Get", ctx, client.ObjectKey{Name: globals.SelfSignedCertSecretName, Namespace: globals.TraefikNamespace}, mock.Anything, mock.Anything).
 		Return(k8serrors.NewNotFound(schema.GroupResource{}, "name"))
 	fClient.On("Create", ctx, mock.Anything, mock.Anything).Return(nil)
 
-	c, k, err := getOrCreateIngressCertificateAndKey(ctx, fClient, globals.SelfSignedCertSecretName, globals.NginxNamespace, []string{globals.DefaultHostName, globals.DefaultSANWildcard})
+	c, k, err := getOrCreateIngressCertificateAndKey(ctx, fClient, globals.SelfSignedCertSecretName, globals.TraefikNamespace, []string{globals.DefaultHostName, globals.DefaultSANWildcard})
 	assert.NoError(t, err)
 	_, err = tls.X509KeyPair(c, k)
 	assert.NoError(t, err)

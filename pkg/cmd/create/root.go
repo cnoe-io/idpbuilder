@@ -27,14 +27,14 @@ const (
 	registryConfigUsage = "List of paths to mount as the registry config, uses the first one that exists"
 	kindConfigPathUsage = "Path or URL to the kind config file to be used instead of the default."
 	hostUsage           = "Host name to access resources in this cluster."
-	ingressHostUsage    = "Host name used by ingresses. Useful when you have another proxy in front of ingress-nginx that idpbuilder provisions."
+	ingressHostUsage    = "Host name used by ingresses. Useful when you have another proxy in front of the Traefik ingress controller that idpbuilder provisions."
 	protocolUsage       = "Protocol to use to access web UIs. http or https."
 	portUsage           = "Port number to use to access web UIs."
 	pathRoutingUsage    = "When set to true, web UIs are exposed under single domain name. " +
 		"e.g. \"https://cnoe.localtest.me/argocd\" instead of \"https://argocd.cnoe.localtest.me\""
 	extraPackagesUsage             = "Paths to locations containing custom packages"
 	packageCustomizationFilesUsage = "Name of the package and the path to file to customize the core packages with. " +
-		"valid package names are: argocd, nginx, and gitea. e.g. argocd:/tmp/argocd.yaml"
+		"valid package names are: argocd, traefik, and gitea. e.g. argocd:/tmp/argocd.yaml"
 	registryMirrorsUsage         = "List of registry mirrors in format target=address (e.g. \"docker.io=http://kind-registry:5000,ghcr.io=http://kind-registry:5000\")"
 	insecureRegistryMirrorsUsage = "When set, configure registry mirrors with insecure TLS verification (skip_verify = true)."
 	noExitUsage                  = "When set, idpbuilder will not exit after all packages are synced. Useful for continuously syncing local directories."
@@ -247,7 +247,7 @@ func getPackageCustomFile(input string) (v1alpha1.PackageCustomization, error) {
 		return v1alpha1.PackageCustomization{}, err
 	}
 
-	corePkgs := map[string]struct{}{v1alpha1.ArgoCDPackageName: {}, v1alpha1.GiteaPackageName: {}, v1alpha1.IngressNginxPackageName: {}}
+	corePkgs := map[string]struct{}{v1alpha1.ArgoCDPackageName: {}, v1alpha1.GiteaPackageName: {}, v1alpha1.TraefikPackageName: {}}
 	name := s[0]
 	_, ok := corePkgs[name]
 	if !ok {

@@ -1,0 +1,34 @@
+deployment:
+  enabled: true
+  kind: Deployment
+
+# Disable the Kubernetes Service so Traefik binds via hostPort instead
+service:
+  enabled: false
+
+# Use hostPort on DaemonSet/Deployment pods for KinD
+ports:
+  web:
+    port: 80
+    hostPort: 80
+  websecure:
+    port: 443
+    hostPort: 443
+
+providers:
+  kubernetesIngress:
+    enabled: true
+    ingressClass: traefik
+    publishedService:
+      enabled: false
+  kubernetesCRD:
+    enabled: true
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+# Necessary so argocd applications with ingresses dont stay in the "Progressing" state
+additionalArguments:
+  - "--providers.kubernetesIngress.ingressEndpoint.ip=127.0.0.1"

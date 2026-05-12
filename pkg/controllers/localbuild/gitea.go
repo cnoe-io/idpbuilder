@@ -99,7 +99,7 @@ func (r *LocalbuildReconciler) ReconcileGitea(ctx context.Context, req ctrl.Requ
 		resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			logger.V(1).Info("gitea manifests installed successfully. endpoint not ready", "statusCode", resp.StatusCode)
-			return ctrl.Result{RequeueAfter: errRequeueTime}, nil
+			return ctrl.Result{}, fmt.Errorf("gitea endpoint not ready, status: %d", resp.StatusCode)
 		}
 	}
 

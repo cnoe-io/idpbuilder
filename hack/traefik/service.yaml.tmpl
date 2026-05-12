@@ -3,13 +3,11 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/component: controller
-    app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-controller-traefik
+    app.kubernetes.io/name: traefik
     app.kubernetes.io/part-of: ingress-nginx
-    app.kubernetes.io/version: 1.8.1
-  name: ingress-nginx-controller
-  namespace: ingress-nginx
+  name: ingress-controller
+  namespace: traefik
 spec:
   ipFamilies:
     - IPv4
@@ -31,7 +29,6 @@ spec:
       protocol: TCP
       targetPort: https
   selector:
-    app.kubernetes.io/component: controller
-    app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
   type: NodePort

@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/kustomize/kyaml/kio"
 	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
+	sigsyaml "sigs.k8s.io/yaml"
 )
 
 type ConversionError struct {
@@ -31,7 +33,24 @@ func ConvertYamlToObjects(scheme *runtime.Scheme, objYamls []byte) ([]client.Obj
 
 		rtObject, _, err := decode(objYaml, nil, nil)
 		if err != nil {
-			return nil, err
+			if !runtime.IsNotRegisteredError(err) {
+				return nil, err
+			}
+			// Type not in scheme (e.g. CRD instances like TLSStore, Middleware).
+			// Fall back to unstructured so they can still be applied via the API server.
+			jsonBytes, jErr := sigsyaml.YAMLToJSON(objYaml)
+			if jErr != nil {
+				return nil, err
+			}
+			u := &unstructured.Unstructured{}
+			if jErr = u.UnmarshalJSON(jsonBytes); jErr != nil {
+				return nil, err
+			}
+			if u.GetKind() == "" {
+				continue
+			}
+			k8sObjects = append(k8sObjects, u)
+			continue
 		}
 		object, ok := rtObject.(client.Object)
 		if !ok {

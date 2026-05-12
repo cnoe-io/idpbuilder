@@ -5,8 +5,8 @@ import "fmt"
 const (
 	ProjectName string = "idpbuilder"
 
-	NginxNamespace  string = "ingress-nginx"
-	ArgoCDNamespace string = "argocd"
+	ArgoCDNamespace  string = "argocd"
+	TraefikNamespace string = "traefik"
 
 	SelfSignedCertSecretName = "idpbuilder-cert"
 	SelfSignedCertCMName     = "idpbuilder-cert"

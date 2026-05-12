@@ -53,9 +53,9 @@ const (
 var (
 	// CorePackages is a map of argocd app name to its namespace.
 	CorePackages = map[string]string{
-		"argocd": "argocd",
-		"nginx":  "argocd",
-		"gitea":  "argocd",
+		"argocd":   "argocd",
+		"traefik":  "argocd",
+		"gitea":    "argocd",
 	}
 )
 
@@ -165,9 +165,9 @@ func TestGiteaEndpoints(ctx context.Context, t *testing.T, baseUrl string) {
 
 	assert.Equal(t, 3, len(repos))
 	expectedRepoNames := map[string]struct{}{
-		"idpbuilder-localdev-gitea":  {},
-		"idpbuilder-localdev-nginx":  {},
-		"idpbuilder-localdev-argocd": {},
+		"idpbuilder-localdev-gitea":    {},
+		"idpbuilder-localdev-traefik":  {},
+		"idpbuilder-localdev-argocd":   {},
 	}
 
 	for i := range repos {

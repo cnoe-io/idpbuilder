@@ -1,14 +1,32 @@
 {{- if .UsePathRouting }}
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prefix
+  namespace: gitea
+spec:
+  stripPrefix:
+    prefixes:
+      - /gitea
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: oci-repo-rewrite
+  namespace: gitea
+spec:
+  replacePathRegex:
+    regex: ^/v2/gitea/(.*)
+    replacement: /v2/$1
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-gitea-path-oci-root
   namespace: gitea
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: {{ .IngressHost }}
       http:
@@ -39,11 +57,9 @@ metadata:
   name: my-gitea-path-oci-repo
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /v2/$2
+    traefik.ingress.kubernetes.io/router.middlewares: gitea-oci-repo-rewrite@kubernetescrd
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: {{ .IngressHost }}
       http:
@@ -53,8 +69,8 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
-            path: /v2/gitea(/|$)(.*)
-            pathType: ImplementationSpecific
+            path: /v2/gitea
+            pathType: Prefix
 {{- if ne .IngressHost .Host }}
     - host: {{ .Host }}
       http:
@@ -64,8 +80,8 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
-            path: /v2/gitea(/|$)(.*)
-            pathType: ImplementationSpecific
+            path: /v2/gitea
+            pathType: Prefix
 {{ end }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -74,11 +90,9 @@ metadata:
   name: my-gitea-path
   namespace: gitea
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    traefik.ingress.kubernetes.io/router.middlewares: gitea-strip-prefix@kubernetescrd
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: {{ .IngressHost }}
       http:
@@ -88,8 +102,8 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
-            path: /gitea(/|$)(.*)
-            pathType: ImplementationSpecific
+            path: /gitea
+            pathType: Prefix
 {{- if ne .IngressHost .Host }}
     - host: {{ .Host }}
       http:
@@ -99,8 +113,8 @@ spec:
                 name: my-gitea-http
                 port:
                   number: 3000
-            path: /gitea(/|$)(.*)
-            pathType: ImplementationSpecific
+            path: /gitea
+            pathType: Prefix
 {{ end }}
 {{ else }}
 ---
@@ -109,10 +123,8 @@ kind: Ingress
 metadata:
   name: my-gitea-custom
   namespace: gitea
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: gitea.{{ .IngressHost }}
       http:

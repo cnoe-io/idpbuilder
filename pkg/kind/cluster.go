@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	ingressNginxNodeLabelKey   = "ingress-ready"
-	ingressNginxNodeLabelValue = "true"
+	ingressNodeLabelKey   = "ingress-ready"
+	ingressNodeLabelValue = "true"
 )
 
 var (
@@ -222,7 +222,7 @@ func (c *Cluster) ExportKubeConfig(name string, internal bool) error {
 }
 
 func (c *Cluster) ensureCorrectConfig(in []byte) (kindv1alpha4.Cluster, error) {
-	// see pkg/kind/resources/kind.yaml.tmpl and pkg/controllers/localbuild/resources/nginx/k8s/ingress-nginx.yaml
+	// see pkg/kind/resources/kind.yaml.tmpl and pkg/controllers/localbuild/resources/traefik/k8s/traefik.yaml
 	// defines which container port we should be looking for.
 	containerPort := "443"
 	if c.cfg.Protocol == "http" {
@@ -233,10 +233,10 @@ func (c *Cluster) ensureCorrectConfig(in []byte) (kindv1alpha4.Cluster, error) {
 	if err != nil {
 		return kindv1alpha4.Cluster{}, fmt.Errorf("parsing kind config: %w", err)
 	}
-	// the port and ingress-nginx label must be on the same node to ensure nginx runs on the node with the right port.
+	// the port and ingress label must be on the same node to ensure the ingress controller runs on the node with the right port.
 	appendNecessaryPort := true
 	appendIngressNodeLabel := true
-	// pick the first node for the ingress-nginx if we need to configure node port.
+	// pick the first node for the ingress controller if we need to configure node port.
 	nodePosition := 0
 
 	if parsedCluster.Nodes == nil || len(parsedCluster.Nodes) == 0 {
@@ -251,8 +251,8 @@ nodes:
 				appendNecessaryPort = false
 				nodePosition = i
 				if node.Labels != nil {
-					v, ok := node.Labels[ingressNginxNodeLabelKey]
-					if ok && v == ingressNginxNodeLabelValue {
+					v, ok := node.Labels[ingressNodeLabelKey]
+					if ok && v == ingressNodeLabelValue {
 						appendIngressNodeLabel = false
 					}
 				}
@@ -260,8 +260,8 @@ nodes:
 			}
 		}
 		if node.Labels != nil {
-			v, ok := node.Labels[ingressNginxNodeLabelKey]
-			if ok && v == ingressNginxNodeLabelValue {
+			v, ok := node.Labels[ingressNodeLabelKey]
+			if ok && v == ingressNodeLabelValue {
 				appendIngressNodeLabel = false
 				nodePosition = i
 				break nodes
@@ -287,7 +287,7 @@ nodes:
 		if parsedCluster.Nodes[nodePosition].Labels == nil {
 			parsedCluster.Nodes[nodePosition].Labels = make(map[string]string)
 		}
-		parsedCluster.Nodes[nodePosition].Labels[ingressNginxNodeLabelKey] = ingressNginxNodeLabelValue
+		parsedCluster.Nodes[nodePosition].Labels[ingressNodeLabelKey] = ingressNodeLabelValue
 	}
 
 	return parsedCluster, nil

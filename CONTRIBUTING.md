@@ -118,10 +118,10 @@ This script runs kustomize to modify the basic installation manifests provided b
 Gitea manifests are generated using a bash script available [here](./hack/gitea/generate-manifests.sh).
 This script runs helm template to generate most files. See the values file for more information.
 
-#### Ingress-nginx
+#### Traefik
 
-ingress-nginx manifests are generated using a bash script available [here](./hack/ingress-nginx/generate-manifests.sh).
-This script runs kustomize to modify the basic installation manifests provided by ingress-nginx.
+Traefik manifests are generated using a bash script available [here](./hack/traefik/generate-manifests.sh).
+This script runs helm template to generate the Traefik installation manifests.
 
 ## Architecture
 
@@ -152,7 +152,7 @@ During this phase, controllers act on CRs created by the CLI phase. Resources su
 `LocalbuildReconciler` bootstraps the cluster using embedded manifests. Embedded manifests are yaml files that are baked into the binary at compile time.
 1. Install core packages. They are essential services that are needed for the user experiences we want to enable:
 * Gitea. This is the in-cluster Git server that hosts Git repositories.
-* Ingress-nginx. This is necessary to expose services inside the cluster to the users.
+* Traefik. This is necessary to expose services inside the cluster to the users.
 * ArgoCD. This is used as the packaging mechanism. Its primary purpose is to deploy manifests from gitea repositories.
 2. Once they are installed, it creates `GitRepository` CRs for core packages. This CR represents the git repository on the Gitea server.
 3. Create ArgoCD applications for the apps. Point them to the Gitea repositories. From here on, ArgoCD manages the core packages.
