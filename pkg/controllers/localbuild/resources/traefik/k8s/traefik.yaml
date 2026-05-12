@@ -4,11 +4,11 @@
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: my-traefik
+  name: ingress-controller-traefik
   namespace: traefik
   labels:
     app.kubernetes.io/name: traefik
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
     helm.sh/chart: traefik-39.0.2
     app.kubernetes.io/managed-by: Helm
   annotations:
@@ -18,10 +18,10 @@ automountServiceAccountToken: false
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: my-traefik-traefik
+  name: ingress-controller-traefik-traefik
   labels:
     app.kubernetes.io/name: traefik
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
     helm.sh/chart: traefik-39.0.2
     app.kubernetes.io/managed-by: Helm
 rules:
@@ -102,30 +102,30 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: my-traefik-traefik
+  name: ingress-controller-traefik-traefik
   labels:
     app.kubernetes.io/name: traefik
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
     helm.sh/chart: traefik-39.0.2
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: my-traefik-traefik
+  name: ingress-controller-traefik-traefik
 subjects:
   - kind: ServiceAccount
-    name: my-traefik
+    name: ingress-controller-traefik
     namespace: traefik
 ---
 # Source: traefik/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: my-traefik
+  name: ingress-controller-traefik
   namespace: traefik
   labels:
     app.kubernetes.io/name: traefik
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
     helm.sh/chart: traefik-39.0.2
     app.kubernetes.io/managed-by: Helm
   annotations:
@@ -134,7 +134,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: traefik
-      app.kubernetes.io/instance: my-traefik-traefik
+      app.kubernetes.io/instance: ingress-controller-traefik
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -149,7 +149,7 @@ spec:
         prometheus.io/port: "9100"
         prometheus.io/scrape: "true"
       labels:
-        app.kubernetes.io/instance: my-traefik-traefik
+        app.kubernetes.io/instance: ingress-controller-traefik
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: traefik
         helm.sh/chart: traefik-39.0.2
@@ -197,7 +197,7 @@ spec:
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 2
-        name: my-traefik
+        name: ingress-controller-traefik
         ports:
         - containerPort: 9100
           name: metrics
@@ -242,7 +242,7 @@ spec:
         runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
-      serviceAccountName: my-traefik
+      serviceAccountName: ingress-controller-traefik
       terminationGracePeriodSeconds: 60
       volumes:
       - emptyDir: {}
@@ -258,7 +258,7 @@ metadata:
     ingressclass.kubernetes.io/is-default-class: "true"
   labels:
     app.kubernetes.io/name: traefik
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
     helm.sh/chart: traefik-39.0.2
     app.kubernetes.io/managed-by: Helm
   name: traefik
@@ -269,10 +269,10 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
     app.kubernetes.io/name: traefik
     app.kubernetes.io/part-of: ingress-nginx
-  name: my-traefik
+  name: ingress-controller
   namespace: traefik
 spec:
   ipFamilies:
@@ -296,7 +296,7 @@ spec:
       targetPort: https
   selector:
     app.kubernetes.io/name: traefik
-    app.kubernetes.io/instance: my-traefik-traefik
+    app.kubernetes.io/instance: ingress-controller-traefik
   type: NodePort
 ---
 apiVersion: apiextensions.k8s.io/v1

@@ -10,7 +10,7 @@ echo "" >${INSTALL_YAML}
 
 helm repo add traefik-charts --force-update https://helm.traefik.io/traefik
 helm repo update
-helm template my-traefik traefik-charts/traefik -n traefik -f ${TRAEFIK_DIR}/values.yaml --version ${CHART_VERSION} >>${INSTALL_YAML}
+helm template ingress-controller traefik-charts/traefik -n traefik -f ${TRAEFIK_DIR}/values.yaml --version ${CHART_VERSION} >>${INSTALL_YAML}
 
 # Traefik names the https port websecure and the http port web, for our service to work properly we need to rename them
 sed -i.bak 's/name: websecure$/name: https/' ${INSTALL_YAML}
