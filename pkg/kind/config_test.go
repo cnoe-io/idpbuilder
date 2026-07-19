@@ -304,3 +304,22 @@ func TestRenderRegistryCertsDirWithMirrors(t *testing.T) {
 		})
 	}
 }
+
+func TestParsePortMappingsSkipsMalformedPairs(t *testing.T) {
+	// A malformed pair (no colon) must be skipped, not left as a zero-value
+	// PortMapping in the returned slice, otherwise an empty mapping leaks into
+	// the generated kind config.
+	out := parsePortMappings("11:1111,badpair,33:3333")
+	expected := []PortMapping{
+		{HostPort: "11", ContainerPort: "1111"},
+		{HostPort: "33", ContainerPort: "3333"},
+	}
+	if !reflect.DeepEqual(expected, out) {
+		t.Errorf("expected: %v, got: %v", expected, out)
+	}
+	for _, pm := range out {
+		if pm.HostPort == "" || pm.ContainerPort == "" {
+			t.Errorf("empty port mapping leaked into result: %+v", out)
+		}
+	}
+}
