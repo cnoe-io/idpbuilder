@@ -65,12 +65,12 @@ func parsePortMappings(extraPortsMapping string) []PortMapping {
 		// Split pairs of ports "11=1111","22=2222",etc
 		pairs := strings.Split(extraPortsMapping, ",")
 		// Create a slice to store PortMapping pairs.
-		portMappingPairs = make([]PortMapping, len(pairs))
+		portMappingPairs = make([]PortMapping, 0, len(pairs))
 		// Parse each pair into PortPair objects.
-		for i, pair := range pairs {
+		for _, pair := range pairs {
 			parts := strings.Split(pair, ":")
 			if len(parts) == 2 {
-				portMappingPairs[i] = PortMapping{parts[0], parts[1]}
+				portMappingPairs = append(portMappingPairs, PortMapping{parts[0], parts[1]})
 			}
 		}
 	}
